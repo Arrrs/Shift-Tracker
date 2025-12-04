@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icon Preview</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+        }
+        .icon-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            margin: 0 0 10px 0;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            margin-top: 20px;
+        }
+        .icon-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+        .icon-item img {
+            border-radius: 20%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        .icon-label {
+            font-weight: bold;
+            color: #333;
+        }
+        .dark-bg {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="icon-section">
+        <h1>🎲 Casssino App Icons</h1>
+        <p class="subtitle">Preview how your icons will look on different devices</p>
+
+        <div class="icon-grid">
+            <div class="icon-item">
+                <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23ff0000;stop-opacity:1'/><stop offset='100%25' style='stop-color:%23990000;stop-opacity:1'/></linearGradient></defs><rect fill='url(%23grad)' width='100' height='100' rx='15'/><circle cx='30' cy='30' r='18' fill='white'/><circle cx='30' cy='30' r='3' fill='%23ff0000'/><circle cx='70' cy='70' r='18' fill='white'/><circle cx='62' cy='62' r='3' fill='%23ff0000'/><circle cx='70' cy='70' r='3' fill='%23ff0000'/><circle cx='78' cy='78' r='3' fill='%23ff0000'/><circle cx='70' cy='78' r='3' fill='%23ff0000'/><circle cx='62' cy='70' r='3' fill='%23ff0000'/><circle cx='78' cy='62' r='3' fill='%23ff0000'/></svg>" width="120" height="120" alt="120x120">
+                <span class="icon-label">120x120 (iPhone)</span>
+            </div>
+
+            <div class="icon-item">
+                <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23ff0000;stop-opacity:1'/><stop offset='100%25' style='stop-color:%23990000;stop-opacity:1'/></linearGradient></defs><rect fill='url(%23grad)' width='100' height='100' rx='15'/><circle cx='30' cy='30' r='18' fill='white'/><circle cx='30' cy='30' r='3' fill='%23ff0000'/><circle cx='70' cy='70' r='18' fill='white'/><circle cx='62' cy='62' r='3' fill='%23ff0000'/><circle cx='70' cy='70' r='3' fill='%23ff0000'/><circle cx='78' cy='78' r='3' fill='%23ff0000'/><circle cx='70' cy='78' r='3' fill='%23ff0000'/><circle cx='62' cy='70' r='3' fill='%23ff0000'/><circle cx='78' cy='62' r='3' fill='%23ff0000'/></svg>" width="192" height="192" alt="192x192">
+                <span class="icon-label">192x192 (Android)</span>
+            </div>
+
+            <div class="icon-item">
+                <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><defs><linearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23ff0000;stop-opacity:1'/><stop offset='100%25' style='stop-color:%23990000;stop-opacity:1'/></linearGradient></defs><rect fill='url(%23grad)' width='512' height='512' rx='76'/><circle cx='154' cy='154' r='96' fill='white'/><circle cx='154' cy='154' r='16' fill='%23ff0000'/><circle cx='358' cy='358' r='96' fill='white'/><circle cx='318' cy='318' r='16' fill='%23ff0000'/><circle cx='358' cy='358' r='16' fill='%23ff0000'/><circle cx='398' cy='398' r='16' fill='%23ff0000'/><circle cx='358' cy='398' r='16' fill='%23ff0000'/><circle cx='318' cy='358' r='16' fill='%23ff0000'/><circle cx='398' cy='318' r='16' fill='%23ff0000'/></svg>" width="256" height="256" alt="512x512">
+                <span class="icon-label">512x512 (High-res)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="icon-section">
+        <h2>📱 On Dark Background (iPhone/Android Dark Mode)</h2>
+        <div class="dark-bg">
+            <div class="icon-grid">
+                <div class="icon-item">
+                    <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23ff0000;stop-opacity:1'/><stop offset='100%25' style='stop-color:%23990000;stop-opacity:1'/></linearGradient></defs><rect fill='url(%23grad)' width='100' height='100' rx='15'/><circle cx='30' cy='30' r='18' fill='white'/><circle cx='30' cy='30' r='3' fill='%23ff0000'/><circle cx='70' cy='70' r='18' fill='white'/><circle cx='62' cy='62' r='3' fill='%23ff0000'/><circle cx='70' cy='70' r='3' fill='%23ff0000'/><circle cx='78' cy='78' r='3' fill='%23ff0000'/><circle cx='70' cy='78' r='3' fill='%23ff0000'/><circle cx='62' cy='70' r='3' fill='%23ff0000'/><circle cx='78' cy='62' r='3' fill='%23ff0000'/></svg>" width="80" height="80">
+                    <span class="icon-label" style="color: white;">Dark Theme</span>
+                </div>
+                <div class="icon-item">
+                    <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23ff0000;stop-opacity:1'/><stop offset='100%25' style='stop-color:%23990000;stop-opacity:1'/></linearGradient></defs><rect fill='url(%23grad)' width='100' height='100' rx='15'/><circle cx='30' cy='30' r='18' fill='white'/><circle cx='30' cy='30' r='3' fill='%23ff0000'/><circle cx='70' cy='70' r='18' fill='white'/><circle cx='62' cy='62' r='3' fill='%23ff0000'/><circle cx='70' cy='70' r='3' fill='%23ff0000'/><circle cx='78' cy='78' r='3' fill='%23ff0000'/><circle cx='70' cy='78' r='3' fill='%23ff0000'/><circle cx='62' cy='70' r='3' fill='%23ff0000'/><circle cx='78' cy='62' r='3' fill='%23ff0000'/></svg>" width="120" height="120">
+                    <span class="icon-label" style="color: white;">Night Mode</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="icon-section">
+        <h2>📏 Actual Size Examples</h2>
+        <p class="subtitle">This is roughly how they'll appear on your phone home screen</p>
+        <div class="icon-grid">
+            <div class="icon-item">
+                <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23ff0000;stop-opacity:1'/><stop offset='100%25' style='stop-color:%23990000;stop-opacity:1'/></linearGradient></defs><rect fill='url(%23grad)' width='100' height='100' rx='15'/><circle cx='30' cy='30' r='18' fill='white'/><circle cx='30' cy='30' r='3' fill='%23ff0000'/><circle cx='70' cy='70' r='18' fill='white'/><circle cx='62' cy='62' r='3' fill='%23ff0000'/><circle cx='70' cy='70' r='3' fill='%23ff0000'/><circle cx='78' cy='78' r='3' fill='%23ff0000'/><circle cx='70' cy='78' r='3' fill='%23ff0000'/><circle cx='62' cy='70' r='3' fill='%23ff0000'/><circle cx='78' cy='62' r='3' fill='%23ff0000'/></svg>" width="60" height="60">
+                <span class="icon-label">iPhone SE</span>
+            </div>
+            <div class="icon-item">
+                <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23ff0000;stop-opacity:1'/><stop offset='100%25' style='stop-color:%23990000;stop-opacity:1'/></linearGradient></defs><rect fill='url(%23grad)' width='100' height='100' rx='15'/><circle cx='30' cy='30' r='18' fill='white'/><circle cx='30' cy='30' r='3' fill='%23ff0000'/><circle cx='70' cy='70' r='18' fill='white'/><circle cx='62' cy='62' r='3' fill='%23ff0000'/><circle cx='70' cy='70' r='3' fill='%23ff0000'/><circle cx='78' cy='78' r='3' fill='%23ff0000'/><circle cx='70' cy='78' r='3' fill='%23ff0000'/><circle cx='62' cy='70' r='3' fill='%23ff0000'/><circle cx='78' cy='62' r='3' fill='%23ff0000'/></svg>" width="70" height="70">
+                <span class="icon-label">iPhone 14</span>
+            </div>
+            <div class="icon-item">
+                <img src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' style='stop-color:%23ff0000;stop-opacity:1'/><stop offset='100%25' style='stop-color:%23990000;stop-opacity:1'/></linearGradient></defs><rect fill='url(%23grad)' width='100' height='100' rx='15'/><circle cx='30' cy='30' r='18' fill='white'/><circle cx='30' cy='30' r='3' fill='%23ff0000'/><circle cx='70' cy='70' r='18' fill='white'/><circle cx='62' cy='62' r='3' fill='%23ff0000'/><circle cx='70' cy='70' r='3' fill='%23ff0000'/><circle cx='78' cy='78' r='3' fill='%23ff0000'/><circle cx='70' cy='78' r='3' fill='%23ff0000'/><circle cx='62' cy='70' r='3' fill='%23ff0000'/><circle cx='78' cy='62' r='3' fill='%23ff0000'/></svg>" width="65" height="65">
+                <span class="icon-label">Android</span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
