@@ -29,7 +29,8 @@ Rebuild a shift countdown timer web app from vanilla HTML/CSS/JS to **modern Rea
 - **Tech Stack**: Next.js 15, shadcn/ui, Tailwind CSS, Supabase (PostgreSQL)
 - **Deployment**: Vercel (with serverless functions)
 - **Data Strategy**: Supabase (primary) + LocalStorage (offline cache)
-- **Users**: 3-4 users with access codes, separate data per user
+- **Users**: 3-4 users (me + 2-3 others), Email/Password auth, separate data per user
+- **Main Currency**: USD (with conversion support for other currencies)
 - **Reference Code**: /reference folder contains original vanilla JS implementation
 
 ### Original Features (ALL must be preserved):
@@ -41,14 +42,31 @@ Rebuild a shift countdown timer web app from vanilla HTML/CSS/JS to **modern Rea
 6. **Multi-language**: EN, CS, UK, BC (can start with EN only, add others later)
 
 ### New Features to Add:
-1. **Work Hours Tracker**:
-   - Monthly calendar view to mark working days
-   - Ability to select shift type per day (auto-fills hours: D=8h, M=8h, etc.)
-   - Manual hour editing (e.g., 8.5h or 8h 10m format)
-   - Edit past days (add/remove/change hours)
-   - Monthly summary of total hours
-   - Store last 3 months of data only
-   - Separate page (no countdown timers on this page)
+1. **Advanced Shift & Job Management**:
+   - Multiple jobs support (scalable, can hide inactive jobs)
+   - Custom shift templates per job (not universal D/M/N)
+   - Live timer to track shifts in real-time
+   - Manual shift entry (after shift is done)
+   - Multiple shifts per day support (different jobs)
+   - Overtime/undertime tracking with flexible calculation (multipliers, fixed, tiers)
+   - Holiday pay (multiplier or fixed amount)
+   - Penalties and bonuses per shift (fixed or percentage)
+   - Notes per shift
+   - Calendar view with color-coded shifts by job
+
+2. **Salary Tracking & Analytics**:
+   - Hourly rate (primary) and daily rate support
+   - Custom salary periods (bi-weekly, monthly, custom)
+   - Expected vs actual hours tracking
+   - Bar charts (week, 10 days, 2 weeks, month)
+   - Currency conversion (UAH to USD, etc.)
+   - CSV/PDF export for periods
+   - Store ALL history (not just 3 months)
+
+3. **PWA Features**:
+   - Push notifications (shift reminders)
+   - Offline-first with sync
+   - Install on mobile home screen
 
 ### Important Decisions & Patterns
 
@@ -87,13 +105,19 @@ Rebuild a shift countdown timer web app from vanilla HTML/CSS/JS to **modern Rea
 ## Current Work Focus
 
 ### Active Tasks
-- Setting up project structure and planning architecture
-- User is learning: Tailwind CSS, shadcn/ui, React best practices
+- Ready to start Phase 1: Core Foundation (Dashboard, Jobs, Theme switcher)
+- User is learning: Next.js App Router, Supabase integration, TypeScript
 
-### Completed Milestones
-- ✅ Moved original code to /reference folder
-- ✅ Defined project scope and requirements
-- ✅ Selected tech stack (React + shadcn + Tailwind)
+### Completed Milestones - Session 1 (2024-12-04)
+- ✅ Installed Tailwind CSS v3
+- ✅ Set up shadcn/ui manually (Radix UI primitives)
+- ✅ Migrated from CRA to Next.js 15 + Supabase template
+- ✅ Created Supabase project and connected
+- ✅ Designed complete database schema (8 tables, RLS enabled)
+- ✅ Set up Supabase CLI and migrations
+- ✅ Deployed database schema successfully
+- ✅ Configured Git with proper .gitignore
+- ✅ Authentication working (Email/Password)
 
 ---
 
@@ -127,17 +151,45 @@ Rebuild a shift countdown timer web app from vanilla HTML/CSS/JS to **modern Rea
 4. **Practice focus**: This is a learning exercise - guide, don't solve
 
 ### Data Storage Strategy:
-- Use LocalStorage with structured JSON
-- Keep only 3 months of tracker data (auto-cleanup)
-- Settings object for all user preferences
-- Consider data migration strategy if structure changes
+- Supabase PostgreSQL (primary storage)
+- LocalStorage for offline cache and sync
+- Keep ALL history (not just 3 months)
+- 8 database tables with Row Level Security
 
 ### PWA Requirements:
 - Must install on mobile home screen
-- Offline-capable
+- Offline-capable with background sync
 - Responsive on all screen sizes
 - Handle safe-area-inset for notched devices
+- Push notifications support
 
 ---
 
-**Last Updated**: 2025-12-02
+## Development Phases (MVP First Approach)
+
+### Phase 1: Core Foundation (CURRENT - Next Session)
+- Generate TypeScript types from database
+- Create basic page structure (Dashboard, Calendar, Settings)
+- Build header with navigation
+- Implement theme switcher (dark/light)
+- Create jobs management page (CRUD)
+
+### Phase 2: Main Features
+- Dashboard: Clock + Countdown + Counter
+- Calendar view with shift tracking
+- Live shift timer
+
+### Phase 3: Salary & Analytics
+- Basic salary calculations
+- Overtime tracking
+- Monthly summaries
+
+### Phase 4: Advanced Features
+- Penalties & bonuses
+- Bar charts & analytics
+- CSV/PDF export
+- PWA notifications
+
+---
+
+**Last Updated**: 2024-12-04
