@@ -24,6 +24,7 @@ import { updateJob } from "./actions";
 import { Pencil } from "lucide-react";
 import { Database } from "@/lib/database.types";
 import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 
@@ -47,19 +48,20 @@ interface EditJobDialogProps {
   job: Job;
   variant?: "link" | "ghost";
   size?: "sm";
+  onSuccess?: () => void;
 }
 
-export function EditJobDialog({ job, variant = "link", size }: EditJobDialogProps) {
+export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJobDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     name: job.name,
-    hourly_rate: job.hourly_rate.toString(),
-    currency: job.currency,
-    color: job.color,
+    hourly_rate: job.hourly_rate?.toString() || "",
+    currency: job.currency || "USD",
+    color: job.color || "#3B82F6",
     description: job.description || "",
-    is_active: job.is_active,
+    is_active: job.is_active ?? true,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,17 +80,21 @@ export function EditJobDialog({ job, variant = "link", size }: EditJobDialogProp
     setLoading(false);
 
     if (result.error) {
-      alert("Error: " + result.error);
+      toast.error("Failed to update job", {
+        description: result.error
+      });
     } else {
       setOpen(false);
+      toast.success("Job updated successfully");
+      onSuccess?.();
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant={variant} size={size}>
-          <Pencil className={size === "sm" ? "h-4 w-4" : undefined} />
+        <Button variant={variant} size={size} title="Edit job details">
+          <Pencil className="h-4 w-4" />
         </Button>
       </DialogTrigger>
 

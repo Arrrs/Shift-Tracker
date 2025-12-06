@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Eye } from "lucide-react";
 import { Database } from "@/lib/database.types";
+import { ShiftTemplatesList } from "./shift-templates-list";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 
@@ -32,12 +33,16 @@ interface JobDetailsDrawerProps {
   job: Job;
   variant?: "link" | "ghost";
   size?: "sm";
+  children?: React.ReactNode;
+  onTemplateChange?: () => void;
 }
 
 export function JobDetailsDrawer({
   job,
   variant = "link",
   size,
+  children,
+  onTemplateChange,
 }: JobDetailsDrawerProps) {
   const [open, setOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -67,7 +72,7 @@ export function JobDetailsDrawer({
               Hourly Rate
             </h3>
             <p className="text-2xl font-semibold">
-              ${job.hourly_rate.toFixed(2)} {job.currency}
+              ${job.hourly_rate?.toFixed(2) || "0.00"} {job.currency || "USD"}
             </p>
           </div>
 
@@ -89,9 +94,9 @@ export function JobDetailsDrawer({
             <div className="flex items-center gap-2">
               <div
                 className="w-8 h-8 rounded border"
-                style={{ backgroundColor: job.color }}
+                style={{ backgroundColor: job.color || "#3B82F6" }}
               />
-              <span className="text-sm font-mono">{job.color}</span>
+              <span className="text-sm font-mono">{job.color || "#3B82F6"}</span>
             </div>
           </div>
 
@@ -101,13 +106,16 @@ export function JobDetailsDrawer({
               Created
             </h3>
             <p className="text-sm">
-              {new Date(job.created_at).toLocaleDateString("en-US", {
+              {job.created_at && new Date(job.created_at).toLocaleDateString("en-US", {
                 year: "numeric",
                 month: "long",
                 day: "numeric",
               })}
             </p>
           </div>
+
+          {/* Shift Templates Section */}
+          <ShiftTemplatesList jobId={job.id} onTemplateChange={onTemplateChange} />
         </div>
   );
 
@@ -115,18 +123,22 @@ export function JobDetailsDrawer({
     return (
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant={variant} size={size}>
-            <Eye className={size === "sm" ? "h-4 w-4" : undefined} />
-          </Button>
+          {children || (
+            <Button variant={variant} size={size} title="View details and manage templates">
+              <Eye className="h-4 w-4" />
+            </Button>
+          )}
         </DialogTrigger>
 
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>{job.name}</DialogTitle>
             <DialogDescription>Job details and information</DialogDescription>
           </DialogHeader>
 
-          {jobDetails}
+          <div className="overflow-y-auto flex-1">
+            {jobDetails}
+          </div>
 
           <DialogFooter>
             <DialogClose asChild>
@@ -141,18 +153,22 @@ export function JobDetailsDrawer({
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <Button variant={variant} size={size}>
-          <Eye className={size === "sm" ? "h-4 w-4" : undefined} />
-        </Button>
+        {children || (
+          <Button variant={variant} size={size} title="View details and manage templates">
+            <Eye className="h-4 w-4" />
+          </Button>
+        )}
       </DrawerTrigger>
 
-      <DrawerContent>
+      <DrawerContent className="max-h-[90vh] overflow-hidden flex flex-col">
         <DrawerHeader>
           <DrawerTitle>{job.name}</DrawerTitle>
           <DrawerDescription>Job details and information</DrawerDescription>
         </DrawerHeader>
 
-        {jobDetails}
+        <div className="overflow-y-auto flex-1">
+          {jobDetails}
+        </div>
 
         <DrawerFooter>
           <DrawerClose asChild>

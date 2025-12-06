@@ -23,6 +23,7 @@ import {
 import { createJob } from "./actions";
 import { Plus } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { toast } from "sonner";
 
 const CURRENCIES = [
   { value: "USD", label: "USD - US Dollar" },
@@ -40,7 +41,11 @@ const CURRENCIES = [
   { value: "SEK", label: "SEK - Swedish Krona" },
 ];
 
-export function AddJobDialog() {
+interface AddJobDialogProps {
+  onSuccess?: () => void;
+}
+
+export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -69,9 +74,12 @@ export function AddJobDialog() {
     setLoading(false);
 
     if (result.error) {
-      alert("Error: " + result.error);
+      toast.error("Failed to create job", {
+        description: result.error
+      });
     } else {
       setOpen(false);
+      toast.success("Job created successfully");
       // Reset form
       setFormData({
         name: "",
@@ -81,6 +89,7 @@ export function AddJobDialog() {
         description: "",
         is_active: true,
       });
+      onSuccess?.();
     }
   };
 
