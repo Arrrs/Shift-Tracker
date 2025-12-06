@@ -119,3 +119,21 @@ Quick Reference Card
     git merge dev
     git push
 
+
+
+
+### SQL Migration example:
+
+    supabase migration new update_currency_default
+
+Inside the new file "supabase/migrations/TIMESTAMP_update_currency_default.sql"
+Add instructions:
+        -- Update default currency from UAH to USD in jobs table
+        ALTER TABLE jobs 
+        ALTER COLUMN currency SET DEFAULT 'USD';
+
+    supabase db push
+
+Regenerate types
+
+    npx supabase gen types typescript --linked > lib/database.types.ts

@@ -52,7 +52,7 @@ const ThemeSwitcher = () => {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-content" align="start">
+      <DropdownMenuContent className="w-content" align="end" sideOffset={8} >
         <DropdownMenuRadioGroup
           value={theme}
           onValueChange={(e) => setTheme(e)}
