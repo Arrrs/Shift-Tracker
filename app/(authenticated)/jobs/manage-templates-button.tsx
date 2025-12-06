@@ -9,7 +9,7 @@ type Job = Database["public"]["Tables"]["jobs"]["Row"];
 
 interface ManageTemplatesButtonProps {
   job: Job;
-  variant?: "link" | "ghost" | "outline";
+  variant?: "link" | "ghost";
   size?: "sm";
 }
 
