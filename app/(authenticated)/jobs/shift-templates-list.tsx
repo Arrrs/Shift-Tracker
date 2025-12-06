@@ -8,6 +8,7 @@ import { getShiftTemplates } from "./actions";
 import { AddShiftTemplateDialog } from "./add-shift-template-dialog";
 import { EditShiftTemplateDialog } from "./edit-shift-template-dialog";
 import { DeleteShiftTemplateButton } from "./delete-shift-template-button";
+import { Skeleton } from "@/components/ui/skeleton";
 
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
 
@@ -55,7 +56,23 @@ export function ShiftTemplatesList({ jobId, onTemplateChange }: ShiftTemplatesLi
       </div>
 
       {loading ? (
-        <p className="text-sm text-muted-foreground">Loading templates...</p>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-4 h-4 rounded" />
+                <div className="space-y-2">
+                  <Skeleton className="h-5 w-32" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Skeleton className="h-8 w-8" />
+                <Skeleton className="h-8 w-8" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : !templates || templates.length === 0 ? (
         <div className="space-y-3 bg-muted/30 p-4 rounded-lg">
           <div className="flex items-start gap-2">
