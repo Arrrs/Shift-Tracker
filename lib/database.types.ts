@@ -7,10 +7,30 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -43,6 +63,7 @@ export type Database = {
           color: string | null
           created_at: string | null
           currency: string | null
+          currency_symbol: string | null
           daily_rate: number | null
           description: string | null
           hourly_rate: number | null
@@ -51,6 +72,9 @@ export type Database = {
           name: string
           overtime_config: Json | null
           pay_type: string | null
+          personal_days_per_year: number | null
+          pto_days_per_year: number | null
+          sick_days_per_year: number | null
           updated_at: string | null
           user_id: string
         }
@@ -58,6 +82,7 @@ export type Database = {
           color?: string | null
           created_at?: string | null
           currency?: string | null
+          currency_symbol?: string | null
           daily_rate?: number | null
           description?: string | null
           hourly_rate?: number | null
@@ -66,6 +91,9 @@ export type Database = {
           name: string
           overtime_config?: Json | null
           pay_type?: string | null
+          personal_days_per_year?: number | null
+          pto_days_per_year?: number | null
+          sick_days_per_year?: number | null
           updated_at?: string | null
           user_id: string
         }
@@ -73,6 +101,7 @@ export type Database = {
           color?: string | null
           created_at?: string | null
           currency?: string | null
+          currency_symbol?: string | null
           daily_rate?: number | null
           description?: string | null
           hourly_rate?: number | null
@@ -81,6 +110,9 @@ export type Database = {
           name?: string
           overtime_config?: Json | null
           pay_type?: string | null
+          personal_days_per_year?: number | null
+          pto_days_per_year?: number | null
+          sick_days_per_year?: number | null
           updated_at?: string | null
           user_id?: string
         }
@@ -216,16 +248,19 @@ export type Database = {
           holiday_multiplier: number | null
           id: string
           is_holiday: boolean | null
-          job_id: string
+          is_overnight: boolean | null
+          job_id: string | null
           notes: string | null
           overtime_hours: number | null
           regular_hours: number | null
+          scheduled_hours: number | null
           start_time: string
           status: string | null
           template_id: string | null
           undertime_hours: number | null
           updated_at: string | null
           user_id: string
+          variance_hours: number | null
         }
         Insert: {
           actual_hours?: number | null
@@ -235,16 +270,19 @@ export type Database = {
           holiday_multiplier?: number | null
           id?: string
           is_holiday?: boolean | null
-          job_id: string
+          is_overnight?: boolean | null
+          job_id?: string | null
           notes?: string | null
           overtime_hours?: number | null
           regular_hours?: number | null
+          scheduled_hours?: number | null
           start_time: string
           status?: string | null
           template_id?: string | null
           undertime_hours?: number | null
           updated_at?: string | null
           user_id: string
+          variance_hours?: number | null
         }
         Update: {
           actual_hours?: number | null
@@ -254,16 +292,19 @@ export type Database = {
           holiday_multiplier?: number | null
           id?: string
           is_holiday?: boolean | null
-          job_id?: string
+          is_overnight?: boolean | null
+          job_id?: string | null
           notes?: string | null
           overtime_hours?: number | null
           regular_hours?: number | null
+          scheduled_hours?: number | null
           start_time?: string
           status?: string | null
           template_id?: string | null
           undertime_hours?: number | null
           updated_at?: string | null
           user_id?: string
+          variance_hours?: number | null
         }
         Relationships: [
           {
@@ -282,8 +323,56 @@ export type Database = {
           },
         ]
       }
+      time_off_records: {
+        Row: {
+          created_at: string | null
+          date: string
+          hours_credited: number | null
+          id: string
+          is_paid: boolean | null
+          job_id: string | null
+          notes: string | null
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          hours_credited?: number | null
+          id?: string
+          is_paid?: boolean | null
+          job_id?: string | null
+          notes?: string | null
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          hours_credited?: number | null
+          id?: string
+          is_paid?: boolean | null
+          job_id?: string | null
+          notes?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "time_off_records_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_settings: {
         Row: {
+          auto_convert_currency: boolean | null
           clock_style: string | null
           created_at: string | null
           dashboard_layout: Json | null
@@ -291,11 +380,14 @@ export type Database = {
           id: string
           language: string | null
           notification_prefs: Json | null
+          primary_currency: string | null
+          show_currency_breakdown: boolean | null
           theme: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          auto_convert_currency?: boolean | null
           clock_style?: string | null
           created_at?: string | null
           dashboard_layout?: Json | null
@@ -303,11 +395,14 @@ export type Database = {
           id?: string
           language?: string | null
           notification_prefs?: Json | null
+          primary_currency?: string | null
+          show_currency_breakdown?: boolean | null
           theme?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          auto_convert_currency?: boolean | null
           clock_style?: string | null
           created_at?: string | null
           dashboard_layout?: Json | null
@@ -315,6 +410,8 @@ export type Database = {
           id?: string
           language?: string | null
           notification_prefs?: Json | null
+          primary_currency?: string | null
+          show_currency_breakdown?: boolean | null
           theme?: string | null
           updated_at?: string | null
           user_id?: string
@@ -326,7 +423,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_scheduled_hours: {
+        Args: {
+          p_end_time: string
+          p_is_overnight?: boolean
+          p_start_time: string
+        }
+        Returns: number
+      }
+      get_pto_balance: {
+        Args: { p_job_id: string; p_user_id: string; p_year?: number }
+        Returns: {
+          personal_remaining: number
+          personal_total: number
+          personal_used: number
+          sick_remaining: number
+          sick_total: number
+          sick_used: number
+          vacation_remaining: number
+          vacation_total: number
+          vacation_used: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
@@ -455,7 +573,11 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
 } as const
+
