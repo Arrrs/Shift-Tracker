@@ -83,3 +83,34 @@ export function getStatusInfo(status: string | null | undefined) {
 
   return statusMap[status as keyof typeof statusMap] || statusMap.planned;
 }
+
+/**
+ * Calculate effective hourly rate for a shift including custom rates, holiday pay, etc.
+ * @param shift - Shift object with rate information
+ * @param jobRate - Default job hourly rate (fallback)
+ * @returns Effective hourly rate
+ */
+export function calculateEffectiveRate(
+  shift: {
+    custom_hourly_rate?: number | null;
+    is_holiday?: boolean | null;
+    holiday_multiplier?: number | null;
+    holiday_fixed_rate?: number | null;
+  },
+  jobRate: number = 0
+): number {
+  // If holiday shift with fixed rate, use that
+  if (shift.is_holiday && shift.holiday_fixed_rate) {
+    return shift.holiday_fixed_rate;
+  }
+
+  // Use custom rate if available, otherwise use job rate
+  const baseRate = shift.custom_hourly_rate || jobRate;
+
+  // Apply holiday multiplier if this is a holiday shift
+  if (shift.is_holiday && shift.holiday_multiplier) {
+    return baseRate * shift.holiday_multiplier;
+  }
+
+  return baseRate;
+}

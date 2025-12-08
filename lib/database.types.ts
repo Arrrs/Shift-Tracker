@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "13.0.5"
+  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -243,8 +248,10 @@ export type Database = {
         Row: {
           actual_hours: number | null
           created_at: string | null
+          custom_hourly_rate: number | null
           date: string
           end_time: string | null
+          holiday_fixed_rate: number | null
           holiday_multiplier: number | null
           id: string
           is_holiday: boolean | null
@@ -265,8 +272,10 @@ export type Database = {
         Insert: {
           actual_hours?: number | null
           created_at?: string | null
+          custom_hourly_rate?: number | null
           date: string
           end_time?: string | null
+          holiday_fixed_rate?: number | null
           holiday_multiplier?: number | null
           id?: string
           is_holiday?: boolean | null
@@ -287,8 +296,10 @@ export type Database = {
         Update: {
           actual_hours?: number | null
           created_at?: string | null
+          custom_hourly_rate?: number | null
           date?: string
           end_time?: string | null
+          holiday_fixed_rate?: number | null
           holiday_multiplier?: number | null
           id?: string
           is_holiday?: boolean | null
@@ -580,4 +591,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

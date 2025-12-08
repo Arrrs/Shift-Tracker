@@ -58,14 +58,18 @@ export async function getShifts(startDate: string, endDate: string, jobId?: stri
 export async function getShiftStats(startDate: string, endDate: string) {
   const { user, supabase } = await getAuthenticatedUser()
 
-  const { data: shifts, error } = await supabase
+  const { data: shifts, error} = await supabase
     .from('shifts')
     .select(`
       id,
       actual_hours,
       scheduled_hours,
       status,
-      jobs (
+      custom_hourly_rate,
+      is_holiday,
+      holiday_multiplier,
+      holiday_fixed_rate,
+      jobs!job_id (
         hourly_rate,
         currency,
         currency_symbol
@@ -82,10 +86,26 @@ export async function getShiftStats(startDate: string, endDate: string) {
   // Group earnings by currency
   const earningsByCurrency: Record<string, number> = {}
 
-  shifts.forEach((shift) => {
+  shifts?.forEach((shift) => {
     const hours = shift.actual_hours || 0
-    const rate = shift.jobs?.hourly_rate || 0
-    const currency = shift.jobs?.currency || 'USD'
+    let rate = 0
+
+    // Determine the rate to use
+    if (shift.is_holiday && shift.holiday_fixed_rate) {
+      // Use fixed holiday rate if set
+      rate = shift.holiday_fixed_rate
+    } else {
+      // Use custom rate if available, otherwise use job rate
+      const job = Array.isArray(shift.jobs) ? shift.jobs[0] : shift.jobs
+      const baseRate = shift.custom_hourly_rate || job?.hourly_rate || 0
+      // Apply holiday multiplier if this is a holiday shift
+      rate = shift.is_holiday && shift.holiday_multiplier
+        ? baseRate * shift.holiday_multiplier
+        : baseRate
+    }
+
+    const job = Array.isArray(shift.jobs) ? shift.jobs[0] : shift.jobs
+    const currency = job?.currency || 'USD'
 
     if (!earningsByCurrency[currency]) {
       earningsByCurrency[currency] = 0
@@ -95,22 +115,22 @@ export async function getShiftStats(startDate: string, endDate: string) {
 
   const stats = {
     // Total hours (actual vs scheduled)
-    totalActualHours: shifts.reduce((sum, shift) => sum + (shift.actual_hours || 0), 0),
-    totalScheduledHours: shifts.reduce((sum, shift) => sum + (shift.scheduled_hours || 0), 0),
+    totalActualHours: shifts?.reduce((sum, shift) => sum + (shift.actual_hours || 0), 0) || 0,
+    totalScheduledHours: shifts?.reduce((sum, shift) => sum + (shift.scheduled_hours || 0), 0) || 0,
 
     // Shift counts by status
-    totalShifts: shifts.length,
-    completedShifts: shifts.filter(s => s.status === 'completed').length,
-    plannedShifts: shifts.filter(s => s.status === 'planned').length,
-    inProgressShifts: shifts.filter(s => s.status === 'in_progress').length,
+    totalShifts: shifts?.length || 0,
+    completedShifts: shifts?.filter(s => s.status === 'completed').length || 0,
+    plannedShifts: shifts?.filter(s => s.status === 'planned').length || 0,
+    inProgressShifts: shifts?.filter(s => s.status === 'in_progress').length || 0,
 
     // Earnings by currency
     earningsByCurrency,
 
     // Legacy total (for backward compatibility - uses first currency)
     totalEarnings: Object.values(earningsByCurrency)[0] || 0,
-    totalHours: shifts.reduce((sum, shift) => sum + (shift.actual_hours || 0), 0),
-    shiftCount: shifts.length,
+    totalHours: shifts?.reduce((sum, shift) => sum + (shift.actual_hours || 0), 0) || 0,
+    shiftCount: shifts?.length || 0,
   }
 
   return { stats, error: null }

@@ -50,7 +50,9 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
   const [jobs, setJobs] = useState<Job[]>([]);
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
   const [selectedJobId, setSelectedJobId] = useState<string>("");
-  const [entryMode, setEntryMode] = useState<"manual" | "template">("manual");
+  const [entryMode, setEntryMode] = useState<"template" | "manual">("template");
+  const [showCustomRate, setShowCustomRate] = useState(false);
+  const [holidayPayType, setHolidayPayType] = useState<"multiplier" | "fixed" | "custom">("multiplier");
 
   const [formData, setFormData] = useState(() => ({
     date: selectedDate?.toISOString().split("T")[0] || "",
@@ -58,6 +60,10 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
     end_time: "",
     actual_hours: 0,
     notes: "",
+    custom_hourly_rate: 0,
+    is_holiday: false,
+    holiday_multiplier: 1.5,
+    holiday_fixed_rate: 0,
   }));
 
   const [sameAsScheduled, setSameAsScheduled] = useState(true);
@@ -80,7 +86,7 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
   // Load templates when job is selected
   useEffect(() => {
     const loadTemplates = async () => {
-      if (!selectedJobId) {
+      if (!selectedJobId || selectedJobId === "no-job") {
         setTemplates([]);
         return;
       }
@@ -107,6 +113,17 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
       }));
     }
   }, [selectedDate]);
+
+  // Set smart default times when dialog opens (only once, when form is empty)
+  useEffect(() => {
+    if (open && !formData.start_time && !formData.end_time) {
+      setFormData((prev) => ({
+        ...prev,
+        start_time: "08:00", // Default to 8 AM
+        end_time: "17:00",   // Default to 5 PM (9 hour shift)
+      }));
+    }
+  }, [open]);
 
   // Auto-calculate scheduled hours and detect overnight shifts
   const [scheduledHours, setScheduledHours] = useState(0);
@@ -163,15 +180,29 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
     setLoading(true);
 
     // Prepare shift data
+    // Normalize time format: if time already has seconds (HH:MM:SS), use as-is; otherwise add :00
+    const normalizeTime = (time: string) => {
+      // If time is already HH:MM:SS format (from template), return as-is
+      if (time.split(':').length === 3) {
+        return time;
+      }
+      // If time is HH:MM format (from input), add seconds
+      return `${time}:00`;
+    };
+
     const shiftData = {
       job_id: selectedJobId && selectedJobId !== "no-job" ? selectedJobId : null,
       date: formData.date,
-      start_time: `${formData.date}T${formData.start_time}:00Z`,
-      end_time: `${formData.date}T${formData.end_time}:00Z`,
+      start_time: `${formData.date}T${normalizeTime(formData.start_time)}Z`,
+      end_time: `${formData.date}T${normalizeTime(formData.end_time)}Z`,
       actual_hours: formData.actual_hours,
       scheduled_hours: scheduledHours,
       is_overnight: isOvernight,
       notes: formData.notes || null,
+      custom_hourly_rate: formData.custom_hourly_rate > 0 ? formData.custom_hourly_rate : null,
+      is_holiday: formData.is_holiday,
+      holiday_multiplier: formData.is_holiday && holidayPayType !== "fixed" && formData.holiday_multiplier > 0 ? formData.holiday_multiplier : null,
+      holiday_fixed_rate: formData.is_holiday && holidayPayType === "fixed" && formData.holiday_fixed_rate > 0 ? formData.holiday_fixed_rate : null,
     };
 
     const result = await createShift(shiftData);
@@ -191,10 +222,15 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
         end_time: "",
         actual_hours: 0,
         notes: "",
+        custom_hourly_rate: 0,
+        is_holiday: false,
+        holiday_multiplier: 1.5,
+        holiday_fixed_rate: 0,
       });
       setSelectedJobId("");
       setSelectedTemplate("");
-      setEntryMode("manual");
+      setShowCustomRate(false);
+      setHolidayPayType("multiplier");
       setSameAsScheduled(true);
       setIsOvernight(false);
       setScheduledHours(0);
@@ -248,12 +284,12 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
         />
       </div>
 
-      {/* Entry Mode Tabs */}
+      {/* Entry Mode Tabs - Template first, Manual second */}
       {templates.length > 0 && (
-        <Tabs value={entryMode} onValueChange={(v) => setEntryMode(v as "manual" | "template")}>
+        <Tabs value={entryMode} onValueChange={(v) => setEntryMode(v as "template" | "manual")}>
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="manual">Manual Entry</TabsTrigger>
             <TabsTrigger value="template">Use Template</TabsTrigger>
+            <TabsTrigger value="manual">Manual Entry</TabsTrigger>
           </TabsList>
 
           <TabsContent value="template" className="space-y-3 mt-4">
@@ -379,6 +415,168 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
                 {formData.actual_hours > scheduledHours && <span className="text-green-600"> (overtime)</span>}
                 {formData.actual_hours < scheduledHours && <span className="text-orange-600"> (undertime)</span>}
               </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Custom Hourly Rate Toggle */}
+      {selectedJobId && selectedJobId !== "no-job" && (
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="show_custom_rate"
+            checked={showCustomRate}
+            onChange={(e) => {
+              setShowCustomRate(e.target.checked);
+              if (!e.target.checked) {
+                setFormData((prev) => ({ ...prev, custom_hourly_rate: 0 }));
+              }
+            }}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          <Label htmlFor="show_custom_rate" className="text-sm font-normal cursor-pointer">
+            Use custom hourly rate for this shift
+          </Label>
+        </div>
+      )}
+
+      {/* Custom Hourly Rate Input */}
+      {(showCustomRate || !selectedJobId || selectedJobId === "no-job") && (
+        <div className="space-y-2">
+          <Label htmlFor="custom_rate">
+            Custom Hourly Rate {(!selectedJobId || selectedJobId === "no-job") && "*"}
+          </Label>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">$</span>
+            <Input
+              id="custom_rate"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="Enter hourly rate"
+              value={formData.custom_hourly_rate === 0 ? "" : formData.custom_hourly_rate}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData((prev) => ({
+                  ...prev,
+                  custom_hourly_rate: value === "" ? 0 : parseFloat(value),
+                }));
+              }}
+            />
+            <span className="text-sm text-muted-foreground">/hr</span>
+          </div>
+        </div>
+      )}
+
+      {/* Holiday Toggle and Multiplier */}
+      <div className="space-y-3 border rounded-lg p-3 bg-muted/20">
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="is_holiday"
+            checked={formData.is_holiday}
+            onChange={(e) => setFormData((prev) => ({ ...prev, is_holiday: e.target.checked }))}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          <Label htmlFor="is_holiday" className="text-sm font-normal cursor-pointer">
+            This is a holiday shift
+          </Label>
+        </div>
+
+        {formData.is_holiday && (
+          <div className="space-y-3 pl-6">
+            {/* Holiday Pay Type Selector */}
+            <div className="space-y-2">
+              <Label className="text-xs">Holiday Pay Type</Label>
+              <Select value={holidayPayType} onValueChange={(v) => setHolidayPayType(v as "multiplier" | "fixed" | "custom")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="multiplier">Standard Multiplier</SelectItem>
+                  <SelectItem value="fixed">Fixed Hourly Rate</SelectItem>
+                  <SelectItem value="custom">Custom Multiplier</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Standard Multiplier */}
+            {holidayPayType === "multiplier" && (
+              <div className="space-y-2">
+                <Select
+                  value={formData.holiday_multiplier.toString()}
+                  onValueChange={(value) => setFormData((prev) => ({ ...prev, holiday_multiplier: parseFloat(value) }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1.25">1.25x (Time and a quarter)</SelectItem>
+                    <SelectItem value="1.5">1.5x (Time and a half)</SelectItem>
+                    <SelectItem value="1.75">1.75x</SelectItem>
+                    <SelectItem value="2">2x (Double time)</SelectItem>
+                    <SelectItem value="2.5">2.5x</SelectItem>
+                    <SelectItem value="3">3x (Triple time)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Your earnings will be multiplied by {formData.holiday_multiplier}x
+                </p>
+              </div>
+            )}
+
+            {/* Fixed Rate */}
+            {holidayPayType === "fixed" && (
+              <div className="space-y-2">
+                <Label className="text-xs">Holiday Hourly Rate</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Enter fixed holiday rate"
+                    value={formData.holiday_fixed_rate === 0 ? "" : formData.holiday_fixed_rate}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData((prev) => ({
+                        ...prev,
+                        holiday_fixed_rate: value === "" ? 0 : parseFloat(value),
+                        holiday_multiplier: 0, // Clear multiplier when using fixed rate
+                      }));
+                    }}
+                  />
+                  <span className="text-sm text-muted-foreground">/hr</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Fixed hourly rate regardless of base pay
+                </p>
+              </div>
+            )}
+
+            {/* Custom Multiplier */}
+            {holidayPayType === "custom" && (
+              <div className="space-y-2">
+                <Label className="text-xs">Custom Multiplier</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  placeholder="Enter multiplier (e.g., 2.3)"
+                  value={formData.holiday_multiplier === 0 ? "" : formData.holiday_multiplier}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData((prev) => ({
+                      ...prev,
+                      holiday_multiplier: value === "" ? 0 : parseFloat(value),
+                    }));
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Your earnings will be multiplied by {formData.holiday_multiplier}x
+                </p>
+              </div>
             )}
           </div>
         )}

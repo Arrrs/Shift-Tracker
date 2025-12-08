@@ -20,7 +20,7 @@ import { Database } from "@/lib/database.types";
 import { EditShiftDialog } from "./edit-shift-dialog";
 import { AddShiftDialog } from "./add-shift-dialog";
 import { Clock, DollarSign, Plus } from "lucide-react";
-import { formatTimeFromTimestamp, getStatusInfo } from "@/lib/utils/time-format";
+import { formatTimeFromTimestamp, getStatusInfo, calculateEffectiveRate } from "@/lib/utils/time-format";
 
 type Shift = Database["public"]["Tables"]["shifts"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
@@ -59,7 +59,7 @@ export function DayShiftsDrawer({
   const totalHours = dayShifts.reduce((sum, shift) => sum + (shift.actual_hours || 0), 0);
   const totalEarnings = dayShifts.reduce((sum, shift) => {
     const hours = shift.actual_hours || 0;
-    const rate = shift.jobs?.hourly_rate || 0;
+    const rate = calculateEffectiveRate(shift, shift.jobs?.hourly_rate || 0);
     return sum + (hours * rate);
   }, 0);
 
@@ -102,77 +102,99 @@ export function DayShiftsDrawer({
             <AddShiftDialog selectedDate={date} onSuccess={handleEditSuccess} />
           </div>
         ) : (
-          <div className="space-y-2">
-            {dayShifts.map((shift) => {
-              const earnings = (shift.actual_hours || 0) * (shift.jobs?.hourly_rate || 0);
-              const status = getStatusInfo(shift.status);
-              const startTime = formatTimeFromTimestamp(shift.start_time);
-              const endTime = formatTimeFromTimestamp(shift.end_time);
+          <div className="space-y-3">
+            <div className="space-y-2">
+              {dayShifts.map((shift) => {
+                const hours = shift.actual_hours || 0;
+                const rate = calculateEffectiveRate(shift, shift.jobs?.hourly_rate || 0);
+                const earnings = hours * rate;
+                const status = getStatusInfo(shift.status);
+                const startTime = formatTimeFromTimestamp(shift.start_time);
+                const endTime = formatTimeFromTimestamp(shift.end_time);
 
-              return (
-                <button
-                  key={shift.id}
-                  onClick={() => handleShiftClick(shift)}
-                  className={`w-full border rounded-lg p-3 hover:bg-muted/50 transition-colors text-left ${status.borderColor}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    {/* Left side */}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        {shift.jobs ? (
-                          <div
-                            className="w-3 h-3 rounded"
-                            style={{ backgroundColor: shift.jobs.color || "#3B82F6" }}
-                          />
-                        ) : (
-                          <div className="w-3 h-3 rounded bg-gray-400" />
-                        )}
-                        <h4 className="font-semibold text-sm">
-                          {shift.jobs?.name || "Personal Time"}
-                        </h4>
-                        <span className="text-xs">{status.emoji}</span>
-                      </div>
-
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          <span>
-                            {startTime} - {endTime}
-                          </span>
-                          <span className="ml-1">({shift.actual_hours?.toFixed(1) || "0.0"}h)</span>
-                          {shift.is_overnight && (
-                            <span className="text-orange-500 text-[10px]">overnight</span>
+                return (
+                  <button
+                    key={shift.id}
+                    onClick={() => handleShiftClick(shift)}
+                    className={`w-full border rounded-lg p-3 hover:bg-muted/50 transition-colors text-left ${status.borderColor}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      {/* Left side */}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          {shift.jobs ? (
+                            <div
+                              className="w-3 h-3 rounded"
+                              style={{ backgroundColor: shift.jobs.color || "#3B82F6" }}
+                            />
+                          ) : (
+                            <div className="w-3 h-3 rounded bg-gray-400" />
                           )}
+                          <h4 className="font-semibold text-sm">
+                            {shift.jobs?.name || "Personal Time"}
+                          </h4>
+                          <span className="text-xs">{status.emoji}</span>
                         </div>
 
-                        {shift.jobs && (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            <span>
+                              {startTime} - {endTime}
+                            </span>
+                            <span className="ml-1">({shift.actual_hours?.toFixed(1) || "0.0"}h)</span>
+                            {shift.is_overnight && (
+                              <span className="text-orange-500 text-[10px]">overnight</span>
+                            )}
+                          </div>
+
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                             <DollarSign className="h-3 w-3" />
-                            <span>${shift.jobs.hourly_rate?.toFixed(2) || "0.00"}/hr</span>
+                            <span>
+                              ${rate.toFixed(2)}/hr
+                              {shift.custom_hourly_rate && (
+                                <span className="text-blue-500 text-[10px] ml-1">custom</span>
+                              )}
+                              {shift.is_holiday && shift.holiday_fixed_rate && (
+                                <span className="text-purple-500 text-[10px] ml-1">
+                                  holiday fixed
+                                </span>
+                              )}
+                              {shift.is_holiday && shift.holiday_multiplier && !shift.holiday_fixed_rate && (
+                                <span className="text-purple-500 text-[10px] ml-1">
+                                  holiday {shift.holiday_multiplier}x
+                                </span>
+                              )}
+                            </span>
                           </div>
+                        </div>
+
+                        {shift.notes && (
+                          <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                            {shift.notes}
+                          </p>
                         )}
                       </div>
 
-                      {shift.notes && (
-                        <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                          {shift.notes}
+                      {/* Right side - Earnings */}
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                          ${earnings.toFixed(2)}
                         </p>
-                      )}
+                        <p className={`text-[10px] ${status.color}`}>
+                          {status.label}
+                        </p>
+                      </div>
                     </div>
+                  </button>
+                );
+              })}
+            </div>
 
-                    {/* Right side - Earnings */}
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                        ${earnings.toFixed(2)}
-                      </p>
-                      <p className={`text-[10px] ${status.color}`}>
-                        {status.label}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+            {/* Add Shift Button */}
+            <div className="pt-2 border-t flex justify-end pt-3">
+              <AddShiftDialog selectedDate={date} onSuccess={handleEditSuccess} />
+            </div>
           </div>
         )}
       </div>

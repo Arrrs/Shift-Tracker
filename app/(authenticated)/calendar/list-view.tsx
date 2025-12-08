@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Database } from "@/lib/database.types";
 import { EditShiftDialog } from "./edit-shift-dialog";
-import { formatTimeFromTimestamp, getStatusInfo } from "@/lib/utils/time-format";
+import { formatTimeFromTimestamp, getStatusInfo, calculateEffectiveRate } from "@/lib/utils/time-format";
 
 type Shift = Database["public"]["Tables"]["shifts"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
@@ -59,7 +59,7 @@ export function ListView({ shifts, loading, onShiftChange }: ListViewProps) {
   // Calculate earnings for each shift
   const getShiftEarnings = (shift: Shift) => {
     const hours = shift.actual_hours || 0;
-    const rate = shift.jobs?.hourly_rate || 0;
+    const rate = calculateEffectiveRate(shift, shift.jobs?.hourly_rate || 0);
     return hours * rate;
   };
 

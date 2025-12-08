@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Database } from "@/lib/database.types";
-import { getStatusInfo } from "@/lib/utils/time-format";
+import { getStatusInfo, calculateEffectiveRate } from "@/lib/utils/time-format";
 
 type Shift = Database["public"]["Tables"]["shifts"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
@@ -99,7 +99,7 @@ export function MonthCalendar({ currentDate, shifts = [], onDayClick }: MonthCal
     const dayShifts = getShiftsForDate(date);
     return dayShifts.reduce((sum, shift) => {
       const hours = shift.actual_hours || 0;
-      const rate = shift.jobs?.hourly_rate || 0;
+      const rate = calculateEffectiveRate(shift, shift.jobs?.hourly_rate || 0);
       return sum + (hours * rate);
     }, 0);
   };

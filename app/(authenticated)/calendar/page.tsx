@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, List, ChevronLeft, ChevronRight } from "lucide-react";
+import { Calendar, List, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { MonthCalendar } from "./month-calendar";
 import { ListView } from "./list-view";
 import { AddShiftDialog } from "./add-shift-dialog";
@@ -11,6 +11,7 @@ import { GoToDateDialog } from "./go-to-date-dialog";
 import { DayShiftsDrawer } from "./day-shifts-drawer";
 import { getShifts, getShiftStats } from "./actions";
 import { Database } from "@/lib/database.types";
+import { getCurrencySymbol } from "@/lib/utils/time-format";
 
 type ViewMode = "calendar" | "list";
 type Shift = Database["public"]["Tables"]["shifts"]["Row"] & {
@@ -143,13 +144,14 @@ export default function CalendarPage() {
           <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-lg p-2">
             <p className="text-[10px] text-muted-foreground mb-0.5">Earnings</p>
             {loading ? (
-              <p className="text-base font-bold text-green-600 dark:text-green-400">...</p>
+              <div className="flex items-center justify-center py-1">
+                <Loader2 className="h-4 w-4 animate-spin text-green-600 dark:text-green-400" />
+              </div>
             ) : Object.keys(stats.earningsByCurrency).length > 1 ? (
               <div className="space-y-0.5">
                 {Object.entries(stats.earningsByCurrency).map(([currency, amount]) => (
                   <p key={currency} className="text-xs font-bold text-green-600 dark:text-green-400">
-                    {currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'UAH' ? '₴' : currency}
-                    {amount.toFixed(0)}
+                    {getCurrencySymbol(currency)} {amount.toFixed(0)}
                   </p>
                 ))}
               </div>
@@ -161,24 +163,40 @@ export default function CalendarPage() {
           </div>
           <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg p-2">
             <p className="text-[10px] text-muted-foreground mb-0.5">Hours</p>
-            <p className="text-base font-bold text-blue-600 dark:text-blue-400">
-              {loading ? "..." : stats.totalActualHours.toFixed(1)}h
-            </p>
-            {stats.totalScheduledHours > 0 && stats.totalScheduledHours !== stats.totalActualHours && (
-              <p className="text-[8px] text-muted-foreground">
-                of {stats.totalScheduledHours.toFixed(1)}h
-              </p>
+            {loading ? (
+              <div className="flex items-center justify-center py-1">
+                <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
+              </div>
+            ) : (
+              <>
+                <p className="text-base font-bold text-blue-600 dark:text-blue-400">
+                  {stats.totalActualHours.toFixed(1)}h
+                </p>
+                {stats.totalScheduledHours > 0 && stats.totalScheduledHours !== stats.totalActualHours && (
+                  <p className="text-[8px] text-muted-foreground">
+                    of {stats.totalScheduledHours.toFixed(1)}h
+                  </p>
+                )}
+              </>
             )}
           </div>
           <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg p-2">
             <p className="text-[10px] text-muted-foreground mb-0.5">Shifts</p>
-            <p className="text-base font-bold text-purple-600 dark:text-purple-400">
-              {loading ? "..." : stats.shiftCount}
-            </p>
-            {stats.completedShifts > 0 && stats.shiftCount !== stats.completedShifts && (
-              <p className="text-[8px] text-muted-foreground">
-                {stats.completedShifts} done
-              </p>
+            {loading ? (
+              <div className="flex items-center justify-center py-1">
+                <Loader2 className="h-4 w-4 animate-spin text-purple-600 dark:text-purple-400" />
+              </div>
+            ) : (
+              <>
+                <p className="text-base font-bold text-purple-600 dark:text-purple-400">
+                  {stats.shiftCount}
+                </p>
+                {stats.completedShifts > 0 && stats.shiftCount !== stats.completedShifts && (
+                  <p className="text-[8px] text-muted-foreground">
+                    {stats.completedShifts} done
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -237,15 +255,16 @@ export default function CalendarPage() {
           <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-lg p-4">
             <p className="text-sm text-muted-foreground mb-2">Total Earnings</p>
             {loading ? (
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">...</p>
+              <div className="flex items-center justify-center py-2">
+                <Loader2 className="h-6 w-6 animate-spin text-green-600 dark:text-green-400" />
+              </div>
             ) : Object.keys(stats.earningsByCurrency).length > 1 ? (
               <div className="space-y-1">
                 {Object.entries(stats.earningsByCurrency).map(([currency, amount]) => (
                   <div key={currency} className="flex items-baseline justify-between">
                     <span className="text-xs text-muted-foreground">{currency}:</span>
                     <span className="text-lg font-bold text-green-600 dark:text-green-400">
-                      {currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'UAH' ? '₴' : currency}
-                      {amount.toFixed(2)}
+                      {getCurrencySymbol(currency)} {amount.toFixed(2)}
                     </span>
                   </div>
                 ))}
@@ -261,7 +280,9 @@ export default function CalendarPage() {
           <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg p-4">
             <p className="text-sm text-muted-foreground mb-2">Hours Worked</p>
             {loading ? (
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">...</p>
+              <div className="flex items-center justify-center py-2">
+                <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
+              </div>
             ) : (
               <>
                 <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
@@ -296,7 +317,9 @@ export default function CalendarPage() {
           <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg p-4">
             <p className="text-sm text-muted-foreground mb-2">Shifts</p>
             {loading ? (
-              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">...</p>
+              <div className="flex items-center justify-center py-2">
+                <Loader2 className="h-6 w-6 animate-spin text-purple-600 dark:text-purple-400" />
+              </div>
             ) : (
               <>
                 <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
