@@ -1,0 +1,144 @@
+-- ============================================================================
+-- MANUAL MIGRATION: Financial System
+-- Run this manually in your Supabase SQL editor
+-- ============================================================================
+
+-- 1. Create financial_categories table
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS financial_categories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+  icon TEXT, -- Emoji like '💰', '⛽', etc.
+  color TEXT, -- Hex color for UI
+  created_at TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT unique_user_category UNIQUE(user_id, name, type)
+);
+
+-- Create index for faster lookups by user_id
+CREATE INDEX IF NOT EXISTS idx_financial_categories_user_id ON financial_categories(user_id);
+
+-- Enable Row Level Security
+ALTER TABLE financial_categories ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies: Users can only access their own categories
+DROP POLICY IF EXISTS "Users can view their own categories" ON financial_categories;
+CREATE POLICY "Users can view their own categories"
+  ON financial_categories FOR SELECT
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can create their own categories" ON financial_categories;
+CREATE POLICY "Users can create their own categories"
+  ON financial_categories FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own categories" ON financial_categories;
+CREATE POLICY "Users can update their own categories"
+  ON financial_categories FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own categories" ON financial_categories;
+CREATE POLICY "Users can delete their own categories"
+  ON financial_categories FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Insert default categories for all existing users
+INSERT INTO financial_categories (user_id, name, type, icon, color)
+SELECT
+  id,
+  category_name,
+  category_type,
+  category_icon,
+  category_color
+FROM auth.users
+CROSS JOIN (
+  VALUES
+    ('Bonus', 'income', '🎁', '#10b981'),
+    ('Freelance', 'income', '💼', '#3b82f6'),
+    ('Gift', 'income', '🎉', '#8b5cf6'),
+    ('Other Income', 'income', '💰', '#6366f1'),
+    ('Gas', 'expense', '⛽', '#ef4444'),
+    ('Equipment', 'expense', '🛠️', '#f97316'),
+    ('Subscription', 'expense', '📱', '#ec4899'),
+    ('Other Expense', 'expense', '💸', '#64748b')
+) AS defaults(category_name, category_type, category_icon, category_color)
+ON CONFLICT (user_id, name, type) DO NOTHING;
+
+-- 2. Create financial_records table
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS financial_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users ON DELETE CASCADE,
+  job_id UUID REFERENCES jobs ON DELETE SET NULL, -- Optional link to job
+  category_id UUID REFERENCES financial_categories ON DELETE SET NULL, -- Optional category
+  type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+  amount DECIMAL(10, 2) NOT NULL CHECK (amount > 0),
+  currency TEXT NOT NULL DEFAULT 'USD',
+  date DATE NOT NULL,
+  description TEXT NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Create indexes for faster lookups
+CREATE INDEX IF NOT EXISTS idx_financial_records_user_id ON financial_records(user_id);
+CREATE INDEX IF NOT EXISTS idx_financial_records_date ON financial_records(date);
+CREATE INDEX IF NOT EXISTS idx_financial_records_user_date ON financial_records(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_financial_records_type ON financial_records(type);
+
+-- Enable Row Level Security
+ALTER TABLE financial_records ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies: Users can only access their own records
+DROP POLICY IF EXISTS "Users can view their own financial records" ON financial_records;
+CREATE POLICY "Users can view their own financial records"
+  ON financial_records FOR SELECT
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can create their own financial records" ON financial_records;
+CREATE POLICY "Users can create their own financial records"
+  ON financial_records FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own financial records" ON financial_records;
+CREATE POLICY "Users can update their own financial records"
+  ON financial_records FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own financial records" ON financial_records;
+CREATE POLICY "Users can delete their own financial records"
+  ON financial_records FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- Create trigger to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_financial_records_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_financial_records_updated_at ON financial_records;
+CREATE TRIGGER trigger_update_financial_records_updated_at
+  BEFORE UPDATE ON financial_records
+  FOR EACH ROW
+  EXECUTE FUNCTION update_financial_records_updated_at();
+
+-- 3. Update jobs table
+-- ============================================================================
+ALTER TABLE jobs
+ADD COLUMN IF NOT EXISTS show_in_fixed_income BOOLEAN DEFAULT false;
+
+-- Automatically set show_in_fixed_income = true for existing monthly/salary jobs
+UPDATE jobs
+SET show_in_fixed_income = true
+WHERE pay_type IN ('monthly', 'salary');
+
+-- ============================================================================
+-- DONE! Now regenerate TypeScript types with: npx supabase gen types typescript
+-- ============================================================================

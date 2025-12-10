@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Database } from "@/lib/database.types";
 import { EditShiftDialog } from "./edit-shift-dialog";
-import { formatTimeFromTimestamp, getStatusInfo, calculateEffectiveRate } from "@/lib/utils/time-format";
+import { formatTimeFromTimestamp, getStatusInfo, formatHours, getCurrencySymbol, formatCurrency } from "@/lib/utils/time-format";
 
 type Shift = Database["public"]["Tables"]["shifts"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
@@ -56,18 +56,12 @@ export function ListView({ shifts, loading, onShiftChange }: ListViewProps) {
     return a.start_time.localeCompare(b.start_time);
   });
 
-  // Calculate earnings for each shift
-  const getShiftEarnings = (shift: Shift) => {
-    const hours = shift.actual_hours || 0;
-    const rate = calculateEffectiveRate(shift, shift.jobs?.hourly_rate || 0);
-    return hours * rate;
-  };
-
   return (
     <>
       <div className="space-y-2">
         {sortedShifts.map((shift) => {
-          const earnings = getShiftEarnings(shift);
+          // SNAPSHOT ARCHITECTURE: Use stored earnings
+          const earnings = shift.actual_earnings || 0;
           const status = getStatusInfo(shift.status);
           const startTime = formatTimeFromTimestamp(shift.start_time);
           const endTime = formatTimeFromTimestamp(shift.end_time);
@@ -130,21 +124,21 @@ export function ListView({ shifts, loading, onShiftChange }: ListViewProps) {
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">Hours</p>
                   <p className="font-semibold">
-                    {shift.actual_hours?.toFixed(1) || "0.0"}h
+                    {formatHours(shift.actual_hours || 0)}
                   </p>
                 </div>
                 {shift.jobs && (
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">Rate</p>
                     <p className="font-semibold">
-                      ${shift.jobs.hourly_rate?.toFixed(2) || "0.00"}
+                      {getCurrencySymbol(shift.jobs.currency)} {formatCurrency(shift.jobs.hourly_rate || 0)}
                     </p>
                   </div>
                 )}
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">Earnings</p>
                   <p className="font-semibold text-green-600 dark:text-green-400">
-                    ${earnings.toFixed(2)}
+                    {getCurrencySymbol(shift.earnings_currency || shift.jobs?.currency || 'USD')} {formatCurrency(earnings)}
                   </p>
                 </div>
               </div>

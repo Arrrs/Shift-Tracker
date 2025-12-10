@@ -1,427 +1,591 @@
 # Implementation Plan - Shift Tracker Pro
 
 ## Project Vision
-Transform from personal tool to **sellable product** with professional-grade shift tracking, multi-currency support, and comprehensive time-off management.
+Transform from personal tool to **sellable product** with professional-grade shift tracking, multi-currency support, comprehensive time-off management, flexible pay structures, and complete income/expense tracking.
 
 ---
 
-## Phase 1: Critical Schema Fixes & Core Features
+## Current Status (December 2024)
 
-### 1.1 Database Schema Improvements
+### ✅ Completed Features (Latest Session)
+1. ✅ TIMESTAMPTZ implementation for proper timezone support
+2. ✅ Overnight shift calculations with is_overnight flag
+3. ✅ Multi-currency support (USD, EUR, UAH, CZK, etc.) with proper symbols
+4. ✅ Custom hourly rate per shift (with checkbox toggle)
+5. ✅ Holiday pay system (3 modes: standard multiplier, fixed rate, custom multiplier)
+6. ✅ Shift templates with job association
+7. ✅ Status workflow (planned, in_progress, completed, cancelled)
+8. ✅ Loading spinners (Loader2 icons)
+9. ✅ Nullable job_id for personal shifts
+10. ✅ Edit shift dialog with full feature parity to add dialog
+11. ✅ Scheduled vs actual hours tracking
+12. ✅ **Day-off system (9 types: PTO, sick, personal, unpaid, bereavement, maternity, paternity, jury_duty)**
+13. ✅ **Paid/unpaid day-off visual indicators**
+14. ✅ **Status field in shift creation with auto-detection**
+15. ✅ **Currency formatting (no .00 for whole numbers, show decimals when needed)**
+16. ✅ **Fixed hydration errors (mobile/desktop detection)**
+17. ✅ **Pay type system (hourly, daily, monthly, salary) - BASIC**
+18. ✅ **Status filtering (only completed shifts count in totals)**
+19. ✅ **Multi-currency earnings per day/month (never mix currencies)**
+20. ✅ **Snapshot-based earnings architecture (calculate once, never recalculate unless hours change)**
+21. ✅ **Three-state earnings system (auto-calculated, manual override, no earnings for fixed income)**
+22. ✅ **Custom earnings override UI in add/edit dialogs**
+23. ✅ **Simplified income cards (3 cards: Total Earnings combines Shift + Fixed Income)**
 
-#### A. Fix Time Storage (CRITICAL)
-**Decision**: Revert to `TIMESTAMPTZ` for proper timezone support
-- **Why**: TIME type loses date context for overnight shifts and timezone info
-- **Impact**: Better for users who travel or work across timezones
-- **Migration**: Convert TIME back to TIMESTAMPTZ
+### 🐛 Recently Fixed Issues
+1. ✅ Daily/salary shifts not showing in totals - FIXED (missing fields in query)
+2. ✅ `new Date()` hydration warning - FIXED (moved to useEffect)
+3. ✅ Currency symbols showing wrong - FIXED (using getCurrencySymbol())
+4. ✅ Decimals showing .00 unnecessarily - FIXED (formatCurrency())
+5. ✅ Cancelled/planned shifts counting in totals - FIXED (status filtering)
+6. ✅ Float precision showing 55.1999999...6 - FIXED (Math.round to 2 decimals)
+7. ✅ Template list showing old templates on job change - FIXED (immediate clear on change)
 
-#### B. Make Shifts Flexible
-**Decision**: Make `job_id` NULLABLE to allow personal/custom shifts
-- **Why**: Users want to track personal time, appointments, non-work events
-- **Impact**: Shifts can exist without job assignment
-- **UI**: Add "No Job" option in dropdown
+### 🔨 In Progress - Financial Records System
+**Current Focus:** Implementing comprehensive income/expense tracking
 
-#### C. Add Validation Constraints
-- Prevent negative hours
-- Validate shift timing
-- Ensure template-job matching
-- Add currency validation
+### ✅ Completed Today (Phase 1 Progress)
+1. ✅ Created `financial_categories` table with RLS
+2. ✅ Created `financial_records` table with RLS
+3. ✅ Added `show_in_fixed_income` column to jobs table
+4. ✅ Created default categories for all users
+5. ✅ Implemented `finances/actions.ts` with all backend functions
+6. ✅ Created user preferences system (localStorage + database sync)
+7. ✅ Applied manual migrations to Supabase
+8. ✅ Regenerated TypeScript types
 
-### 1.2 Holiday System (Two Types)
+---
 
-#### Type 1: Work Holidays (Paid/Holiday Pay)
-```
-- Date with work but holiday multiplier
-- Attached to a job
-- Counts toward salary with multiplier (1.5x, 2x, etc.)
-- Example: Christmas Day shift at double pay
-```
+## Phase 1: Financial Records System (CURRENT PRIORITY)
 
-#### Type 2: Days Off (PTO/Vacation/Sick)
-```
-- Date marked as off
-- Attached to a job (tracks available days)
-- No hours worked but counts as "used PTO day"
-- Example: Took Friday off, want to track remaining vacation days
-```
+### Overview
+Separate shift-based income (hourly/daily) from fixed income (monthly/salary) and add support for one-time income/expense records.
 
-**New Table**: `time_off_records`
+### 1.1 Database Schema
+
+#### A. Create `financial_categories` table
 ```sql
-- id, user_id, job_id (nullable)
-- date, type (vacation, sick, personal, unpaid)
-- is_paid (boolean)
-- hours_credited (nullable - if counts toward hours)
-- notes
+CREATE TABLE financial_categories (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+  icon TEXT, -- Emoji like '💰', '⛽', etc.
+  color TEXT, -- Hex color for UI
+  created_at TIMESTAMPTZ DEFAULT now(),
+
+  UNIQUE(user_id, name, type)
+);
+
+-- Seed default categories (insert for each new user)
+-- Income categories: Bonus (💰), Freelance (💼), Gift (🎁), Other Income (💵)
+-- Expense categories: Gas (⛽), Equipment (🔧), Subscription (📱), Other Expense (💸)
 ```
 
-### 1.3 Shift Status Workflow
-
-**Status**: `planned` → `in_progress` → `completed` → `cancelled`
-
-**Visual Indicators**:
-- Planned: Gray border, opacity 0.7
-- In Progress: Blue border, pulsing
-- Completed: Green checkmark
-- Cancelled: Red strikethrough
-
-**Auto-status Logic**:
-- If date < today AND status = planned → auto-set to completed
-- Allow manual override
-
-### 1.4 Multi-Currency Support
-
-#### Current Issue
-- Jobs can have different currencies (USD, EUR, UAH)
-- Calendar shows: "$1000 + €500 + ₴2000 = ???" (WRONG)
-
-#### Solution
-**A. Display Strategy**:
-```
-Total Earnings (Multi-Currency):
-  USD: $1,250.00
-  EUR: €850.50
-  UAH: ₴12,500.00
-
-[Converted to USD: $3,547.25 ≈]
-```
-
-**B. Store exchange rates in `currency_rates` table**
-
-**C. Settings**: User chooses primary currency for conversions
-
-**D. Job List**: Show each job's currency symbol
-```
-Warehouse ($25/hr USD)
-Freelance (€30/hr EUR)
-```
-
----
-
-## Phase 2: UX Improvements
-
-### 2.1 Smart Defaults
-
-**Job Selection**:
-1. Check last 30 days → most frequent job
-2. Store in localStorage: `last_selected_job_id`
-3. If opening from calendar: check most common job for that day of week
-
-**Time Defaults**:
-1. If job has templates → select most recent template
-2. If no template → use average times from last 5 shifts
-3. Add button: "Use my usual hours for [JobName]"
-
-### 2.2 Clarify Duration vs Actual Hours
-
-**New Field Labels**:
-```
-┌─────────────────────────────────┐
-│ Scheduled Shift                 │
-│ Start: [09:00] End: [17:00]     │
-│ Duration: 8.0h                  │
-│                                 │
-│ [✓] Worked exactly as scheduled │
-│                                 │
-│ OR                              │
-│                                 │
-│ [ ] Different hours worked      │
-│   Actual: [7.5] hrs            │
-│   Reason: Unpaid lunch break    │
-└─────────────────────────────────┘
-```
-
-**Database**:
-- Add: `scheduled_hours` (calculated from end - start)
-- Keep: `actual_hours` (what was worked)
-- Calculate: `variance_hours` (actual - scheduled)
-
-### 2.3 Batch Operations
-
-**Multi-Day Shift Creation**:
-```
-[✓] Create for multiple days
-
-Select Days:
-☐ Sun ☑ Mon ☑ Tue ☑ Wed ☑ Thu ☑ Fri ☐ Sat
-
-Date Range:
-From: [Dec 9] To: [Dec 31]
-
-Preview: Will create 16 shifts
-
-[Create All Shifts]
-```
-
-### 2.4 Validation & Warnings
-
-1. **Overlapping shifts**: "Warning: This overlaps with [JobName] shift"
-2. **Overnight shifts**: Auto-detect if end < start
-3. **Past-dating**: "This shift is in the past. Mark as completed?"
-4. **Duplicate prevention**: Check existing shifts before save
-
----
-
-## Phase 3: Advanced Features
-
-### 3.1 Expected vs Actual Tracking
-
-**Monthly Stats**:
-```
-December 2024
-
-HOURS
-Expected:  160h  (from scheduled shifts)
-Actual:    152h  (from completed shifts)
-Remaining: 8h    (from planned shifts)
-Progress:  95%
-
-EARNINGS
-Expected:  $3,200
-Actual:    $3,040
-Remaining: $160
-Variance:  -$160 (undertime)
-
-SHIFTS
-Total:     20
-Completed: 18
-Planned:   2
-```
-
-### 3.2 Time-Off Tracking & Analytics
-
-**Job Details Page - New Section**:
-```
-PTO Balance for Warehouse Job
-
-Vacation Days:
-  Total:      15 days/year
-  Used:       8 days
-  Remaining:  7 days
-
-Sick Days:
-  Total:      10 days/year
-  Used:       2 days
-  Remaining:  8 days
-
-Recent Time Off:
-  Nov 28-29: Vacation (2 days)
-  Nov 15:    Sick (1 day)
-  Oct 10:    Personal (1 day)
-```
-
-### 3.3 Calendar Enhancements
-
-**Visual Indicators**:
-- 🟢 Completed shift
-- 🔵 Planned shift
-- 🟡 In progress
-- 🔴 Cancelled
-- 🏖️ Day off (PTO)
-- 🎉 Holiday (working)
-
-**Right-click Menu**:
-```
-Right-click on calendar day:
-  → Add Shift
-  → Add Day Off
-  → Mark as Holiday
-  → Copy to other days
-  → View Details
-```
-
----
-
-## Implementation Order (Priority)
-
-### Week 1: Foundation (Must-Have)
-1. ✅ Create implementation plan
-2. 🔨 Schema migration: Revert TIME to TIMESTAMPTZ
-3. 🔨 Make job_id nullable
-4. 🔨 Add validation constraints
-5. 🔨 Add time_off_records table
-6. 🔨 Update database types
-
-### Week 2: Core UX (High Impact)
-7. 🔨 Fix Duration vs Actual Hours UI
-8. 🔨 Add shift status toggle and indicators
-9. 🔨 Smart defaults (last used job)
-10. 🔨 Add validation warnings
-11. 🔨 Add "No Job" option for shifts
-
-### Week 3: Currency & Analytics
-12. 🔨 Multi-currency display in stats
-13. 🔨 Currency conversion setup
-14. 🔨 Expected vs Actual tracking
-15. 🔨 Update job list to show currency symbols
-
-### Week 4: Advanced Features
-16. 🔨 Time-off management UI
-17. 🔨 Batch shift creation
-18. 🔨 Holiday system (both types)
-19. 🔨 Calendar visual improvements
-20. 🔨 PTO balance tracking
-
----
-
-## Database Changes Summary
-
-### New Tables
+#### B. Create `financial_records` table
 ```sql
--- Time off tracking
-time_off_records (
-  id, user_id, job_id (nullable),
-  date, type, is_paid, hours_credited,
-  notes, created_at, updated_at
-)
+CREATE TABLE financial_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users ON DELETE CASCADE,
+  job_id UUID REFERENCES jobs ON DELETE SET NULL, -- Optional link
+  category_id UUID REFERENCES financial_categories ON DELETE SET NULL,
 
--- Store user-specific exchange rates
-user_currency_preferences (
-  user_id, primary_currency,
-  auto_convert, last_updated
-)
+  -- Type
+  type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
+
+  -- Money
+  amount DECIMAL(10, 2) NOT NULL CHECK (amount > 0),
+  currency TEXT NOT NULL DEFAULT 'USD',
+
+  -- Date & Details
+  date DATE NOT NULL,
+  description TEXT NOT NULL,
+  notes TEXT,
+
+  -- Metadata
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+
+  -- Indexes for performance
+  INDEX idx_financial_records_user_date (user_id, date DESC),
+  INDEX idx_financial_records_type (user_id, type)
+);
 ```
 
-### Modified Tables
+#### C. Update `jobs` table
 ```sql
--- shifts
-ALTER job_id to NULLABLE
-ALTER start_time back to TIMESTAMPTZ
-ALTER end_time back to TIMESTAMPTZ
-ADD scheduled_hours DECIMAL(5,2)
-ADD variance_hours DECIMAL(5,2)
+-- Mark if job contributes to fixed income (monthly/salary jobs)
+ALTER TABLE jobs ADD COLUMN show_in_fixed_income BOOLEAN DEFAULT false;
 
--- jobs
-ADD pto_days_per_year INTEGER
-ADD sick_days_per_year INTEGER
-ADD currency_symbol TEXT (for display)
-
--- user_settings
-ADD primary_currency TEXT DEFAULT 'USD'
-ADD show_currency_breakdown BOOLEAN DEFAULT true
+-- This will be TRUE for pay_type = 'monthly' or 'salary'
+-- FALSE for 'hourly' or 'daily'
 ```
 
-### New Constraints
-```sql
--- Validate timing
-CHECK (end_time > start_time OR is_overnight = true)
+### 1.2 Backend Actions
 
--- Validate hours
-CHECK (actual_hours >= 0)
-CHECK (scheduled_hours >= 0)
+**New file:** `app/(authenticated)/finances/actions.ts`
 
--- Template-job match
-CHECK (template_id IS NULL OR
-  template.job_id = shifts.job_id)
+```typescript
+// Get all financial records for a date range
+export async function getFinancialRecords(startDate: string, endDate: string)
+
+// Create a financial record
+export async function createFinancialRecord(data: {
+  type: 'income' | 'expense'
+  category_id: string
+  amount: number
+  currency: string
+  date: string
+  description: string
+  notes?: string
+  job_id?: string
+})
+
+// Update a financial record
+export async function updateFinancialRecord(id: string, data: Partial<...>)
+
+// Delete a financial record
+export async function deleteFinancialRecord(id: string)
+
+// Get/Create/Update/Delete categories
+export async function getCategories(type: 'income' | 'expense')
+export async function createCategory(data: { name, type, icon, color })
+export async function updateCategory(id: string, data: Partial<...>)
+export async function deleteCategory(id: string)
+
+// Get monthly summary (shift income + fixed income + other income - expenses)
+export async function getMonthlyFinancialSummary(year: number, month: number) {
+  return {
+    shiftIncome: { USD: 2450, EUR: 0 },     // Hourly/daily jobs only
+    fixedIncome: { USD: 3000 },             // Monthly/salary jobs
+    otherIncome: { USD: 250 },              // Financial records (income)
+    expenses: { USD: 120 },                 // Financial records (expense)
+    netIncome: { USD: 5580 }                // Total - expenses
+  }
+}
+```
+
+### 1.3 UI Components
+
+#### A. Update Calendar Stats Cards - TWO-STATE DESIGN
+
+**Design Philosophy:** Clean minimal view by default, expandable details on demand
+
+**STATE 1: MINIMAL (Default)**
+```
+Desktop view:
+┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────┐
+│ 💼 Shift Income      │  │ 🔄 Fixed Income      │  │ 💰 Other Income      │
+│ $2,450        [▼]    │  │ $3,000        [▼]    │  │ $250           [▼]   │
+└──────────────────────┘  └──────────────────────┘  └──────────────────────┘
+
+┌──────────────────────┐  ┌────────────────────────────────────────────────┐
+│ 💸 Expenses          │  │ 💵 Net Income: $5,580                         │
+│ $120          [▼]    │  │                                               │
+└──────────────────────┘  └────────────────────────────────────────────────┘
+```
+
+**STATE 2: DETAILED (Expanded)**
+Click [▼] to expand individual card:
+```
+┌──────────────────────┐
+│ 💼 Shift Income [▲]  │
+│ $2,450               │
+│ ─────────────────    │
+│ • Job A:    $1,800   │
+│ • Job C:      $650   │
+│                      │
+│ 12 shifts, 96h       │
+└──────────────────────┘
+
+┌──────────────────────┐
+│ 🔄 Fixed Income [▲]  │
+│ $3,000               │
+│ ─────────────────    │
+│ • Job B (Monthly)    │
+│   $3,000/mo          │
+│                      │
+│ 22 shifts tracked    │
+└──────────────────────┘
+
+┌──────────────────────┐
+│ 💰 Other Income [▲]  │
+│ $250                 │
+│ ─────────────────    │
+│ • Freelance:   $200  │
+│ • Bonus:        $50  │
+│                      │
+│ [View Details →]     │
+└──────────────────────┘
+
+┌──────────────────────┐
+│ 💸 Expenses [▲]      │
+│ $120                 │
+│ ─────────────────    │
+│ • Gas:          $80  │
+│ • Equipment:    $40  │
+│                      │
+│ [View Details →]     │
+└──────────────────────┘
+```
+
+**Mobile view:** Stack cards vertically, same two-state behavior
+
+**Implementation:**
+- Store expanded/collapsed state in localStorage per card
+- Animate expansion with smooth height transition
+- Show minimal by default for clean first impression
+- User can expand only cards they care about
+
+#### B. Add Financial Record Dialog
+
+**New component:** `app/(authenticated)/finances/add-financial-record-dialog.tsx`
+
+```
+┌─────────────────────────────────────┐
+│ Add Financial Record          [×]   │
+├─────────────────────────────────────┤
+│                                     │
+│ Type:  ⦿ Income  ○ Expense         │
+│                                     │
+│ Amount: [________] [USD ▼]          │
+│                                     │
+│ Date:   [2024-12-15]                │
+│                                     │
+│ Category: [Select ▼]                │
+│   💰 Bonus                          │
+│   💼 Freelance                      │
+│   🎁 Gift                           │
+│   💵 Other Income                   │
+│   ─────────────────                 │
+│   + Manage Categories               │
+│                                     │
+│ Description: [_______________]      │
+│                                     │
+│ Notes (optional):                   │
+│ [____________________________]      │
+│                                     │
+│ Link to job (optional):             │
+│ [Select job ▼]                      │
+│                                     │
+│           [Cancel]  [Save]          │
+└─────────────────────────────────────┘
+```
+
+#### C. Financial Records List/Detail View
+
+**New component:** `app/(authenticated)/finances/financial-records-drawer.tsx`
+
+```
+┌─────────────────────────────────────┐
+│ Other Income - December 2024   [×]  │
+├─────────────────────────────────────┤
+│                                     │
+│ Dec 15, 2024                        │
+│ 💼 Freelance - Web Design           │
+│ $200                                │
+│ Notes: Logo redesign project        │
+│                       [Edit] [Delete]│
+├─────────────────────────────────────┤
+│ Dec 20, 2024                        │
+│ 💰 Bonus - Q4 Performance           │
+│ $50                                 │
+│                       [Edit] [Delete]│
+├─────────────────────────────────────┤
+│ Total                         $250  │
+│                                     │
+│              [+ Add Record]         │
+└─────────────────────────────────────┘
+```
+
+#### D. Category Management Dialog
+
+**New component:** `app/(authenticated)/finances/manage-categories-dialog.tsx`
+
+```
+┌─────────────────────────────────────┐
+│ Manage Categories             [×]   │
+├─────────────────────────────────────┤
+│ [Income] [Expense]  ← tabs          │
+│                                     │
+│ Income Categories:                  │
+│ ┌─────────────────────────────┐    │
+│ │ 💰 Bonus            [Edit] [×]│   │
+│ │ 💼 Freelance        [Edit] [×]│   │
+│ │ 🎁 Gift             [Edit] [×]│   │
+│ │ 💵 Other Income     [Edit] [×]│   │
+│ └─────────────────────────────┘    │
+│                                     │
+│ [+ Add New Category]                │
+│                                     │
+│           [Close]                   │
+└─────────────────────────────────────┘
+```
+
+#### E. Update Calendar to Show Financial Records
+
+**In `month-calendar.tsx`:**
+- Show icons on calendar days: 💵 (income), 💸 (expense)
+- Click to see details in day drawer
+
+**In `day-shifts-drawer.tsx`:**
+- Add section below shifts:
+```
+┌─────────────────────────────────────┐
+│ Shifts (2)                          │
+│ [shifts displayed here]             │
+├─────────────────────────────────────┤
+│ Financial Records (1)               │
+│ 💵 Freelance Payment        +$200   │
+│                        [Edit] [Delete]│
+└─────────────────────────────────────┘
+```
+
+#### F. View Settings/Filters
+
+**Update calendar header with filter button:**
+```
+┌────────────────────────────────────────┐
+│ December 2024           [⚙️ Filter]   │
+└────────────────────────────────────────┘
+
+Filter Dialog:
+┌────────────────────────────────────┐
+│ Calendar View Settings        [×]  │
+├────────────────────────────────────┤
+│ Show in Calendar:                  │
+│ ☑ Work Shifts (Hourly/Daily)      │
+│ ☑ Time Off (PTO/Sick/etc)         │
+│ ☑ Fixed Income Jobs (time track)  │
+│ ☑ Other Income Records             │
+│ ☑ Expense Records                  │
+│                                    │
+│ Show in Totals:                    │
+│ ☑ Shift Income                     │
+│ ☑ Fixed Income                     │
+│ ☑ Other Income                     │
+│ ☑ Expenses (subtract)              │
+│ ☑ Calculate Net Income             │
+│                                    │
+│        [Reset]  [Save]             │
+└────────────────────────────────────┘
+```
+
+**Save preferences to BOTH:**
+- `localStorage` - instant UI response (no network delay)
+- `user_preferences` database table - persistent across devices
+- Sync strategy: Update localStorage immediately, sync to database in background
+- On login: Load from database, cache to localStorage
+
+### 1.4 Calculation Logic Updates
+
+**Update `getShiftStats` to separate income types:**
+
+```typescript
+export async function getShiftStats(startDate: string, endDate: string) {
+  // Get shifts
+  const shifts = await getShifts(startDate, endDate)
+
+  // Separate by pay type
+  const shiftIncome = {} // hourly + daily only
+  const fixedIncome = {} // monthly + salary
+
+  shifts.forEach(shift => {
+    if (shift.status !== 'completed') return
+
+    const payType = shift.jobs?.pay_type || 'hourly'
+    const earnings = calculateShiftEarnings(shift, shift.jobs)
+    const currency = shift.jobs?.currency || 'USD'
+
+    if (payType === 'hourly' || payType === 'daily') {
+      shiftIncome[currency] = (shiftIncome[currency] || 0) + earnings
+    } else if (payType === 'monthly') {
+      // Don't count per-shift, show monthly_rate
+      fixedIncome[currency] = shift.jobs.monthly_rate
+    } else if (payType === 'salary') {
+      // Don't count per-shift, show annual_salary / 12
+      fixedIncome[currency] = (shift.jobs.annual_salary || 0) / 12
+    }
+  })
+
+  // Get financial records
+  const records = await getFinancialRecords(startDate, endDate)
+  const otherIncome = {}
+  const expenses = {}
+
+  records.forEach(record => {
+    if (record.type === 'income') {
+      otherIncome[record.currency] = (otherIncome[record.currency] || 0) + record.amount
+    } else {
+      expenses[record.currency] = (expenses[record.currency] || 0) + record.amount
+    }
+  })
+
+  return {
+    shiftIncome,
+    fixedIncome,
+    otherIncome,
+    expenses,
+    // ... other stats
+  }
+}
 ```
 
 ---
 
-## UI/UX Changes Summary
+## Phase 2: Polish & Optimization (AFTER Phase 1)
 
-### Calendar Page
-- Add status badges on shifts
-- Add time-off indicators
-- Multi-currency breakdown in stats
-- Expected vs Actual comparison
+### 2.1 Error Handling & User Experience
+- [ ] **User-friendly error messages for database constraints**
+  - [ ] Duplicate shift constraint error → "A shift already exists at this time for this job"
+  - [ ] Missing required fields → Clear field-specific messages
+  - [ ] Network errors → Retry mechanism with friendly message
+  - [ ] Invalid data → Highlight problematic fields with explanations
+- [ ] Visual indicator (✏️ icon) for shifts with manual earnings override
+- [ ] Toast notifications with action buttons (undo, view details)
+- [ ] Loading states for all async operations
+- [ ] Optimistic UI updates where possible
 
-### Add/Edit Shift Dialog
-- "No Job" option
-- Scheduled vs Actual hours (clear labels)
-- Status selector
-- Overnight shift toggle
-- Batch creation mode
-- Validation warnings
+### 2.2 Advanced Features
+- [ ] Recurring financial records (auto-create monthly)
+- [ ] Budget tracking (set monthly limits)
+- [ ] Category analytics (spending by category)
+- [ ] Tax preparation (mark deductible expenses)
+- [ ] Export to CSV/PDF
 
-### New: Time-Off Dialog
-```
-┌─ Add Time Off ─────────────┐
-│ Job: [Warehouse ▼]         │
-│ Type: [Vacation ▼]         │
-│ Date: [Dec 15]             │
-│ [ ] Multiple days          │
-│ Paid: [✓] Yes [ ] No       │
-│ Notes: [____________]      │
-│                            │
-│ Remaining Vacation: 7 days │
-│                            │
-│ [Cancel] [Add Time Off]    │
-└────────────────────────────┘
-```
+### 2.3 UX Enhancements
+- [ ] Batch shift creation (create multiple days at once)
+- [ ] Smart defaults (remember last selected values)
+- [ ] Keyboard shortcuts
+- [ ] Right-click context menu on calendar
+- [ ] Drag & drop shifts to reschedule
 
-### Job Details Page
-- Add PTO tracking section
-- Show currency clearly
-- Time-off history list
+### 2.4 Analytics Dashboard
+- [ ] Income trends chart
+- [ ] Expense breakdown pie chart
+- [ ] Month-over-month comparison
+- [ ] Year-to-date totals
+- [ ] Category spending analysis
 
 ---
 
-## Technical Notes
+## Implementation Order
 
-### Migration Strategy
-1. Create new migration file
-2. Backup production data
-3. Run migration in transaction
-4. Test rollback procedure
-5. Update TypeScript types
-6. Update all queries
+### Week 1: Database & Backend (THIS WEEK)
+1. ✅ Review and finalize database schema
+2. ✅ **Create migration for financial_categories table**
+3. ✅ **Create migration for financial_records table**
+4. ✅ **Add show_in_fixed_income to jobs table**
+5. ✅ **Create seed data for default categories**
+6. ✅ **Implement backend actions (finances/actions.ts)**
+7. ✅ **Create user preferences table and utility**
+8. ✅ **Regenerate TypeScript types**
+9. 🔨 **Update getShiftStats to separate income types**
 
-### Testing Checklist
-- [ ] Overnight shifts (23:00 - 07:00)
-- [ ] Multi-currency calculations
-- [ ] Batch shift creation (50+ shifts)
-- [ ] Overlapping shift detection
-- [ ] Timezone edge cases
-- [ ] PTO balance calculations
-- [ ] Currency conversion accuracy
+### Week 2: UI Components
+9. 🔨 **Create AddFinancialRecordDialog component**
+10. 🔨 **Create FinancialRecordsDrawer component**
+11. 🔨 **Create ManageCategoriesDialog component**
+12. 🔨 **Update calendar stats cards (3 new cards)**
+13. 🔨 **Update day-shifts-drawer to show financial records**
+14. 🔨 **Update month-calendar to show icons**
+15. 🔨 **Add filter/settings dialog**
 
-### Performance Considerations
-- Index on: (user_id, date, status)
-- Index on: (user_id, job_id, date)
-- Optimize date range queries
-- Cache currency rates (refresh daily)
-- Paginate shift lists (100/page)
+### Week 3: Testing & Refinement
+16. 🔨 **Test all income/expense scenarios**
+17. 🔨 **Test multi-currency with financial records**
+18. 🔨 **Test fixed income calculations**
+19. 🔨 **Mobile responsiveness check**
+20. 🔨 **Performance optimization**
 
----
-
-## Success Metrics (Product Goals)
-
-### User Experience
-- Shift creation: < 10 seconds (with smart defaults)
-- Calendar load: < 2 seconds (month view)
-- Batch operations: < 5 seconds (20 shifts)
-
-### Business Value
-- Multi-job tracking: Support 1-10 jobs/user
-- Multi-currency: Support 20+ currencies
-- Time-off: Track unlimited PTO/sick days
-- Analytics: Expected vs Actual variance tracking
-- Export ready: CSV/PDF preparation
-
-### Competitive Advantages
-1. ✅ Personal + Professional use
-2. ✅ Multi-job support (gig economy)
-3. ✅ Multi-currency (international workers)
-4. ✅ Flexible time tracking
-5. ✅ Offline-first PWA
-6. ✅ Privacy-focused (self-hosted option)
+### Week 4+: Advanced Features
+21. 🔨 Recurring records
+22. 🔨 Budget tracking
+23. 🔨 Analytics dashboard
+24. 🔨 Export functionality
 
 ---
 
-## Revenue Model Ideas (Future)
-- Free: 1 job, basic features
-- Pro ($5/mo): Unlimited jobs, analytics, export
-- Team ($15/mo): Share schedules, approvals
-- Enterprise: Custom deployment
+## Testing Checklist
+
+### Financial Records
+- [ ] Create income record (custom category)
+- [ ] Create expense record (default category)
+- [ ] Edit financial record
+- [ ] Delete financial record
+- [ ] Create custom category
+- [ ] Delete custom category (check records still work)
+- [ ] Link financial record to job
+- [ ] Create records in multiple currencies
+- [ ] Verify totals calculate correctly
+
+### Fixed Income
+- [ ] Create monthly salary job ($3000/mo)
+- [ ] Create shifts for salary job (track time)
+- [ ] Verify shifts don't show earnings
+- [ ] Verify Fixed Income card shows $3000
+- [ ] Create annual salary job ($60k/yr)
+- [ ] Verify shows $5000/mo in Fixed Income
+
+### Combined View
+- [ ] Day with: shift + salary tracking + income record + expense
+- [ ] Verify calendar shows all icons
+- [ ] Verify day drawer shows all items
+- [ ] Verify totals separate correctly
+- [ ] Test filter settings (hide/show different types)
+
+### Multi-Currency
+- [ ] Shift in USD, financial record in EUR
+- [ ] Multiple currencies in same day
+- [ ] Verify separate totals per currency
+- [ ] Verify no mixing of currencies
 
 ---
 
-## Next Steps
-1. Review and approve this plan
-2. Start with Schema migrations
-3. Update TypeScript types
-4. Implement UI changes incrementally
-5. Test each feature thoroughly
-6. Deploy to production
+## Success Metrics
 
-**Estimated Total Time**: 4 weeks (80-100 hours)
-**Priority**: Foundation → UX → Analytics → Advanced
+### Performance
+- Financial record creation: < 500ms
+- Category management: < 300ms
+- Monthly stats load: < 2 seconds
+
+### Features
+- ✅ Support hourly, daily, monthly, salary pay types
+- 🔨 Separate shift-based vs fixed income
+- 🔨 Custom income/expense categories
+- 🔨 Multi-currency throughout
+- 🔨 Complete financial picture per month
+
+### UX
+- Clear visual distinction: shifts vs salary vs records
+- Easy to add one-time income/expense
+- Intuitive category management
+- No confusion about totals
+- Mobile-first design
+
+---
+
+## Database Migration Files to Create
+
+1. `20241210_create_financial_categories.sql`
+2. `20241210_create_financial_records.sql`
+3. `20241210_update_jobs_add_fixed_income_flag.sql`
+4. `20241210_seed_default_categories.sql` (function to run on user creation)
+
+---
+
+## Next Immediate Steps
+
+### Today:
+1. **Finalize database schema** (confirm with user)
+2. **Create migration files**
+3. **Run migrations in Supabase**
+4. **Regenerate types**
+
+### Tomorrow:
+5. **Create finances/actions.ts**
+6. **Update getShiftStats logic**
+7. **Start building AddFinancialRecordDialog**
+
+**Estimated Time for Phase 1**: 30-35 hours
+**Priority**: Database → Backend → UI Components → Testing

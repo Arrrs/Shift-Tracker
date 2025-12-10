@@ -35,6 +35,8 @@ import { getJobs } from "../jobs/actions";
 import { getShiftTemplates } from "../jobs/actions";
 import { Database } from "@/lib/database.types";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { formatHours, calculateShiftEarnings, formatCurrency } from "@/lib/utils/time-format";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
@@ -49,12 +51,21 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
   const [loading, setLoading] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [entryMode, setEntryMode] = useState<"template" | "manual">("template");
   const [showCustomRate, setShowCustomRate] = useState(false);
   const [holidayPayType, setHolidayPayType] = useState<"multiplier" | "fixed" | "custom">("multiplier");
+  const [isDayOff, setIsDayOff] = useState(false);
+  const [dayOffType, setDayOffType] = useState<string>("pto");
+  const [isFullDay, setIsFullDay] = useState(true);
+  const [dayOffHours, setDayOffHours] = useState(8);
 
-  const [formData, setFormData] = useState(() => ({
+  // Custom earnings override state
+  const [useCustomEarnings, setUseCustomEarnings] = useState(false);
+  const [customEarnings, setCustomEarnings] = useState("");
+
+  const [formData, setFormData] = useState({
     date: selectedDate?.toISOString().split("T")[0] || "",
     start_time: "",
     end_time: "",
@@ -64,12 +75,47 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
     is_holiday: false,
     holiday_multiplier: 1.5,
     holiday_fixed_rate: 0,
-  }));
+    shift_type: "work" as string,
+    status: "planned" as string,
+  });
 
   const [sameAsScheduled, setSameAsScheduled] = useState(true);
   const [isOvernight, setIsOvernight] = useState(false);
 
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile on mount (client-side only to avoid hydration mismatch)
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Set initial status based on selectedDate on mount
+  useEffect(() => {
+    if (selectedDate) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const shiftDate = new Date(selectedDate);
+      shiftDate.setHours(0, 0, 0, 0);
+      const defaultStatus = shiftDate < today ? "completed" : "planned";
+      setFormData((prev) => ({ ...prev, status: defaultStatus }));
+    }
+  }, []); // Only run on mount
+
+  // Update status when date changes
+  useEffect(() => {
+    if (formData.date) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const shiftDate = new Date(formData.date);
+      shiftDate.setHours(0, 0, 0, 0);
+      const defaultStatus = shiftDate < today ? "completed" : "planned";
+      setFormData((prev) => ({ ...prev, status: defaultStatus }));
+    }
+  }, [formData.date]);
 
   // Load jobs on mount
   useEffect(() => {
@@ -86,14 +132,21 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
   // Load templates when job is selected
   useEffect(() => {
     const loadTemplates = async () => {
+      // Immediately clear templates when job changes to avoid showing old templates
+      setTemplates([]);
+      setSelectedTemplate("");
+      setLoadingTemplates(false);
+
       if (!selectedJobId || selectedJobId === "no-job") {
-        setTemplates([]);
         return;
       }
+
+      setLoadingTemplates(true);
       const result = await getShiftTemplates(selectedJobId);
       if (result.templates) {
         setTemplates(result.templates);
       }
+      setLoadingTemplates(false);
     };
     loadTemplates();
   }, [selectedJobId]);
@@ -166,8 +219,33 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
         actual_hours: template.expected_hours,
       }));
       setSelectedTemplate(templateId);
+      // Switch to manual mode to show the applied values
+      setEntryMode("manual");
     }
   };
+
+  // Calculate what earnings WOULD be (for display purposes)
+  const selectedJob = jobs.find((j) => j.id === selectedJobId);
+  const calculatedEarnings = (() => {
+    if (!selectedJob || isDayOff) return null;
+
+    // For fixed income jobs, no per-shift earnings
+    if (selectedJob.show_in_fixed_income && (selectedJob.pay_type === 'monthly' || selectedJob.pay_type === 'salary')) {
+      return null;
+    }
+
+    return calculateShiftEarnings(
+      {
+        actual_hours: formData.actual_hours,
+        shift_type: formData.shift_type,
+        custom_hourly_rate: formData.custom_hourly_rate > 0 ? formData.custom_hourly_rate : undefined,
+        is_holiday: formData.is_holiday,
+        holiday_multiplier: formData.is_holiday ? formData.holiday_multiplier : undefined,
+        holiday_fixed_rate: formData.is_holiday && holidayPayType === "fixed" ? formData.holiday_fixed_rate : undefined,
+      },
+      selectedJob
+    );
+  })();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -190,7 +268,30 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
       return `${time}:00`;
     };
 
-    const shiftData = {
+    // Prepare custom earnings if user provided them
+    const earningsOverride = useCustomEarnings && customEarnings ? {
+      actual_earnings: parseFloat(customEarnings),
+      earnings_manual_override: true,
+    } : {};
+
+    // For day-offs, use simple hours instead of start/end times
+    const shiftData = isDayOff ? {
+      job_id: selectedJobId && selectedJobId !== "no-job" ? selectedJobId : null,
+      date: formData.date,
+      start_time: `${formData.date}T00:00:00Z`, // Dummy time for day-offs
+      end_time: `${formData.date}T00:00:00Z`,   // Dummy time for day-offs
+      actual_hours: isFullDay ? dayOffHours : dayOffHours,
+      scheduled_hours: isFullDay ? dayOffHours : dayOffHours,
+      is_overnight: false,
+      notes: formData.notes || null,
+      custom_hourly_rate: null,
+      is_holiday: false,
+      holiday_multiplier: null,
+      holiday_fixed_rate: null,
+      shift_type: dayOffType,
+      is_full_day_off: isFullDay,
+      status: formData.status,
+    } : {
       job_id: selectedJobId && selectedJobId !== "no-job" ? selectedJobId : null,
       date: formData.date,
       start_time: `${formData.date}T${normalizeTime(formData.start_time)}Z`,
@@ -203,6 +304,10 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
       is_holiday: formData.is_holiday,
       holiday_multiplier: formData.is_holiday && holidayPayType !== "fixed" && formData.holiday_multiplier > 0 ? formData.holiday_multiplier : null,
       holiday_fixed_rate: formData.is_holiday && holidayPayType === "fixed" && formData.holiday_fixed_rate > 0 ? formData.holiday_fixed_rate : null,
+      shift_type: "work",
+      is_full_day_off: null,
+      status: formData.status,
+      ...earningsOverride,
     };
 
     const result = await createShift(shiftData);
@@ -226,18 +331,24 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
         is_holiday: false,
         holiday_multiplier: 1.5,
         holiday_fixed_rate: 0,
+        shift_type: "work",
+        status: "planned",
       });
       setSelectedJobId("");
       setSelectedTemplate("");
       setShowCustomRate(false);
       setHolidayPayType("multiplier");
+      setIsDayOff(false);
+      setDayOffType("pto");
+      setIsFullDay(true);
+      setDayOffHours(8);
       setSameAsScheduled(true);
       setIsOvernight(false);
       setScheduledHours(0);
+      setUseCustomEarnings(false);
+      setCustomEarnings("");
     }
   };
-
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
   const content = (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -284,8 +395,198 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
         />
       </div>
 
-      {/* Entry Mode Tabs - Template first, Manual second */}
-      {templates.length > 0 && (
+      {/* Status */}
+      <div className="space-y-2">
+        <Label htmlFor="status">Status *</Label>
+        <Select
+          value={formData.status}
+          onValueChange={(value) =>
+            setFormData((prev) => ({ ...prev, status: value }))
+          }
+        >
+          <SelectTrigger id="status">
+            <SelectValue placeholder="Select status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="planned">
+              <div className="flex items-center gap-2">
+                <span>📅</span>
+                <span>Planned</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="in_progress">
+              <div className="flex items-center gap-2">
+                <span>⏳</span>
+                <span>In Progress</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="completed">
+              <div className="flex items-center gap-2">
+                <span>✅</span>
+                <span>Completed</span>
+              </div>
+            </SelectItem>
+            <SelectItem value="cancelled">
+              <div className="flex items-center gap-2">
+                <span>❌</span>
+                <span>Cancelled</span>
+              </div>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          {formData.status === 'planned' && 'Future or upcoming shift'}
+          {formData.status === 'in_progress' && 'Shift currently in progress'}
+          {formData.status === 'completed' && 'Shift finished - counts in earnings'}
+          {formData.status === 'cancelled' && 'Cancelled shift - excluded from calculations'}
+        </p>
+      </div>
+
+      {/* Day Off Toggle */}
+      <div className="space-y-3 border rounded-lg p-3 bg-muted/20">
+        <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="is-day-off"
+            checked={isDayOff}
+            onChange={(e) => {
+              setIsDayOff(e.target.checked);
+              if (e.target.checked) {
+                // Reset work-related fields when switching to day-off
+                setFormData(prev => ({
+                  ...prev,
+                  is_holiday: false,
+                  custom_hourly_rate: 0
+                }));
+                setShowCustomRate(false);
+              }
+            }}
+            className="h-4 w-4 rounded border-gray-300"
+          />
+          <Label htmlFor="is-day-off" className="text-sm font-normal cursor-pointer">
+            This is a day off (PTO, sick, etc.)
+          </Label>
+        </div>
+
+        {isDayOff && (
+          <div className="space-y-3 pl-6">
+            {/* Day-off Type Selector */}
+            <div className="space-y-2">
+              <Label className="text-xs">Type of Day Off</Label>
+              <Select value={dayOffType} onValueChange={setDayOffType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pto">
+                    <div className="flex items-center justify-between w-full">
+                      <span>🏖️ PTO / Vacation</span>
+                      <span className="text-[10px] text-green-600 ml-2">💰 Paid</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="sick">
+                    <div className="flex items-center justify-between w-full">
+                      <span>🤒 Sick Day</span>
+                      <span className="text-[10px] text-green-600 ml-2">💰 Paid</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="personal">
+                    <div className="flex items-center justify-between w-full">
+                      <span>👤 Personal Day</span>
+                      <span className="text-[10px] text-green-600 ml-2">💰 Paid</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="unpaid">
+                    <div className="flex items-center justify-between w-full">
+                      <span>⛔ Unpaid Leave</span>
+                      <span className="text-[10px] text-orange-600 ml-2">⚠️ Unpaid</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="bereavement">
+                    <div className="flex items-center justify-between w-full">
+                      <span>🕊️ Bereavement</span>
+                      <span className="text-[10px] text-green-600 ml-2">💰 Paid</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="maternity">
+                    <div className="flex items-center justify-between w-full">
+                      <span>🍼 Maternity Leave</span>
+                      <span className="text-[10px] text-green-600 ml-2">💰 Paid</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="paternity">
+                    <div className="flex items-center justify-between w-full">
+                      <span>👶 Paternity Leave</span>
+                      <span className="text-[10px] text-green-600 ml-2">💰 Paid</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="jury_duty">
+                    <div className="flex items-center justify-between w-full">
+                      <span>⚖️ Jury Duty</span>
+                      <span className="text-[10px] text-green-600 ml-2">💰 Paid</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {dayOffType === 'pto' && '💰 Paid time off - counts towards earnings'}
+                {dayOffType === 'sick' && '💰 Paid sick leave - counts towards earnings'}
+                {dayOffType === 'personal' && '💰 Paid personal day - counts towards earnings'}
+                {dayOffType === 'unpaid' && '⚠️ Unpaid leave - does not count towards earnings'}
+                {dayOffType === 'bereavement' && '💰 Paid bereavement leave - counts towards earnings'}
+                {dayOffType === 'maternity' && '💰 Paid maternity leave - counts towards earnings'}
+                {dayOffType === 'paternity' && '💰 Paid paternity leave - counts towards earnings'}
+                {dayOffType === 'jury_duty' && '💰 Paid jury duty - counts towards earnings'}
+              </p>
+            </div>
+
+            {/* Full/Partial Day Toggle */}
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="is-full-day"
+                  checked={isFullDay}
+                  onChange={(e) => {
+                    setIsFullDay(e.target.checked);
+                    if (e.target.checked && dayOffHours !== 8) {
+                      setDayOffHours(8); // Reset to default when checking
+                    }
+                  }}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label htmlFor="is-full-day" className="text-sm font-normal cursor-pointer">
+                  Full day
+                </Label>
+              </div>
+
+              {/* Show hours input for both full and partial days */}
+              <div className="space-y-2 pl-6">
+                <Label className="text-xs">
+                  {isFullDay ? 'Full day hours (default: 8)' : 'Partial day hours'}
+                </Label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  min="0.5"
+                  max="24"
+                  value={dayOffHours}
+                  onChange={(e) => setDayOffHours(parseFloat(e.target.value) || 8)}
+                  placeholder={isFullDay ? "8" : "Enter hours (e.g., 4 for half day)"}
+                />
+                {isFullDay && (
+                  <p className="text-xs text-muted-foreground">
+                    Customize if your standard day is different (e.g., 7.5h)
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Entry Mode Tabs - Template first, Manual second - ONLY FOR WORK SHIFTS */}
+      {!isDayOff && (selectedJobId && selectedJobId !== "no-job") && (
         <Tabs value={entryMode} onValueChange={(v) => setEntryMode(v as "template" | "manual")}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="template">Use Template</TabsTrigger>
@@ -293,48 +594,64 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
           </TabsList>
 
           <TabsContent value="template" className="space-y-3 mt-4">
-            <div className="grid grid-cols-1 gap-2">
-              {templates.map((template) => (
-                <button
-                  key={template.id}
-                  type="button"
-                  onClick={() => applyTemplate(template.id)}
-                  className={`flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors ${
-                    selectedTemplate === template.id ? "border-primary bg-primary/5" : ""
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-3 h-3 rounded"
-                      style={{ backgroundColor: template.color || "#3B82F6" }}
-                    />
-                    <div className="text-left">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm">{template.name}</p>
-                        {template.short_code && (
-                          <Badge variant="outline" className="text-xs">
-                            {template.short_code}
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>
-                          {template.start_time} - {template.end_time}
-                        </span>
-                        <span className="ml-1">({template.expected_hours}h)</span>
+            {loadingTemplates ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading templates...</span>
+              </div>
+            ) : templates.length === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                <p>No templates found for this job.</p>
+                <p className="text-xs mt-1">Switch to Manual Entry or create templates in Jobs settings.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-2">
+                {templates.map((template) => (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => applyTemplate(template.id)}
+                    className={`flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors ${
+                      selectedTemplate === template.id ? "border-primary bg-primary/5" : ""
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-3 h-3 rounded"
+                        style={{ backgroundColor: template.color || "#3B82F6" }}
+                      />
+                      <div className="text-left">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm">{template.name}</p>
+                          {template.short_code && (
+                            <Badge variant="outline" className="text-xs">
+                              {template.short_code}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>
+                            {template.start_time} - {template.end_time}
+                          </span>
+                          <span className="ml-1">({template.expected_hours}h)</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </button>
-              ))}
-            </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       )}
 
-      {/* Scheduled Time Section */}
-      <div className="space-y-3 border rounded-lg p-3 bg-muted/20">
+      {/* Work Shift Fields - ONLY show when NOT a day-off */}
+      {!isDayOff && (
+        <>
+          {/* Scheduled Time Section - Hide when using template mode */}
+          {entryMode === "manual" && (
+          <div className="space-y-3 border rounded-lg p-3 bg-muted/20">
         <Label className="text-sm font-semibold">Scheduled Shift Time</Label>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
@@ -372,6 +689,7 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
           </div>
         )}
       </div>
+          )}
 
       {/* Actual Hours Worked Section */}
       <div className="space-y-2">
@@ -411,7 +729,7 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
             {formData.actual_hours > 0 && scheduledHours > 0 && (
               <p className="text-xs text-muted-foreground">
                 Variance: {formData.actual_hours > scheduledHours ? '+' : ''}
-                {(formData.actual_hours - scheduledHours).toFixed(1)}h
+                {formatHours(Math.abs(formData.actual_hours - scheduledHours))}
                 {formData.actual_hours > scheduledHours && <span className="text-green-600"> (overtime)</span>}
                 {formData.actual_hours < scheduledHours && <span className="text-orange-600"> (undertime)</span>}
               </p>
@@ -581,6 +899,72 @@ export function AddShiftDialog({ selectedDate, onSuccess }: AddShiftDialogProps)
           </div>
         )}
       </div>
+        </>
+      )}
+
+      {/* Custom Earnings Override - Only show for work shifts with a job that calculates earnings */}
+      {!isDayOff && selectedJobId && selectedJobId !== "no-job" && calculatedEarnings !== null && (
+        <div className="space-y-3 border rounded-lg p-3 bg-muted/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="use-custom-earnings"
+                checked={useCustomEarnings}
+                onCheckedChange={(checked) => {
+                  setUseCustomEarnings(!!checked);
+                  if (checked) {
+                    // Initialize with calculated value
+                    setCustomEarnings(calculatedEarnings?.toString() || "");
+                  }
+                }}
+              />
+              <Label htmlFor="use-custom-earnings" className="text-sm font-normal cursor-pointer">
+                Custom earnings amount
+              </Label>
+            </div>
+            {!useCustomEarnings && calculatedEarnings !== null && (
+              <span className="text-xs text-muted-foreground">
+                {selectedJob?.currency_symbol || '$'}{formatCurrency(calculatedEarnings)}
+              </span>
+            )}
+          </div>
+
+          {/* Show calculated earnings preview when NOT using custom */}
+          {!useCustomEarnings && calculatedEarnings !== null && (
+            <div className="pl-6 text-xs text-muted-foreground">
+              Auto-calculated: {selectedJob?.currency_symbol || '$'}{formatCurrency(calculatedEarnings)}
+              {formData.actual_hours > 0 && ` (${formData.actual_hours}h × rate)`}
+            </div>
+          )}
+
+          {/* Custom earnings input (shown when checked) */}
+          {useCustomEarnings && (
+            <div className="space-y-2 pl-6 border-l-2 border-yellow-500">
+              <Label htmlFor="custom-earnings" className="text-xs">Earnings Amount</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">{selectedJob?.currency_symbol || '$'}</span>
+                <Input
+                  id="custom-earnings"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={customEarnings}
+                  onChange={(e) => setCustomEarnings(e.target.value)}
+                  placeholder="Enter custom amount"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Manual amount will not recalculate when hours change
+              </p>
+              {calculatedEarnings !== null && (
+                <p className="text-xs text-muted-foreground">
+                  Auto-calculated would be: {selectedJob?.currency_symbol || '$'}{formatCurrency(calculatedEarnings)}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Notes */}
       <div className="space-y-2">

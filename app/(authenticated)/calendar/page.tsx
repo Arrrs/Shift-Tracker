@@ -9,9 +9,11 @@ import { ListView } from "./list-view";
 import { AddShiftDialog } from "./add-shift-dialog";
 import { GoToDateDialog } from "./go-to-date-dialog";
 import { DayShiftsDrawer } from "./day-shifts-drawer";
+import { IncomeStatsCards } from "./income-stats-cards";
+import { StatCardMobile } from "./stat-card";
 import { getShifts, getShiftStats } from "./actions";
 import { Database } from "@/lib/database.types";
-import { getCurrencySymbol } from "@/lib/utils/time-format";
+import { getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time-format";
 
 type ViewMode = "calendar" | "list";
 type Shift = Database["public"]["Tables"]["shifts"]["Row"] & {
@@ -32,6 +34,10 @@ export default function CalendarPage() {
     plannedShifts: 0,
     inProgressShifts: 0,
     earningsByCurrency: {} as Record<string, number>,
+    shiftIncomeByCurrency: {} as Record<string, number>,
+    shiftIncomeByJob: [] as Array<{jobId: string; jobName: string; amount: number; hours: number; shifts: number}>,
+    fixedIncomeJobIds: [] as string[],
+    fixedIncomeShiftCounts: {} as Record<string, number>,
   });
   const [loading, setLoading] = useState(true);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -92,7 +98,10 @@ export default function CalendarPage() {
       // Load stats
       const statsResult = await getShiftStats(startDate, endDate);
       if (statsResult.stats) {
-        setStats(statsResult.stats);
+        setStats({
+          ...statsResult.stats,
+          earningsByCurrency: statsResult.stats.shiftIncomeByCurrency, // Keep for backward compatibility
+        });
       }
 
       setLoading(false);
@@ -111,9 +120,9 @@ export default function CalendarPage() {
   };
 
   return (
-    <div className="h-full overflow-hidden flex flex-col px-4 py-3 md:p-6 gap-4 lg:gap-6">
+    <div className="h-full overflow-hidden flex flex-col px-4 py-3 md:p-6 gap-4 lg:gap-6" suppressHydrationWarning>
       {/* Header */}
-      <div className="flex justify-between items-center gap-2 mb-0 flex-shrink-0">
+      <div className="flex justify-between items-center gap-2 mb-0 flex-shrink-0" suppressHydrationWarning>
         <h1 className="text-xl md:text-3xl font-bold">Calendar</h1>
 
         {/* View Toggle and Add Button */}
@@ -151,13 +160,13 @@ export default function CalendarPage() {
               <div className="space-y-0.5">
                 {Object.entries(stats.earningsByCurrency).map(([currency, amount]) => (
                   <p key={currency} className="text-xs font-bold text-green-600 dark:text-green-400">
-                    {getCurrencySymbol(currency)} {amount.toFixed(0)}
+                    {getCurrencySymbol(currency)} {formatCurrency(amount)}
                   </p>
                 ))}
               </div>
             ) : (
               <p className="text-base font-bold text-green-600 dark:text-green-400">
-                ${stats.totalEarnings.toFixed(0)}
+                {getCurrencySymbol(Object.keys(stats.earningsByCurrency)[0] || 'USD')} {formatCurrency(stats.totalEarnings)}
               </p>
             )}
           </div>
@@ -170,11 +179,11 @@ export default function CalendarPage() {
             ) : (
               <>
                 <p className="text-base font-bold text-blue-600 dark:text-blue-400">
-                  {stats.totalActualHours.toFixed(1)}h
+                  {formatHours(stats.totalActualHours)}
                 </p>
                 {stats.totalScheduledHours > 0 && stats.totalScheduledHours !== stats.totalActualHours && (
                   <p className="text-[8px] text-muted-foreground">
-                    of {stats.totalScheduledHours.toFixed(1)}h
+                    of {formatHours(stats.totalScheduledHours)}
                   </p>
                 )}
               </>
@@ -250,106 +259,17 @@ export default function CalendarPage() {
         </div>
 
         {/* Stats Sidebar - Desktop Only */}
-        <div className="hidden lg:flex lg:flex-col lg:gap-3">
-          {/* Earnings Card */}
-          <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-lg p-4">
-            <p className="text-sm text-muted-foreground mb-2">Total Earnings</p>
-            {loading ? (
-              <div className="flex items-center justify-center py-2">
-                <Loader2 className="h-6 w-6 animate-spin text-green-600 dark:text-green-400" />
-              </div>
-            ) : Object.keys(stats.earningsByCurrency).length > 1 ? (
-              <div className="space-y-1">
-                {Object.entries(stats.earningsByCurrency).map(([currency, amount]) => (
-                  <div key={currency} className="flex items-baseline justify-between">
-                    <span className="text-xs text-muted-foreground">{currency}:</span>
-                    <span className="text-lg font-bold text-green-600 dark:text-green-400">
-                      {getCurrencySymbol(currency)} {amount.toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
-                ${stats.totalEarnings.toFixed(2)}
-              </p>
-            )}
-          </div>
-
-          {/* Hours Card */}
-          <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg p-4">
-            <p className="text-sm text-muted-foreground mb-2">Hours Worked</p>
-            {loading ? (
-              <div className="flex items-center justify-center py-2">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-600 dark:text-blue-400" />
-              </div>
-            ) : (
-              <>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {stats.totalActualHours.toFixed(1)}h
-                </p>
-                {stats.totalScheduledHours > 0 && (
-                  <div className="mt-2 text-xs space-y-1">
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>Scheduled:</span>
-                      <span>{stats.totalScheduledHours.toFixed(1)}h</span>
-                    </div>
-                    {stats.totalActualHours !== stats.totalScheduledHours && (
-                      <div className={`flex justify-between font-medium ${
-                        stats.totalActualHours > stats.totalScheduledHours
-                          ? 'text-green-600'
-                          : 'text-orange-600'
-                      }`}>
-                        <span>Variance:</span>
-                        <span>
-                          {stats.totalActualHours > stats.totalScheduledHours ? '+' : ''}
-                          {(stats.totalActualHours - stats.totalScheduledHours).toFixed(1)}h
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Shifts Card */}
-          <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg p-4">
-            <p className="text-sm text-muted-foreground mb-2">Shifts</p>
-            {loading ? (
-              <div className="flex items-center justify-center py-2">
-                <Loader2 className="h-6 w-6 animate-spin text-purple-600 dark:text-purple-400" />
-              </div>
-            ) : (
-              <>
-                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                  {stats.shiftCount}
-                </p>
-                {stats.shiftCount > 0 && (
-                  <div className="mt-2 text-xs space-y-1">
-                    {stats.completedShifts > 0 && (
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>Completed:</span>
-                        <span className="text-green-600 font-medium">{stats.completedShifts}</span>
-                      </div>
-                    )}
-                    {stats.plannedShifts > 0 && (
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>Planned:</span>
-                        <span className="text-blue-600 font-medium">{stats.plannedShifts}</span>
-                      </div>
-                    )}
-                    {stats.inProgressShifts > 0 && (
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>In Progress:</span>
-                        <span className="text-yellow-600 font-medium">{stats.inProgressShifts}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
+        <div className="hidden lg:flex lg:flex-col">
+          {currentDate && (
+            <IncomeStatsCards
+              currentDate={currentDate}
+              shiftIncomeByCurrency={stats.shiftIncomeByCurrency}
+              shiftIncomeByJob={stats.shiftIncomeByJob}
+              fixedIncomeJobIds={stats.fixedIncomeJobIds}
+              fixedIncomeShiftCounts={stats.fixedIncomeShiftCounts}
+              loading={loading}
+            />
+          )}
         </div>
       </div>
 

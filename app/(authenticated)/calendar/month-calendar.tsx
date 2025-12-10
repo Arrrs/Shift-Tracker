@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Database } from "@/lib/database.types";
-import { getStatusInfo, calculateEffectiveRate } from "@/lib/utils/time-format";
+import { getStatusInfo, getCurrencySymbol, formatCurrency } from "@/lib/utils/time-format";
 
 type Shift = Database["public"]["Tables"]["shifts"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
@@ -94,14 +94,38 @@ export function MonthCalendar({ currentDate, shifts = [], onDayClick }: MonthCal
     return shifts.filter((shift) => shift.date === dateStr);
   };
 
-  // Get total earnings for a date
-  const getEarningsForDate = (date: Date) => {
+  // Get earnings by currency for a date - only count completed shifts
+  const getEarningsForDate = (date: Date): { amount: number; currency: string; isMulti: boolean } => {
     const dayShifts = getShiftsForDate(date);
-    return dayShifts.reduce((sum, shift) => {
-      const hours = shift.actual_hours || 0;
-      const rate = calculateEffectiveRate(shift, shift.jobs?.hourly_rate || 0);
-      return sum + (hours * rate);
-    }, 0);
+    const completedDayShifts = dayShifts.filter(s => s.status === 'completed');
+    const earningsByCurrency: Record<string, number> = {};
+
+    completedDayShifts.forEach((shift) => {
+      // SNAPSHOT ARCHITECTURE: Use stored earnings
+      const earnings = shift.actual_earnings || 0;
+      const currency = shift.earnings_currency || shift.jobs?.currency || 'USD';
+
+      // Skip if no earnings (time tracking only or fixed income)
+      if (earnings === 0 || shift.actual_earnings === null) return;
+
+      if (!earningsByCurrency[currency]) {
+        earningsByCurrency[currency] = 0;
+      }
+      earningsByCurrency[currency] += earnings;
+    });
+
+    const currencies = Object.keys(earningsByCurrency);
+
+    if (currencies.length === 0) {
+      return { amount: 0, currency: 'USD', isMulti: false };
+    }
+
+    if (currencies.length === 1) {
+      return { amount: earningsByCurrency[currencies[0]], currency: currencies[0], isMulti: false };
+    }
+
+    // Multiple currencies - return the first one with a flag
+    return { amount: earningsByCurrency[currencies[0]], currency: currencies[0], isMulti: true };
   };
 
   return (
@@ -172,9 +196,12 @@ export function MonthCalendar({ currentDate, shifts = [], onDayClick }: MonthCal
                     </div>
 
                     {/* Earnings display with status emoji for single shift */}
-                    {earnings > 0 && (
+                    {earnings.amount > 0 && (
                       <div className="text-[9px] md:text-[10px] font-medium text-muted-foreground truncate flex items-center gap-0.5">
-                        <span>${earnings.toFixed(0)}</span>
+                        <span>
+                          {getCurrencySymbol(earnings.currency)} {formatCurrency(earnings.amount)}
+                          {earnings.isMulti && <span className="text-[8px]">+</span>}
+                        </span>
                         {dayShifts.length === 1 && (
                           <span className="text-[8px] md:text-[9px]">
                             {getStatusInfo(dayShifts[0].status).emoji}

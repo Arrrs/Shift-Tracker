@@ -1,9 +1,9 @@
 -- Update default currency from UAH to USD in jobs table
-ALTER TABLE jobs 
+ALTER TABLE jobs
   ALTER COLUMN currency SET DEFAULT 'USD';
 
 -- Update default currency in user_settings table
-ALTER TABLE user_settings 
+ALTER TABLE user_settings
   ALTER COLUMN default_currency SET DEFAULT 'USD';
 
 -- Optional: Update existing rows (if you want)

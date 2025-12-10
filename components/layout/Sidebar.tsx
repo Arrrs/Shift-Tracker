@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Home, Briefcase, Calendar, Settings, Menu } from "lucide-react";
@@ -18,11 +18,11 @@ export function Sidebar() {
       </SheetTrigger>
 
       <SheetContent side="left">
-        <div className="mb-8 pt-6 px-4">
-          <h2 className="text-lg font-semibold">Navigation</h2>
-        </div>
+        <SheetHeader>
+          <SheetTitle>Navigation</SheetTitle>
+        </SheetHeader>
 
-        <nav className="flex flex-col space-y-4">
+        <nav className="flex flex-col space-y-4 mt-6">
           <Link href="/dashboard" onClick={() => setOpen(false)}>
             <Button variant="ghost" className="w-full justify-start">
               <Home className="mr-2 h-4 w-4" />

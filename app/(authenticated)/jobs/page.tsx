@@ -15,6 +15,24 @@ import { Briefcase, Clock, Info, Search } from "lucide-react";
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { getCurrencySymbol } from "@/lib/utils/time-format";
+
+// Helper function to format job rate display
+function formatJobRate(job: any): string {
+  const symbol = getCurrencySymbol(job.currency || 'USD');
+
+  switch (job.pay_type) {
+    case 'daily':
+      return `${symbol} ${job.daily_rate?.toFixed(2) || '0.00'}/day`;
+    case 'monthly':
+      return `${symbol} ${job.monthly_rate?.toFixed(2) || '0.00'}/mo`;
+    case 'salary':
+      return `${symbol} ${job.annual_salary?.toFixed(0) || '0'}/yr`;
+    case 'hourly':
+    default:
+      return `${symbol} ${job.hourly_rate?.toFixed(2) || '0.00'}/hr`;
+  }
+}
 
 function JobsList() {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -154,7 +172,7 @@ function JobsList() {
                   <tr className="border-b last:border-0 hover:bg-muted/50 cursor-pointer">
                     <td className="p-4">{job.name}</td>
                     <td className="p-4">
-                      ${job.hourly_rate.toFixed(2)} {job.currency}
+                      {formatJobRate(job)}
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
@@ -219,7 +237,7 @@ function JobsList() {
                   <div className="space-y-1">
                     <h3 className="font-semibold">{job.name}</h3>
                     <p className="text-sm text-muted-foreground">
-                      ${job.hourly_rate.toFixed(2)} {job.currency}
+                      {formatJobRate(job)}
                     </p>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />

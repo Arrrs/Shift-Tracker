@@ -25,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Clock, PencilIcon } from "lucide-react";
 import { toast } from "sonner";
 import { updateShift, deleteShift } from "./actions";
 import { getJobs, getShiftTemplates } from "../jobs/actions";
@@ -40,6 +40,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { formatHours, calculateShiftEarnings, formatCurrency } from "@/lib/utils/time-format";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
@@ -65,9 +69,24 @@ export function EditShiftDialog({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [showCustomRate, setShowCustomRate] = useState(false);
   const [holidayPayType, setHolidayPayType] = useState<"multiplier" | "fixed" | "custom">("multiplier");
+
+  // Custom earnings override state
+  const [useCustomEarnings, setUseCustomEarnings] = useState(false);
+  const [customEarnings, setCustomEarnings] = useState("");
+
+  // Day-off state
+  const [isDayOff, setIsDayOff] = useState(false);
+  const [dayOffType, setDayOffType] = useState<string>("pto");
+  const [isFullDay, setIsFullDay] = useState(true);
+  const [dayOffHours, setDayOffHours] = useState(8);
+
+  // Template state
+  const [entryMode, setEntryMode] = useState<"template" | "manual">("manual");
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
 
   const [formData, setFormData] = useState({
     date: "",
@@ -80,11 +99,21 @@ export function EditShiftDialog({
     is_holiday: false,
     holiday_multiplier: 1.5,
     holiday_fixed_rate: 0,
+    shift_type: "work" as string,
   });
 
   const [sameAsScheduled, setSameAsScheduled] = useState(true);
   const [isOvernight, setIsOvernight] = useState(false);
   const [scheduledHours, setScheduledHours] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile on mount (client-side only to avoid hydration mismatch)
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Load jobs on mount
   useEffect(() => {
@@ -101,14 +130,21 @@ export function EditShiftDialog({
   // Load templates when job is selected
   useEffect(() => {
     const loadTemplates = async () => {
+      // Immediately clear templates when job changes to avoid showing old templates
+      setTemplates([]);
+      setSelectedTemplate("");
+      setLoadingTemplates(false);
+
       if (!selectedJobId || selectedJobId === "no-job") {
-        setTemplates([]);
         return;
       }
+
+      setLoadingTemplates(true);
       const result = await getShiftTemplates(selectedJobId);
       if (result.templates) {
         setTemplates(result.templates);
       }
+      setLoadingTemplates(false);
     };
     loadTemplates();
   }, [selectedJobId]);
@@ -128,6 +164,18 @@ export function EditShiftDialog({
       const scheduled = shift.scheduled_hours || 0;
       const actual = shift.actual_hours || 0;
 
+      // Check if this is a day-off shift
+      const isShiftDayOff = !!(shift.shift_type && shift.shift_type !== 'work');
+      setIsDayOff(isShiftDayOff);
+
+      if (isShiftDayOff) {
+        // Load day-off specific data
+        setDayOffType(shift.shift_type || "pto");
+        setDayOffHours(actual);
+        // Use is_full_day_off from database if available, otherwise infer from hours
+        setIsFullDay(shift.is_full_day_off !== null ? shift.is_full_day_off : actual === 8);
+      }
+
       setFormData({
         date: shift.date,
         start_time: startTime,
@@ -139,6 +187,7 @@ export function EditShiftDialog({
         is_holiday: shift.is_holiday || false,
         holiday_multiplier: shift.holiday_multiplier || 1.5,
         holiday_fixed_rate: shift.holiday_fixed_rate || 0,
+        shift_type: shift.shift_type || "work",
       });
       setSelectedJobId(shift.job_id || "no-job");
       setScheduledHours(scheduled);
@@ -156,6 +205,10 @@ export function EditShiftDialog({
         }
       }
       setSameAsScheduled(scheduled === actual && scheduled > 0);
+
+      // Initialize custom earnings state
+      setUseCustomEarnings(shift.earnings_manual_override || false);
+      setCustomEarnings(shift.actual_earnings !== null ? shift.actual_earnings.toString() : "");
     }
   }, [shift]);
 
@@ -187,12 +240,51 @@ export function EditShiftDialog({
     }
   }, [formData.start_time, formData.end_time, sameAsScheduled]);
 
+  // Apply template when selected
+  const applyTemplate = (templateId: string) => {
+    const template = templates.find((t) => t.id === templateId);
+    if (template) {
+      setFormData((prev) => ({
+        ...prev,
+        start_time: template.start_time,
+        end_time: template.end_time,
+        actual_hours: template.expected_hours,
+      }));
+      setSelectedTemplate(templateId);
+      setEntryMode("manual"); // Switch to manual after applying to show the values
+    }
+  };
+
+  // Calculate what earnings WOULD be (for display purposes)
+  const calculatedEarnings = (() => {
+    if (!shift?.jobs || isDayOff) return null;
+
+    const job = shift.jobs;
+
+    // For fixed income jobs, no per-shift earnings
+    if (job.show_in_fixed_income && (job.pay_type === 'monthly' || job.pay_type === 'salary')) {
+      return null;
+    }
+
+    return calculateShiftEarnings(
+      {
+        actual_hours: formData.actual_hours,
+        shift_type: formData.shift_type,
+        custom_hourly_rate: formData.custom_hourly_rate > 0 ? formData.custom_hourly_rate : undefined,
+        is_holiday: formData.is_holiday,
+        holiday_multiplier: formData.is_holiday ? formData.holiday_multiplier : undefined,
+        holiday_fixed_rate: formData.is_holiday && holidayPayType === "fixed" ? formData.holiday_fixed_rate : undefined,
+      },
+      job
+    );
+  })();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!shift) return;
 
-    if (!formData.start_time || !formData.end_time) {
+    if (!isDayOff && (!formData.start_time || !formData.end_time)) {
       toast.error("Please enter start and end times");
       return;
     }
@@ -209,7 +301,29 @@ export function EditShiftDialog({
       return `${time}:00`;
     };
 
-    const result = await updateShift(shift.id, {
+    // Prepare custom earnings if user provided them
+    const earningsOverride = useCustomEarnings && customEarnings ? {
+      actual_earnings: parseFloat(customEarnings),
+      earnings_manual_override: true,
+    } : {};
+
+    const shiftData = isDayOff ? {
+      job_id: selectedJobId && selectedJobId !== "no-job" ? selectedJobId : null,
+      date: formData.date,
+      start_time: `${formData.date}T00:00:00Z`, // Dummy time for day-offs
+      end_time: `${formData.date}T00:00:00Z`,
+      actual_hours: isFullDay ? dayOffHours : dayOffHours,
+      scheduled_hours: isFullDay ? dayOffHours : dayOffHours,
+      is_overnight: false,
+      status: formData.status,
+      notes: formData.notes || null,
+      custom_hourly_rate: null,
+      is_holiday: false,
+      holiday_multiplier: null,
+      holiday_fixed_rate: null,
+      shift_type: dayOffType,
+      is_full_day_off: isFullDay,
+    } : {
       job_id: selectedJobId && selectedJobId !== "no-job" ? selectedJobId : null,
       date: formData.date,
       start_time: `${formData.date}T${normalizeTime(formData.start_time)}Z`,
@@ -223,7 +337,12 @@ export function EditShiftDialog({
       is_holiday: formData.is_holiday,
       holiday_multiplier: formData.is_holiday && holidayPayType !== "fixed" && formData.holiday_multiplier > 0 ? formData.holiday_multiplier : null,
       holiday_fixed_rate: formData.is_holiday && holidayPayType === "fixed" && formData.holiday_fixed_rate > 0 ? formData.holiday_fixed_rate : null,
-    });
+      shift_type: "work",
+      is_full_day_off: null,
+      ...earningsOverride,
+    };
+
+    const result = await updateShift(shift.id, shiftData);
 
     setLoading(false);
 
@@ -256,8 +375,6 @@ export function EditShiftDialog({
   };
 
   if (!shift) return null;
-
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
   const content = (
     <>
@@ -321,7 +438,212 @@ export function EditShiftDialog({
           </Select>
         </div>
 
-        {/* Scheduled Time Section */}
+        {/* Day Off Toggle */}
+        <div className="space-y-3 border rounded-lg p-3 bg-muted/20">
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="edit-is-day-off"
+              checked={isDayOff}
+              onChange={(e) => {
+                setIsDayOff(e.target.checked);
+                if (e.target.checked) {
+                  // Clear work-specific fields when switching to day-off
+                  setFormData(prev => ({
+                    ...prev,
+                    is_holiday: false,
+                    custom_hourly_rate: 0
+                  }));
+                  setShowCustomRate(false);
+                }
+              }}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            <Label htmlFor="edit-is-day-off" className="text-sm font-normal cursor-pointer">
+              This is a day off (PTO, sick, etc.)
+            </Label>
+          </div>
+
+          {isDayOff && (
+            <div className="space-y-3 pl-6">
+              {/* Day-off Type Selector */}
+              <div className="space-y-2">
+                <Label className="text-xs">Type of Day Off</Label>
+                <Select value={dayOffType} onValueChange={setDayOffType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pto">
+                      <div className="flex items-center justify-between w-full">
+                        <span>🏖️ PTO / Vacation</span>
+                        <span className="text-[10px] text-green-600 ml-2">💰 Paid</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="sick">
+                      <div className="flex items-center justify-between w-full">
+                        <span>🤒 Sick Day</span>
+                        <span className="text-[10px] text-green-600 ml-2">💰 Paid</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="personal">
+                      <div className="flex items-center justify-between w-full">
+                        <span>👤 Personal Day</span>
+                        <span className="text-[10px] text-green-600 ml-2">💰 Paid</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="unpaid">
+                      <div className="flex items-center justify-between w-full">
+                        <span>⛔ Unpaid Leave</span>
+                        <span className="text-[10px] text-orange-600 ml-2">⚠️ Unpaid</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="bereavement">
+                      <div className="flex items-center justify-between w-full">
+                        <span>🕊️ Bereavement</span>
+                        <span className="text-[10px] text-green-600 ml-2">💰 Paid</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="maternity">
+                      <div className="flex items-center justify-between w-full">
+                        <span>🍼 Maternity Leave</span>
+                        <span className="text-[10px] text-green-600 ml-2">💰 Paid</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="paternity">
+                      <div className="flex items-center justify-between w-full">
+                        <span>👶 Paternity Leave</span>
+                        <span className="text-[10px] text-green-600 ml-2">💰 Paid</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="jury_duty">
+                      <div className="flex items-center justify-between w-full">
+                        <span>⚖️ Jury Duty</span>
+                        <span className="text-[10px] text-green-600 ml-2">💰 Paid</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {dayOffType === 'pto' && '💰 Paid time off - counts towards earnings'}
+                  {dayOffType === 'sick' && '💰 Paid sick leave - counts towards earnings'}
+                  {dayOffType === 'personal' && '💰 Paid personal day - counts towards earnings'}
+                  {dayOffType === 'unpaid' && '⚠️ Unpaid leave - does not count towards earnings'}
+                  {dayOffType === 'bereavement' && '💰 Paid bereavement leave - counts towards earnings'}
+                  {dayOffType === 'maternity' && '💰 Paid maternity leave - counts towards earnings'}
+                  {dayOffType === 'paternity' && '💰 Paid paternity leave - counts towards earnings'}
+                  {dayOffType === 'jury_duty' && '💰 Paid jury duty - counts towards earnings'}
+                </p>
+              </div>
+
+              {/* Full/Partial Day Toggle */}
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    id="edit-is-full-day"
+                    checked={isFullDay}
+                    onChange={(e) => {
+                      setIsFullDay(e.target.checked);
+                      if (e.target.checked && dayOffHours !== 8) {
+                        setDayOffHours(8); // Reset to default when checking
+                      }
+                    }}
+                    className="h-4 w-4 rounded border-gray-300"
+                  />
+                  <Label htmlFor="edit-is-full-day" className="text-xs font-normal cursor-pointer">
+                    Full day
+                  </Label>
+                </div>
+
+                {/* Show hours input for both full and partial days */}
+                <div className="space-y-2 pl-6">
+                  <Label className="text-xs">
+                    {isFullDay ? 'Full day hours (default: 8)' : 'Partial day hours'}
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    max="24"
+                    value={dayOffHours}
+                    onChange={(e) => setDayOffHours(parseFloat(e.target.value) || 8)}
+                    placeholder={isFullDay ? "8" : "Enter hours (e.g., 4 for half day)"}
+                  />
+                  {isFullDay && (
+                    <p className="text-xs text-muted-foreground">
+                      Customize if your standard day is different (e.g., 7.5h)
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Entry Mode Tabs - Template first, Manual second - ONLY FOR WORK SHIFTS */}
+        {!isDayOff && (selectedJobId && selectedJobId !== "no-job") && (
+        <Tabs value={entryMode} onValueChange={(v) => setEntryMode(v as "template" | "manual")}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="template">Use Template</TabsTrigger>
+            <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="template" className="space-y-3 mt-4">
+            {loadingTemplates ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading templates...</span>
+              </div>
+            ) : templates.length === 0 ? (
+              <div className="text-center py-8 text-sm text-muted-foreground">
+                <p>No templates found for this job.</p>
+                <p className="text-xs mt-1">Switch to Manual Entry or create templates in Jobs settings.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-2">
+                {templates.map((template) => (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => applyTemplate(template.id)}
+                    className={`flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors ${
+                      selectedTemplate === template.id ? "border-primary bg-primary/5" : ""
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-3 h-3 rounded"
+                        style={{ backgroundColor: template.color || "#3B82F6" }}
+                      />
+                      <div className="text-left">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm">{template.name}</p>
+                          {template.short_code && (
+                            <Badge variant="outline" className="text-xs">
+                              {template.short_code}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>
+                            {template.start_time} - {template.end_time}
+                          </span>
+                          <span className="ml-1">({template.expected_hours}h)</span>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+        )}
+
+        {/* Scheduled Time Section - Only show for work shifts and manual mode */}
+        {!isDayOff && entryMode === "manual" && (
         <div className="space-y-3 border rounded-lg p-3 bg-muted/20">
           <Label className="text-sm font-semibold">Scheduled Shift Time</Label>
           <div className="grid grid-cols-2 gap-3">
@@ -360,8 +682,10 @@ export function EditShiftDialog({
             </div>
           )}
         </div>
+        )}
 
-        {/* Actual Hours Worked Section */}
+        {/* Actual Hours Worked Section - Only show for work shifts */}
+        {!isDayOff && (
         <div className="space-y-2">
           <div className="flex items-center space-x-2">
             <input
@@ -399,7 +723,7 @@ export function EditShiftDialog({
               {formData.actual_hours > 0 && scheduledHours > 0 && (
                 <p className="text-xs text-muted-foreground">
                   Variance: {formData.actual_hours > scheduledHours ? '+' : ''}
-                  {(formData.actual_hours - scheduledHours).toFixed(1)}h
+                  {formatHours(Math.abs(formData.actual_hours - scheduledHours))}
                   {formData.actual_hours > scheduledHours && <span className="text-green-600"> (overtime)</span>}
                   {formData.actual_hours < scheduledHours && <span className="text-orange-600"> (undertime)</span>}
                 </p>
@@ -407,9 +731,10 @@ export function EditShiftDialog({
             </div>
           )}
         </div>
+        )}
 
-        {/* Custom Hourly Rate Toggle */}
-        {selectedJobId && selectedJobId !== "no-job" && (
+        {/* Custom Hourly Rate Toggle - Only show for work shifts */}
+        {!isDayOff && selectedJobId && selectedJobId !== "no-job" && (
           <div className="flex items-center space-x-2">
             <input
               type="checkbox"
@@ -429,8 +754,8 @@ export function EditShiftDialog({
           </div>
         )}
 
-        {/* Custom Hourly Rate Input */}
-        {(showCustomRate || !selectedJobId || selectedJobId === "no-job") && (
+        {/* Custom Hourly Rate Input - Only show for work shifts */}
+        {!isDayOff && (showCustomRate || !selectedJobId || selectedJobId === "no-job") && (
           <div className="space-y-2">
             <Label htmlFor="edit-custom-rate">
               Custom Hourly Rate {(!selectedJobId || selectedJobId === "no-job") && "*"}
@@ -457,7 +782,8 @@ export function EditShiftDialog({
           </div>
         )}
 
-        {/* Holiday Toggle and Multiplier */}
+        {/* Holiday Toggle and Multiplier - Only show for work shifts */}
+        {!isDayOff && (
         <div className="space-y-3 border rounded-lg p-3 bg-muted/20">
           <div className="flex items-center space-x-2">
             <input
@@ -569,6 +895,81 @@ export function EditShiftDialog({
             </div>
           )}
         </div>
+        )}
+
+        {/* Custom Earnings Override - Only show for work shifts with a job that calculates earnings */}
+        {!isDayOff && selectedJobId && selectedJobId !== "no-job" && calculatedEarnings !== null && (
+          <div className="space-y-3 border rounded-lg p-3 bg-muted/20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="edit-use-custom-earnings"
+                  checked={useCustomEarnings}
+                  onCheckedChange={(checked) => {
+                    setUseCustomEarnings(!!checked);
+                    if (checked) {
+                      // Initialize with calculated value
+                      setCustomEarnings(calculatedEarnings?.toString() || "");
+                    }
+                  }}
+                />
+                <Label htmlFor="edit-use-custom-earnings" className="text-sm font-normal cursor-pointer">
+                  Custom earnings amount
+                </Label>
+              </div>
+              {!useCustomEarnings && calculatedEarnings !== null && (
+                <span className="text-xs text-muted-foreground">
+                  {shift?.jobs?.currency_symbol || '$'}{formatCurrency(calculatedEarnings)}
+                </span>
+              )}
+            </div>
+
+            {/* Show calculated earnings preview when NOT using custom */}
+            {!useCustomEarnings && calculatedEarnings !== null && (
+              <div className="pl-6 text-xs text-muted-foreground">
+                Auto-calculated: {shift?.jobs?.currency_symbol || '$'}{formatCurrency(calculatedEarnings)}
+                {formData.actual_hours > 0 && ` (${formData.actual_hours}h × rate)`}
+              </div>
+            )}
+
+            {/* Custom earnings input (shown when checked) */}
+            {useCustomEarnings && (
+              <div className="space-y-2 pl-6 border-l-2 border-yellow-500">
+                <Label htmlFor="edit-custom-earnings" className="text-xs">Earnings Amount</Label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">{shift?.jobs?.currency_symbol || '$'}</span>
+                  <Input
+                    id="edit-custom-earnings"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={customEarnings}
+                    onChange={(e) => setCustomEarnings(e.target.value)}
+                    placeholder="Enter custom amount"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Manual amount will not recalculate when hours change
+                </p>
+                {calculatedEarnings !== null && (
+                  <p className="text-xs text-muted-foreground">
+                    Auto-calculated would be: {shift?.jobs?.currency_symbol || '$'}{formatCurrency(calculatedEarnings)}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Warning when editing previously-overridden shift */}
+            {shift?.earnings_manual_override && !useCustomEarnings && (
+              <div className="mt-2 rounded-md border border-yellow-500 bg-yellow-50 p-2">
+                <p className="text-xs text-yellow-800">
+                  ⚠️ This shift has custom earnings. Unchecking will recalculate
+                  based on hours {calculatedEarnings !== null && `(${shift?.jobs?.currency_symbol || '$'}${formatCurrency(calculatedEarnings)})`}.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Notes */}
         <div className="space-y-2">
@@ -648,14 +1049,14 @@ export function EditShiftDialog({
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent>
+        <DrawerContent className="max-h-[95vh]">
           <DrawerHeader>
             <DrawerTitle>Edit Shift</DrawerTitle>
             <DrawerDescription>
               Update shift details or delete
             </DrawerDescription>
           </DrawerHeader>
-          <div className="px-4 pb-4">{content}</div>
+          <div className="px-4 pb-4 overflow-y-auto max-h-[calc(95vh-80px)]">{content}</div>
         </DrawerContent>
       </Drawer>
     );
@@ -663,14 +1064,14 @@ export function EditShiftDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Edit Shift</DialogTitle>
           <DialogDescription>
             Update shift details or delete
           </DialogDescription>
         </DialogHeader>
-        {content}
+        <div className="overflow-y-auto flex-1 pr-2">{content}</div>
       </DialogContent>
     </Dialog>
   );

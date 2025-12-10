@@ -51,7 +51,11 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
 
   const [formData, setFormData] = useState({
     name: "",
+    pay_type: "hourly",
     hourly_rate: "",
+    daily_rate: "",
+    monthly_rate: "",
+    annual_salary: "",
     currency: "USD",
     color: "#3b82f6",
     description: "",
@@ -64,7 +68,11 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
 
     const result = await createJob({
       name: formData.name,
-      hourly_rate: parseFloat(formData.hourly_rate),
+      pay_type: formData.pay_type,
+      hourly_rate: formData.pay_type === "hourly" && formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
+      daily_rate: formData.pay_type === "daily" && formData.daily_rate ? parseFloat(formData.daily_rate) : null,
+      monthly_rate: formData.pay_type === "monthly" && formData.monthly_rate ? parseFloat(formData.monthly_rate) : null,
+      annual_salary: formData.pay_type === "salary" && formData.annual_salary ? parseFloat(formData.annual_salary) : null,
       currency: formData.currency,
       color: formData.color,
       description: formData.description || null,
@@ -83,7 +91,11 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
       // Reset form
       setFormData({
         name: "",
+        pay_type: "hourly",
         hourly_rate: "",
+        daily_rate: "",
+        monthly_rate: "",
+        annual_salary: "",
         currency: "USD",
         color: "#3b82f6",
         description: "",
@@ -125,21 +137,95 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
               />
             </div>
 
-            {/* Hourly Rate */}
+            {/* Pay Type */}
             <div className="grid gap-2">
-              <Label htmlFor="hourly_rate">Hourly Rate *</Label>
-              <Input
-                id="hourly_rate"
-                type="number"
-                step="0.01"
-                value={formData.hourly_rate}
-                onChange={(e) =>
-                  setFormData({ ...formData, hourly_rate: e.target.value })
+              <Label htmlFor="pay_type">Pay Type *</Label>
+              <Select
+                value={formData.pay_type}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, pay_type: value })
                 }
-                placeholder="15.50"
-                required
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select pay type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hourly">Hourly Rate</SelectItem>
+                  <SelectItem value="daily">Daily Rate</SelectItem>
+                  <SelectItem value="monthly">Monthly Rate</SelectItem>
+                  <SelectItem value="salary">Annual Salary</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            {/* Rate Input - Dynamic based on pay type */}
+            {formData.pay_type === "hourly" && (
+              <div className="grid gap-2">
+                <Label htmlFor="hourly_rate">Hourly Rate *</Label>
+                <Input
+                  id="hourly_rate"
+                  type="number"
+                  step="0.01"
+                  value={formData.hourly_rate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, hourly_rate: e.target.value })
+                  }
+                  placeholder="15.50"
+                  required
+                />
+              </div>
+            )}
+
+            {formData.pay_type === "daily" && (
+              <div className="grid gap-2">
+                <Label htmlFor="daily_rate">Daily Rate *</Label>
+                <Input
+                  id="daily_rate"
+                  type="number"
+                  step="0.01"
+                  value={formData.daily_rate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, daily_rate: e.target.value })
+                  }
+                  placeholder="120.00"
+                  required
+                />
+              </div>
+            )}
+
+            {formData.pay_type === "monthly" && (
+              <div className="grid gap-2">
+                <Label htmlFor="monthly_rate">Monthly Rate *</Label>
+                <Input
+                  id="monthly_rate"
+                  type="number"
+                  step="0.01"
+                  value={formData.monthly_rate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, monthly_rate: e.target.value })
+                  }
+                  placeholder="3000.00"
+                  required
+                />
+              </div>
+            )}
+
+            {formData.pay_type === "salary" && (
+              <div className="grid gap-2">
+                <Label htmlFor="annual_salary">Annual Salary *</Label>
+                <Input
+                  id="annual_salary"
+                  type="number"
+                  step="0.01"
+                  value={formData.annual_salary}
+                  onChange={(e) =>
+                    setFormData({ ...formData, annual_salary: e.target.value })
+                  }
+                  placeholder="45000.00"
+                  required
+                />
+              </div>
+            )}
 
             {/* Currency */}
             <div className="grid gap-2">

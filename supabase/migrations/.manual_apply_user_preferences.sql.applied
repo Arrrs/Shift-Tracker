@@ -1,0 +1,78 @@
+-- ============================================================================
+-- USER PREFERENCES TABLE
+-- Stores user settings that persist across devices
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS user_preferences (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users ON DELETE CASCADE UNIQUE,
+
+  -- View filters (what to show in calendar/lists)
+  show_shifts BOOLEAN DEFAULT true,
+  show_time_off BOOLEAN DEFAULT true,
+  show_financial_records BOOLEAN DEFAULT true,
+  show_income_records BOOLEAN DEFAULT true,
+  show_expense_records BOOLEAN DEFAULT true,
+
+  -- Card display preferences
+  show_shift_income_card BOOLEAN DEFAULT true,
+  show_fixed_income_card BOOLEAN DEFAULT true,
+  show_other_income_card BOOLEAN DEFAULT true,
+  show_expense_card BOOLEAN DEFAULT true,
+
+  -- Default view preferences
+  default_calendar_view TEXT DEFAULT 'month' CHECK (default_calendar_view IN ('month', 'list')),
+
+  -- UI preferences
+  theme TEXT DEFAULT 'system' CHECK (theme IN ('light', 'dark', 'system')),
+
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Create index for faster lookups
+CREATE INDEX IF NOT EXISTS idx_user_preferences_user_id ON user_preferences(user_id);
+
+-- Enable Row Level Security
+ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies
+DROP POLICY IF EXISTS "Users can view their own preferences" ON user_preferences;
+CREATE POLICY "Users can view their own preferences"
+  ON user_preferences FOR SELECT
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own preferences" ON user_preferences;
+CREATE POLICY "Users can insert their own preferences"
+  ON user_preferences FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own preferences" ON user_preferences;
+CREATE POLICY "Users can update their own preferences"
+  ON user_preferences FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Trigger to update updated_at
+CREATE OR REPLACE FUNCTION update_user_preferences_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_user_preferences_updated_at ON user_preferences;
+CREATE TRIGGER trigger_update_user_preferences_updated_at
+  BEFORE UPDATE ON user_preferences
+  FOR EACH ROW
+  EXECUTE FUNCTION update_user_preferences_updated_at();
+
+-- Insert default preferences for all existing users
+INSERT INTO user_preferences (user_id)
+SELECT id FROM auth.users
+ON CONFLICT (user_id) DO NOTHING;
+
+-- ============================================================================
+-- DONE! Regenerate types: npx supabase gen types typescript --linked > lib/database.types.ts
+-- ============================================================================
