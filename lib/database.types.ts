@@ -63,6 +63,80 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_categories: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      expense_records: {
+        Row: {
+          amount: number
+          category_id: string
+          created_at: string | null
+          currency: string
+          date: string
+          description: string | null
+          id: string
+          notes: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category_id: string
+          created_at?: string | null
+          currency?: string
+          date: string
+          description?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string
+          created_at?: string | null
+          currency?: string
+          date?: string
+          description?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_records_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_categories: {
         Row: {
           color: string | null
@@ -144,99 +218,128 @@ export type Database = {
             referencedRelation: "financial_categories"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      income_records: {
+        Row: {
+          amount: number
+          calculation_basis: Json | null
+          created_at: string | null
+          currency: string
+          date: string
+          id: string
+          is_manual: boolean | null
+          job_id: string | null
+          notes: string | null
+          source_type: string
+          time_entry_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          calculation_basis?: Json | null
+          created_at?: string | null
+          currency?: string
+          date: string
+          id?: string
+          is_manual?: boolean | null
+          job_id?: string | null
+          notes?: string | null
+          source_type: string
+          time_entry_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          calculation_basis?: Json | null
+          created_at?: string | null
+          currency?: string
+          date?: string
+          id?: string
+          is_manual?: boolean | null
+          job_id?: string | null
+          notes?: string | null
+          source_type?: string
+          time_entry_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
           {
-            foreignKeyName: "financial_records_job_id_fkey"
+            foreignKeyName: "income_records_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "income_records_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "time_entries"
             referencedColumns: ["id"]
           },
         ]
       }
       jobs: {
         Row: {
-          annual_salary: number | null
           color: string | null
           created_at: string | null
           currency: string | null
           currency_symbol: string | null
           daily_rate: number | null
           description: string | null
-          fiscal_year_start_month: number | null
           hourly_rate: number | null
           id: string
           is_active: boolean | null
-          monthly_rate: number | null
+          monthly_salary: number | null
           name: string
-          overtime_config: Json | null
-          pay_type: string | null
-          personal_carryover_enabled: boolean | null
-          personal_carryover_max_days: number | null
+          pay_type: string
           personal_days_per_year: number | null
-          pto_carryover_enabled: boolean | null
-          pto_carryover_max_days: number | null
           pto_days_per_year: number | null
-          show_in_fixed_income: boolean | null
-          sick_carryover_enabled: boolean | null
-          sick_carryover_max_days: number | null
+          salary_history: Json | null
           sick_days_per_year: number | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
-          annual_salary?: number | null
           color?: string | null
           created_at?: string | null
           currency?: string | null
           currency_symbol?: string | null
           daily_rate?: number | null
           description?: string | null
-          fiscal_year_start_month?: number | null
           hourly_rate?: number | null
           id?: string
           is_active?: boolean | null
-          monthly_rate?: number | null
+          monthly_salary?: number | null
           name: string
-          overtime_config?: Json | null
-          pay_type?: string | null
-          personal_carryover_enabled?: boolean | null
-          personal_carryover_max_days?: number | null
+          pay_type: string
           personal_days_per_year?: number | null
-          pto_carryover_enabled?: boolean | null
-          pto_carryover_max_days?: number | null
           pto_days_per_year?: number | null
-          show_in_fixed_income?: boolean | null
-          sick_carryover_enabled?: boolean | null
-          sick_carryover_max_days?: number | null
+          salary_history?: Json | null
           sick_days_per_year?: number | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
-          annual_salary?: number | null
           color?: string | null
           created_at?: string | null
           currency?: string | null
           currency_symbol?: string | null
           daily_rate?: number | null
           description?: string | null
-          fiscal_year_start_month?: number | null
           hourly_rate?: number | null
           id?: string
           is_active?: boolean | null
-          monthly_rate?: number | null
+          monthly_salary?: number | null
           name?: string
-          overtime_config?: Json | null
-          pay_type?: string | null
-          personal_carryover_enabled?: boolean | null
-          personal_carryover_max_days?: number | null
+          pay_type?: string
           personal_days_per_year?: number | null
-          pto_carryover_enabled?: boolean | null
-          pto_carryover_max_days?: number | null
           pto_days_per_year?: number | null
-          show_in_fixed_income?: boolean | null
-          sick_carryover_enabled?: boolean | null
-          sick_carryover_max_days?: number | null
+          salary_history?: Json | null
           sick_days_per_year?: number | null
           updated_at?: string | null
           user_id?: string
@@ -304,20 +407,14 @@ export type Database = {
           shift_id?: string
           type?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "shift_adjustments_shift_id_fkey"
-            columns: ["shift_id"]
-            isOneToOne: false
-            referencedRelation: "shifts"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       shift_templates: {
         Row: {
           color: string | null
           created_at: string | null
+          default_custom_rate: number | null
+          default_holiday_multiplier: number | null
           end_time: string
           expected_hours: number
           id: string
@@ -331,6 +428,8 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string | null
+          default_custom_rate?: number | null
+          default_holiday_multiplier?: number | null
           end_time: string
           expected_hours: number
           id?: string
@@ -344,6 +443,8 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string | null
+          default_custom_rate?: number | null
+          default_holiday_multiplier?: number | null
           end_time?: string
           expected_hours?: number
           id?: string
@@ -364,104 +465,77 @@ export type Database = {
           },
         ]
       }
-      shifts: {
+      time_entries: {
         Row: {
-          actual_earnings: number | null
-          actual_hours: number | null
+          actual_hours: number
           created_at: string | null
           custom_hourly_rate: number | null
           date: string
-          earnings_currency: string | null
-          earnings_manual_override: boolean | null
+          day_off_type: string | null
           end_time: string | null
-          holiday_fixed_rate: number | null
-          holiday_multiplier: number | null
+          entry_type: string
           id: string
-          is_full_day_off: boolean | null
-          is_holiday: boolean | null
+          is_full_day: boolean | null
           is_overnight: boolean | null
           job_id: string | null
           notes: string | null
-          overtime_hours: number | null
-          regular_hours: number | null
           scheduled_hours: number | null
-          shift_type: string | null
-          start_time: string
+          start_time: string | null
           status: string | null
           template_id: string | null
-          undertime_hours: number | null
           updated_at: string | null
           user_id: string
-          variance_hours: number | null
         }
         Insert: {
-          actual_earnings?: number | null
-          actual_hours?: number | null
+          actual_hours: number
           created_at?: string | null
           custom_hourly_rate?: number | null
           date: string
-          earnings_currency?: string | null
-          earnings_manual_override?: boolean | null
+          day_off_type?: string | null
           end_time?: string | null
-          holiday_fixed_rate?: number | null
-          holiday_multiplier?: number | null
+          entry_type: string
           id?: string
-          is_full_day_off?: boolean | null
-          is_holiday?: boolean | null
+          is_full_day?: boolean | null
           is_overnight?: boolean | null
           job_id?: string | null
           notes?: string | null
-          overtime_hours?: number | null
-          regular_hours?: number | null
           scheduled_hours?: number | null
-          shift_type?: string | null
-          start_time: string
+          start_time?: string | null
           status?: string | null
           template_id?: string | null
-          undertime_hours?: number | null
           updated_at?: string | null
           user_id: string
-          variance_hours?: number | null
         }
         Update: {
-          actual_earnings?: number | null
-          actual_hours?: number | null
+          actual_hours?: number
           created_at?: string | null
           custom_hourly_rate?: number | null
           date?: string
-          earnings_currency?: string | null
-          earnings_manual_override?: boolean | null
+          day_off_type?: string | null
           end_time?: string | null
-          holiday_fixed_rate?: number | null
-          holiday_multiplier?: number | null
+          entry_type?: string
           id?: string
-          is_full_day_off?: boolean | null
-          is_holiday?: boolean | null
+          is_full_day?: boolean | null
           is_overnight?: boolean | null
           job_id?: string | null
           notes?: string | null
-          overtime_hours?: number | null
-          regular_hours?: number | null
           scheduled_hours?: number | null
-          shift_type?: string | null
-          start_time?: string
+          start_time?: string | null
           status?: string | null
           template_id?: string | null
-          undertime_hours?: number | null
           updated_at?: string | null
           user_id?: string
-          variance_hours?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "shifts_job_id_fkey"
+            foreignKeyName: "time_entries_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "shifts_template_id_fkey"
+            foreignKeyName: "time_entries_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "shift_templates"
@@ -506,15 +580,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "time_off_records_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       user_preferences: {
         Row: {

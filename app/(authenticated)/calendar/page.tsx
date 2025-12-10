@@ -6,24 +6,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, List, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { MonthCalendar } from "./month-calendar";
 import { ListView } from "./list-view";
-import { AddShiftDialog } from "./add-shift-dialog";
+import { AddTimeEntryDialog } from "./add-time-entry-dialog";
 import { GoToDateDialog } from "./go-to-date-dialog";
 import { DayShiftsDrawer } from "./day-shifts-drawer";
 import { IncomeStatsCards } from "./income-stats-cards";
 import { StatCardMobile } from "./stat-card";
-import { getShifts, getShiftStats } from "./actions";
+import { getTimeEntries } from "../time-entries/actions";
 import { Database } from "@/lib/database.types";
 import { getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time-format";
 
 type ViewMode = "calendar" | "list";
-type Shift = Database["public"]["Tables"]["shifts"]["Row"] & {
+type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
+  shift_templates: Database["public"]["Tables"]["shift_templates"]["Row"] | null;
 };
 
 export default function CalendarPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
-  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [entries, setEntries] = useState<TimeEntry[]>([]);
   const [stats, setStats] = useState({
     totalEarnings: 0,
     totalHours: 0,
@@ -43,6 +44,7 @@ export default function CalendarPage() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayDrawerOpen, setDayDrawerOpen] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
   // Initialize current date on client side only
   useEffect(() => {
@@ -89,20 +91,20 @@ export default function CalendarPage() {
       const startDate = firstDay.toISOString().split("T")[0];
       const endDate = lastDay.toISOString().split("T")[0];
 
-      // Load shifts
-      const shiftsResult = await getShifts(startDate, endDate);
-      if (shiftsResult.shifts) {
-        setShifts(shiftsResult.shifts as Shift[]);
+      // Load time entries
+      const entriesResult = await getTimeEntries(startDate, endDate);
+      if (entriesResult.entries) {
+        setEntries(entriesResult.entries as TimeEntry[]);
       }
 
-      // Load stats
-      const statsResult = await getShiftStats(startDate, endDate);
-      if (statsResult.stats) {
-        setStats({
-          ...statsResult.stats,
-          earningsByCurrency: statsResult.stats.shiftIncomeByCurrency, // Keep for backward compatibility
-        });
-      }
+      // TODO: Load stats from new schema
+      // const statsResult = await getTimeEntryStats(startDate, endDate);
+      // if (statsResult.stats) {
+      //   setStats({
+      //     ...statsResult.stats,
+      //     earningsByCurrency: statsResult.stats.shiftIncomeByCurrency,
+      //   });
+      // }
 
       setLoading(false);
     };
@@ -110,7 +112,7 @@ export default function CalendarPage() {
     loadData();
   }, [currentDate, refreshTrigger]);
 
-  const handleShiftChange = () => {
+  const handleEntryChange = () => {
     setRefreshTrigger((prev) => prev + 1);
   };
 
@@ -143,9 +145,18 @@ export default function CalendarPage() {
             <List className="h-4 w-4 md:mr-2" />
             <span className="hidden md:inline">List</span>
           </Button>
-          <AddShiftDialog onSuccess={handleShiftChange} />
+          <Button size="sm" onClick={() => setAddDialogOpen(true)}>
+            + Add
+          </Button>
         </div>
       </div>
+
+      {/* Add Time Entry Dialog */}
+      <AddTimeEntryDialog
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onSuccess={handleEntryChange}
+      />
 
       {/* Stats Cards - Mobile Only */}
       <div className="lg:hidden mb-3 flex-shrink-0">
@@ -244,15 +255,15 @@ export default function CalendarPage() {
               currentDate ? (
                 <MonthCalendar
                   currentDate={currentDate}
-                  shifts={shifts}
+                  entries={entries}
                   onDayClick={handleDayClick}
                 />
               ) : null
             ) : (
               <ListView
-                shifts={shifts}
+                entries={entries}
                 loading={loading}
-                onShiftChange={handleShiftChange}
+                onEntryChange={handleEntryChange}
               />
             )}
           </div>
@@ -276,10 +287,10 @@ export default function CalendarPage() {
       {/* Day Shifts Drawer */}
       <DayShiftsDrawer
         date={selectedDate}
-        shifts={shifts}
+        entries={entries}
         open={dayDrawerOpen}
         onOpenChange={setDayDrawerOpen}
-        onShiftChange={handleShiftChange}
+        onEntryChange={handleEntryChange}
       />
     </div>
   );

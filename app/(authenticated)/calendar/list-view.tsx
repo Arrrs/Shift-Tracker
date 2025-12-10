@@ -2,30 +2,31 @@
 
 import { useState } from "react";
 import { Database } from "@/lib/database.types";
-import { EditShiftDialog } from "./edit-shift-dialog";
+import { EditTimeEntryDialog } from "./edit-time-entry-dialog";
 import { formatTimeFromTimestamp, getStatusInfo, formatHours, getCurrencySymbol, formatCurrency } from "@/lib/utils/time-format";
 
-type Shift = Database["public"]["Tables"]["shifts"]["Row"] & {
+type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
+  shift_templates: Database["public"]["Tables"]["shift_templates"]["Row"] | null;
 };
 
 interface ListViewProps {
-  shifts: Shift[];
+  entries: TimeEntry[];
   loading: boolean;
-  onShiftChange?: () => void;
+  onEntryChange?: () => void;
 }
 
-export function ListView({ shifts, loading, onShiftChange }: ListViewProps) {
-  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
+export function ListView({ entries, loading, onEntryChange }: ListViewProps) {
+  const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
-  const handleShiftClick = (shift: Shift) => {
-    setSelectedShift(shift);
+  const handleEntryClick = (entry: TimeEntry) => {
+    setSelectedEntry(entry);
     setEditDialogOpen(true);
   };
 
   const handleEditSuccess = () => {
-    onShiftChange?.();
+    onEntryChange?.();
   };
 
   if (loading) {
@@ -41,42 +42,44 @@ export function ListView({ shifts, loading, onShiftChange }: ListViewProps) {
     );
   }
 
-  if (shifts.length === 0) {
+  if (entries.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground">No shifts found for this month</p>
+        <p className="text-muted-foreground">No entries found for this month</p>
       </div>
     );
   }
 
-  // Sort shifts by date and start time
-  const sortedShifts = [...shifts].sort((a, b) => {
+  // Sort entries by date and start time
+  const sortedEntries = [...entries].sort((a, b) => {
     const dateCompare = new Date(a.date).getTime() - new Date(b.date).getTime();
     if (dateCompare !== 0) return dateCompare;
-    return a.start_time.localeCompare(b.start_time);
+    // Handle day_off entries that might not have start_time
+    const aTime = a.start_time || "00:00";
+    const bTime = b.start_time || "00:00";
+    return aTime.localeCompare(bTime);
   });
 
   return (
     <>
       <div className="space-y-2">
-        {sortedShifts.map((shift) => {
-          // SNAPSHOT ARCHITECTURE: Use stored earnings
-          const earnings = shift.actual_earnings || 0;
-          const status = getStatusInfo(shift.status);
-          const startTime = formatTimeFromTimestamp(shift.start_time);
-          const endTime = formatTimeFromTimestamp(shift.end_time);
-          const shiftDate = new Date(shift.date);
-          const formattedDate = shiftDate.toLocaleDateString("en-US", {
+        {sortedEntries.map((entry) => {
+          const status = getStatusInfo(entry.status || "planned");
+          const entryDate = new Date(entry.date);
+          const formattedDate = entryDate.toLocaleDateString("en-US", {
             weekday: "short",
             month: "short",
             day: "numeric",
             year: "numeric",
           });
 
+          const isWorkShift = entry.entry_type === "work_shift";
+          const isDayOff = entry.entry_type === "day_off";
+
           return (
             <div
-              key={shift.id}
-              onClick={() => handleShiftClick(shift)}
+              key={entry.id}
+              onClick={() => handleEntryClick(entry)}
               className={`border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer ${status.borderColor}`}
             >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -86,35 +89,49 @@ export function ListView({ shifts, loading, onShiftChange }: ListViewProps) {
                   <h3 className="font-semibold text-base">
                     {formattedDate}
                   </h3>
-                  <span className="text-sm text-muted-foreground">
-                    {startTime} - {endTime}
-                  </span>
+                  {isWorkShift && entry.start_time && entry.end_time && (
+                    <span className="text-sm text-muted-foreground">
+                      {entry.start_time} - {entry.end_time}
+                    </span>
+                  )}
+                  {isDayOff && (
+                    <span className="text-sm text-muted-foreground">
+                      {entry.day_off_type?.toUpperCase()} - {entry.is_full_day ? "Full Day" : `${entry.actual_hours}h`}
+                    </span>
+                  )}
                   <span className="text-sm">{status.emoji}</span>
-                  {shift.is_overnight && (
+                  {entry.is_overnight && (
                     <span className="text-[10px] text-orange-500">overnight</span>
+                  )}
+                  {entry.shift_templates && (
+                    <span className="text-blue-500 text-[10px]">
+                      📋 {entry.shift_templates.short_code || entry.shift_templates.name}
+                    </span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {shift.jobs ? (
+                  {entry.jobs ? (
                     <>
                       <div
                         className="w-2 h-2 rounded"
-                        style={{ backgroundColor: shift.jobs.color || "#3B82F6" }}
+                        style={{ backgroundColor: entry.jobs.color || "#3B82F6" }}
                       />
                       <p className="text-sm text-muted-foreground">
-                        {shift.jobs.name}
+                        {entry.jobs.name}
                       </p>
                     </>
                   ) : (
                     <>
                       <div className="w-2 h-2 rounded bg-gray-400" />
-                      <p className="text-sm text-muted-foreground">Personal Time</p>
+                      <p className="text-sm text-muted-foreground">
+                        {isDayOff ? "Day Off" : "Personal Time"}
+                      </p>
                     </>
                   )}
                 </div>
-                {shift.notes && (
+                {entry.notes && (
                   <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                    {shift.notes}
+                    {entry.notes}
                   </p>
                 )}
               </div>
@@ -124,23 +141,17 @@ export function ListView({ shifts, loading, onShiftChange }: ListViewProps) {
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">Hours</p>
                   <p className="font-semibold">
-                    {formatHours(shift.actual_hours || 0)}
+                    {formatHours(entry.actual_hours || 0)}
                   </p>
                 </div>
-                {shift.jobs && (
+                {isWorkShift && entry.jobs && (
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">Rate</p>
                     <p className="font-semibold">
-                      {getCurrencySymbol(shift.jobs.currency)} {formatCurrency(shift.jobs.hourly_rate || 0)}
+                      {getCurrencySymbol(entry.jobs.currency)} {formatCurrency(entry.jobs.hourly_rate || entry.jobs.daily_rate || 0)}
                     </p>
                   </div>
                 )}
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Earnings</p>
-                  <p className="font-semibold text-green-600 dark:text-green-400">
-                    {getCurrencySymbol(shift.earnings_currency || shift.jobs?.currency || 'USD')} {formatCurrency(earnings)}
-                  </p>
-                </div>
               </div>
             </div>
           </div>
@@ -148,8 +159,8 @@ export function ListView({ shifts, loading, onShiftChange }: ListViewProps) {
       })}
     </div>
 
-    <EditShiftDialog
-      shift={selectedShift}
+    <EditTimeEntryDialog
+      entry={selectedEntry}
       open={editDialogOpen}
       onOpenChange={setEditDialogOpen}
       onSuccess={handleEditSuccess}

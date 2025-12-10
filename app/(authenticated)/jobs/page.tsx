@@ -25,9 +25,9 @@ function formatJobRate(job: any): string {
     case 'daily':
       return `${symbol} ${job.daily_rate?.toFixed(2) || '0.00'}/day`;
     case 'monthly':
-      return `${symbol} ${job.monthly_rate?.toFixed(2) || '0.00'}/mo`;
+      return `${symbol} ${job.monthly_salary?.toFixed(2) || '0.00'}/mo`;
     case 'salary':
-      return `${symbol} ${job.annual_salary?.toFixed(0) || '0'}/yr`;
+      return `${symbol} ${job.monthly_salary?.toFixed(0) || '0'}/yr`;
     case 'hourly':
     default:
       return `${symbol} ${job.hourly_rate?.toFixed(2) || '0.00'}/hr`;

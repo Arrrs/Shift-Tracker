@@ -57,7 +57,7 @@ export function ShiftTemplatesList({ jobId, onTemplateChange }: ShiftTemplatesLi
 
       {loading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
+          {[1].map((i) => (
             <div key={i} className="flex items-center justify-between p-3 border rounded-lg">
               <div className="flex items-center gap-3">
                 <Skeleton className="w-4 h-4 rounded" />

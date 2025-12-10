@@ -16,32 +16,34 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Database } from "@/lib/database.types";
-import { EditShiftDialog } from "./edit-shift-dialog";
-import { AddShiftDialog } from "./add-shift-dialog";
+import { EditTimeEntryDialog } from "./edit-time-entry-dialog";
+import { AddTimeEntryDialog } from "./add-time-entry-dialog";
 import { Clock, DollarSign } from "lucide-react";
 import { formatTimeFromTimestamp, getStatusInfo, getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time-format";
 
-type Shift = Database["public"]["Tables"]["shifts"]["Row"] & {
+type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
+  shift_templates: Database["public"]["Tables"]["shift_templates"]["Row"] | null;
 };
 
 interface DayShiftsDrawerProps {
   date: Date | null;
-  shifts: Shift[];
+  entries: TimeEntry[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onShiftChange?: () => void;
+  onEntryChange?: () => void;
 }
 
 export function DayShiftsDrawer({
   date,
-  shifts,
+  entries,
   open,
   onOpenChange,
-  onShiftChange,
+  onEntryChange,
 }: DayShiftsDrawerProps) {
-  const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
+  const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // Detect mobile on mount (client-side only to avoid hydration mismatch)
@@ -55,7 +57,7 @@ export function DayShiftsDrawer({
   if (!date) return null;
 
   const dateStr = date.toISOString().split("T")[0];
-  const dayShifts = shifts.filter((shift) => shift.date === dateStr);
+  const dayEntries = entries.filter((entry) => entry.date === dateStr);
 
   const formattedDate = date.toLocaleDateString("en-US", {
     weekday: "long",
@@ -64,127 +66,83 @@ export function DayShiftsDrawer({
     year: "numeric",
   });
 
-  // Calculate total hours - only count completed shifts
-  const completedShifts = dayShifts.filter(s => s.status === 'completed');
-  const totalHours = completedShifts.reduce((sum, shift) => sum + (shift.actual_hours || 0), 0);
+  // Calculate total hours - only count completed entries
+  const completedEntries = dayEntries.filter(e => e.status === 'completed');
+  const totalHours = completedEntries.reduce((sum, entry) => sum + (entry.actual_hours || 0), 0);
 
-  // Calculate total worked hours vs time-off hours - only count completed shifts
-  const totalWorkedHours = completedShifts
-    .filter(s => !s.shift_type || s.shift_type === 'work')
-    .reduce((sum, shift) => sum + (shift.actual_hours || 0), 0);
-  const totalTimeOffHours = completedShifts
-    .filter(s => s.shift_type && s.shift_type !== 'work')
-    .reduce((sum, shift) => sum + (shift.actual_hours || 0), 0);
+  // Calculate total worked hours vs day-off hours - only count completed entries
+  const totalWorkedHours = completedEntries
+    .filter(e => e.entry_type === 'work_shift')
+    .reduce((sum, entry) => sum + (entry.actual_hours || 0), 0);
+  const totalDayOffHours = completedEntries
+    .filter(e => e.entry_type === 'day_off')
+    .reduce((sum, entry) => sum + (entry.actual_hours || 0), 0);
 
-  // SNAPSHOT ARCHITECTURE: Use actual_earnings instead of calculating
-  // Calculate earnings by currency - only count completed shifts (NEVER mix currencies!)
-  // Exclude fixed income jobs (monthly/salary with show_in_fixed_income = true)
-  const earningsByCurrency: Record<string, number> = {};
-  completedShifts.forEach((shift) => {
-    const payType = shift.jobs?.pay_type || 'hourly';
-    const isFixedIncome = shift.jobs?.show_in_fixed_income && (payType === 'monthly' || payType === 'salary');
+  // Note: Earnings are now tracked separately in income_records table
+  // This component only shows time entries
 
-    // Skip fixed income jobs - they're shown separately
-    if (isFixedIncome) return;
-
-    // Use snapshot earnings
-    const earnings = shift.actual_earnings || 0;
-    const currency = shift.earnings_currency || shift.jobs?.currency || 'USD';
-
-    // Skip if no earnings (time tracking only)
-    if (earnings === 0 || shift.actual_earnings === null) return;
-
-    if (!earningsByCurrency[currency]) {
-      earningsByCurrency[currency] = 0;
-    }
-    earningsByCurrency[currency] += earnings;
-  });
-
-  const handleShiftClick = (shift: Shift) => {
-    setSelectedShift(shift);
+  const handleEntryClick = (entry: TimeEntry) => {
+    setSelectedEntry(entry);
     setEditDialogOpen(true);
   };
 
   const handleEditSuccess = () => {
-    onShiftChange?.();
+    onEntryChange?.();
   };
 
   const content = (
     <>
       <div className="space-y-4">
         {/* Summary */}
-        {dayShifts.length > 0 && (
+        {dayEntries.length > 0 && (
           <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
             {/* Hours Breakdown */}
             <div>
               <p className="text-xs text-muted-foreground mb-1">Total Hours</p>
               <p className="text-lg font-semibold">{formatHours(totalHours)}</p>
-              {totalTimeOffHours > 0 && (
+              {totalDayOffHours > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Worked: {formatHours(totalWorkedHours)} | Time-off: {formatHours(totalTimeOffHours)}
+                  Worked: {formatHours(totalWorkedHours)} | Day-off: {formatHours(totalDayOffHours)}
                 </p>
-              )}
-            </div>
-
-            {/* Earnings by Currency */}
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Total Earnings</p>
-              {Object.keys(earningsByCurrency).length === 1 ? (
-                // Single currency - simple display
-                <p className="text-lg font-semibold text-green-600 dark:text-green-400">
-                  {getCurrencySymbol(Object.keys(earningsByCurrency)[0])} {formatCurrency(Object.values(earningsByCurrency)[0])}
-                </p>
-              ) : (
-                // Multiple currencies - show breakdown
-                <div className="space-y-1">
-                  {Object.entries(earningsByCurrency).map(([currency, amount]) => (
-                    <p key={currency} className="text-sm font-semibold text-green-600 dark:text-green-400">
-                      {getCurrencySymbol(currency)} {formatCurrency(amount)} <span className="text-xs text-muted-foreground">({currency})</span>
-                    </p>
-                  ))}
-                </div>
               )}
             </div>
           </div>
         )}
 
-        {/* Shifts List */}
-        {dayShifts.length === 0 ? (
+        {/* Entries List */}
+        {dayEntries.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-4">
-              No shifts scheduled for this day
+              No entries for this day
             </p>
-            <AddShiftDialog selectedDate={date} onSuccess={handleEditSuccess} />
+            <button
+              onClick={() => setAddDialogOpen(true)}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            >
+              + Add Entry
+            </button>
           </div>
         ) : (
           <div className="space-y-3">
             <div className="space-y-2">
-              {dayShifts.map((shift) => {
-                const hours = shift.actual_hours || 0;
-                // SNAPSHOT ARCHITECTURE: Use stored earnings
-                const earnings = shift.actual_earnings || 0;
-                const status = getStatusInfo(shift.status);
-                const startTime = formatTimeFromTimestamp(shift.start_time);
-                const endTime = formatTimeFromTimestamp(shift.end_time);
-                const isDayOff = shift.shift_type && shift.shift_type !== 'work';
+              {dayEntries.map((entry) => {
+                const hours = entry.actual_hours || 0;
+                const status = getStatusInfo(entry.status || "planned");
+                const isWorkShift = entry.entry_type === 'work_shift';
+                const isDayOff = entry.entry_type === 'day_off';
 
                 // Calculate display rate based on pay type
-                const payType = shift.jobs?.pay_type || 'hourly';
+                const payType = entry.jobs?.pay_type || 'hourly';
                 let rateDisplay = '';
                 if (payType === 'daily') {
-                  rateDisplay = `${formatCurrency(shift.jobs?.daily_rate || 0)}/day`;
+                  rateDisplay = `${formatCurrency(entry.jobs?.daily_rate || 0)}/day`;
                 } else if (payType === 'monthly') {
-                  rateDisplay = `${formatCurrency(shift.jobs?.monthly_rate || 0)}/mo`;
+                  rateDisplay = `${formatCurrency(entry.jobs?.monthly_salary || 0)}/mo`;
                 } else if (payType === 'salary') {
-                  rateDisplay = `${formatCurrency(shift.jobs?.annual_salary || 0)}/yr`;
+                  rateDisplay = `${formatCurrency(entry.jobs?.monthly_salary || 0)}/mo`;
                 } else {
-                  const hourlyRate = shift.custom_hourly_rate || shift.jobs?.hourly_rate || 0;
-                  const rate = shift.is_holiday && shift.holiday_fixed_rate
-                    ? shift.holiday_fixed_rate
-                    : shift.is_holiday && shift.holiday_multiplier
-                      ? hourlyRate * shift.holiday_multiplier
-                      : hourlyRate;
-                  rateDisplay = `${formatCurrency(rate)}/hr`;
+                  const hourlyRate = entry.jobs?.hourly_rate || 0;
+                  rateDisplay = `${formatCurrency(hourlyRate)}/hr`;
                 }
 
                 // Day-off type labels
@@ -201,24 +159,24 @@ export function DayShiftsDrawer({
 
                 return (
                   <button
-                    key={shift.id}
-                    onClick={() => handleShiftClick(shift)}
+                    key={entry.id}
+                    onClick={() => handleEntryClick(entry)}
                     className={`w-full border rounded-lg p-3 hover:bg-muted/50 transition-colors text-left ${status.borderColor} ${isDayOff ? 'bg-blue-50/50 dark:bg-blue-950/20' : ''}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       {/* Left side */}
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          {shift.jobs ? (
+                          {entry.jobs ? (
                             <div
                               className="w-3 h-3 rounded"
-                              style={{ backgroundColor: shift.jobs.color || "#3B82F6" }}
+                              style={{ backgroundColor: entry.jobs.color || "#3B82F6" }}
                             />
                           ) : (
                             <div className="w-3 h-3 rounded bg-gray-400" />
                           )}
                           <h4 className="font-semibold text-sm">
-                            {shift.jobs?.name || "Personal Time"}
+                            {entry.jobs?.name || (isDayOff ? "Day Off" : "Personal Time")}
                           </h4>
                           <span className="text-xs">{status.emoji}</span>
                         </div>
@@ -227,73 +185,62 @@ export function DayShiftsDrawer({
                           /* Day-off specific display */
                           <div className="space-y-1">
                             <div className="flex items-center gap-1.5 text-xs font-medium text-blue-600 dark:text-blue-400">
-                              <span>{dayOffLabels[shift.shift_type || 'pto']}</span>
+                              <span>{dayOffLabels[entry.day_off_type || 'pto']}</span>
                             </div>
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                               <Clock className="h-3 w-3" />
                               <span>
-                                {shift.is_full_day_off ? 'Full day' : 'Partial day'} ({formatHours(hours)})
+                                {entry.is_full_day ? 'Full day' : 'Partial day'} ({formatHours(hours)})
                               </span>
                             </div>
                           </div>
                         ) : (
-                          /* Regular shift display */
+                          /* Work shift display */
                           <div className="space-y-1">
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                               <Clock className="h-3 w-3" />
                               <span>
-                                {startTime} - {endTime}
+                                {entry.start_time} - {entry.end_time}
                               </span>
-                              <span className="ml-1">({formatHours(shift.actual_hours || 0)})</span>
-                              {shift.is_overnight && (
+                              <span className="ml-1">({formatHours(entry.actual_hours || 0)})</span>
+                              {entry.is_overnight && (
                                 <span className="text-orange-500 text-[10px]">overnight</span>
+                              )}
+                              {entry.shift_templates && (
+                                <span className="text-blue-500 text-[10px] ml-1">
+                                  📋 {entry.shift_templates.short_code || entry.shift_templates.name}
+                                </span>
                               )}
                             </div>
 
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                              <DollarSign className="h-3 w-3" />
-                              <span>
-                                {getCurrencySymbol(shift.jobs?.currency || 'USD')} {rateDisplay}
-                                {payType === 'hourly' && shift.custom_hourly_rate && (
-                                  <span className="text-blue-500 text-[10px] ml-1">custom</span>
-                                )}
-                                {payType === 'hourly' && shift.is_holiday && shift.holiday_fixed_rate && (
-                                  <span className="text-purple-500 text-[10px] ml-1">
-                                    holiday fixed
-                                  </span>
-                                )}
-                                {payType === 'hourly' && shift.is_holiday && shift.holiday_multiplier && !shift.holiday_fixed_rate && (
-                                  <span className="text-purple-500 text-[10px] ml-1">
-                                    holiday {shift.holiday_multiplier}x
-                                  </span>
-                                )}
-                              </span>
-                            </div>
+                            {entry.jobs && (
+                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <DollarSign className="h-3 w-3" />
+                                <span>
+                                  {getCurrencySymbol(entry.jobs.currency || 'USD')} {rateDisplay}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
 
-                        {shift.notes && (
+                        {entry.notes && (
                           <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                            {shift.notes}
+                            {entry.notes}
                           </p>
                         )}
                       </div>
 
-                      {/* Right side - Earnings or Day-off badge */}
+                      {/* Right side - Status badge */}
                       <div className="text-right">
                         {isDayOff ? (
                           <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
                             Time Off
                           </div>
-                        ) : shift.jobs?.show_in_fixed_income && (payType === 'monthly' || payType === 'salary') ? (
-                          // Don't show per-shift earnings for fixed income jobs
-                          <div className="text-sm font-semibold text-purple-600 dark:text-purple-400">
-                            Fixed Income
-                          </div>
                         ) : (
-                          <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                            {getCurrencySymbol(shift.earnings_currency || shift.jobs?.currency || 'USD')} {formatCurrency(earnings)}
-                          </p>
+                          <div className="text-sm font-semibold text-green-600 dark:text-green-400">
+                            {formatHours(hours)}
+                          </div>
                         )}
                         <p className={`text-[10px] ${status.color}`}>
                           {status.label}
@@ -305,18 +252,30 @@ export function DayShiftsDrawer({
               })}
             </div>
 
-            {/* Add Shift Button */}
+            {/* Add Entry Button */}
             <div className="pt-2 border-t flex justify-end pt-3">
-              <AddShiftDialog selectedDate={date} onSuccess={handleEditSuccess} />
+              <button
+                onClick={() => setAddDialogOpen(true)}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+              >
+                + Add Entry
+              </button>
             </div>
           </div>
         )}
       </div>
 
-      <EditShiftDialog
-        shift={selectedShift}
+      <EditTimeEntryDialog
+        entry={selectedEntry}
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
+        onSuccess={handleEditSuccess}
+      />
+
+      <AddTimeEntryDialog
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        initialDate={dateStr}
         onSuccess={handleEditSuccess}
       />
     </>
@@ -329,7 +288,7 @@ export function DayShiftsDrawer({
           <DrawerHeader>
             <DrawerTitle>{formattedDate}</DrawerTitle>
             <DrawerDescription>
-              {dayShifts.length} {dayShifts.length === 1 ? "shift" : "shifts"} scheduled
+              {dayEntries.length} {dayEntries.length === 1 ? "entry" : "entries"}
             </DrawerDescription>
           </DrawerHeader>
           <div className="px-4 pb-4">{content}</div>
@@ -344,7 +303,7 @@ export function DayShiftsDrawer({
         <DialogHeader>
           <DialogTitle>{formattedDate}</DialogTitle>
           <DialogDescription>
-            {dayShifts.length} {dayShifts.length === 1 ? "shift" : "shifts"} scheduled
+            {dayEntries.length} {dayEntries.length === 1 ? "entry" : "entries"}
           </DialogDescription>
         </DialogHeader>
         {content}

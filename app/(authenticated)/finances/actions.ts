@@ -333,10 +333,10 @@ export async function getFixedIncomeForMonth(year: number, month: number) {
     let monthlyAmount = 0
 
     if (job.pay_type === 'monthly') {
-      monthlyAmount = job.monthly_rate || 0
+      monthlyAmount = job.monthly_salary || 0
     } else if (job.pay_type === 'salary') {
-      // Convert annual salary to monthly
-      monthlyAmount = (job.annual_salary || 0) / 12
+      // Convert annual salary to monthly (stored value is annual)
+      monthlyAmount = (job.monthly_salary || 0) / 12
     }
 
     if (monthlyAmount > 0) {

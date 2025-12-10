@@ -1,591 +1,318 @@
 # Implementation Plan - Shift Tracker Pro
 
 ## Project Vision
-Transform from personal tool to **sellable product** with professional-grade shift tracking, multi-currency support, comprehensive time-off management, flexible pay structures, and complete income/expense tracking.
+Transform from personal tool to **sellable product** with professional-grade time tracking, multi-currency support, comprehensive day-off management, flexible pay structures, and complete income/expense tracking with clean separation of concerns.
 
 ---
 
 ## Current Status (December 2024)
 
-### ✅ Completed Features (Latest Session)
-1. ✅ TIMESTAMPTZ implementation for proper timezone support
-2. ✅ Overnight shift calculations with is_overnight flag
-3. ✅ Multi-currency support (USD, EUR, UAH, CZK, etc.) with proper symbols
-4. ✅ Custom hourly rate per shift (with checkbox toggle)
-5. ✅ Holiday pay system (3 modes: standard multiplier, fixed rate, custom multiplier)
-6. ✅ Shift templates with job association
-7. ✅ Status workflow (planned, in_progress, completed, cancelled)
-8. ✅ Loading spinners (Loader2 icons)
-9. ✅ Nullable job_id for personal shifts
-10. ✅ Edit shift dialog with full feature parity to add dialog
-11. ✅ Scheduled vs actual hours tracking
-12. ✅ **Day-off system (9 types: PTO, sick, personal, unpaid, bereavement, maternity, paternity, jury_duty)**
-13. ✅ **Paid/unpaid day-off visual indicators**
-14. ✅ **Status field in shift creation with auto-detection**
-15. ✅ **Currency formatting (no .00 for whole numbers, show decimals when needed)**
-16. ✅ **Fixed hydration errors (mobile/desktop detection)**
-17. ✅ **Pay type system (hourly, daily, monthly, salary) - BASIC**
-18. ✅ **Status filtering (only completed shifts count in totals)**
-19. ✅ **Multi-currency earnings per day/month (never mix currencies)**
-20. ✅ **Snapshot-based earnings architecture (calculate once, never recalculate unless hours change)**
-21. ✅ **Three-state earnings system (auto-calculated, manual override, no earnings for fixed income)**
-22. ✅ **Custom earnings override UI in add/edit dialogs**
-23. ✅ **Simplified income cards (3 cards: Total Earnings combines Shift + Fixed Income)**
+### ✅ COMPLETED: Full Architecture Rewrite (Latest Session)
+
+**Major Achievement:** Complete system redesign with clean separation between time tracking and financial tracking.
+
+#### New Database Schema (Clean Start)
+1. ✅ **jobs** table - Simplified with pay_type support (hourly, daily, monthly, salary)
+   - Fields: name, pay_type, hourly_rate, daily_rate, monthly_salary, currency, color, is_active
+   - Removed: description field (not needed)
+   - Benefits tracking: pto_days_per_year, sick_days_per_year, personal_days_per_year
+
+2. ✅ **time_entries** table - Unified time tracking (replaces old shifts table)
+   - Entry types: 'work_shift' | 'day_off'
+   - Work shifts: job_id, template_id, start_time, end_time, scheduled_hours, actual_hours, is_overnight
+   - Day-offs: day_off_type (pto, sick, personal, unpaid, bereavement, maternity, paternity, jury_duty), is_full_day
+   - Status: planned, in_progress, completed, cancelled
+   - Uses PostgreSQL TIME type (no timezone complexity)
+
+3. ✅ **income_records** table - Separate income tracking
+   - Source types: job_shift, job_salary, bonus, freelance, other
+   - Auto-generated for completed hourly/daily shifts (via database trigger)
+   - Manual entry for monthly/salary jobs
+   - calculation_basis JSONB for transparency
+   - Never auto-recalculates (snapshot architecture)
+
+4. ✅ **expense_records** table - Expense tracking
+   - Linked to expense_categories
+   - Date, amount, currency, description, notes
+
+5. ✅ **expense_categories** table - Category management
+   - Default categories created for new users
+   - Icons and colors for UI
+
+6. ✅ **shift_templates** table - Quick-fill templates (simplified)
+   - Optional dropdown helper (not primary workflow)
+   - Pre-fills start_time, end_time, expected_hours
+   - Always shows editable time inputs
+
+#### Auto-Income Generation Trigger
+```sql
+CREATE TRIGGER auto_income_on_shift_complete
+  AFTER INSERT OR UPDATE ON time_entries
+  FOR EACH ROW
+  WHEN (NEW.entry_type = 'work_shift' AND NEW.status = 'completed')
+  EXECUTE FUNCTION auto_generate_income_for_shift();
+```
+- Only for hourly/daily jobs
+- Creates income_record automatically when shift is completed
+- Includes calculation_basis for transparency
+
+#### Completed Frontend Components
+1. ✅ **Time Entry Dialogs**
+   - add-time-entry-dialog.tsx - Simplified single-page form
+   - edit-time-entry-dialog.tsx - Edit with delete functionality
+   - Type selector: work_shift vs day_off
+   - Optional job selection
+   - Optional template dropdown (no tabs/modes)
+   - Always-visible, editable time inputs
+   - Auto-calculating hours from times
+
+2. ✅ **Calendar Page Updates**
+   - Updated to use time_entries instead of shifts
+   - MonthCalendar component - Shows time entries with status indicators
+   - ListView component - Lists work shifts and day-offs
+   - DayShiftsDrawer component - View/edit day entries
+   - Removed earnings display (now in separate income tracking)
+
+3. ✅ **Jobs Page Fixes**
+   - Fixed getJobs() to query time_entries instead of shifts
+   - Updated entry_count display
+   - Fixed deleteJob() to handle time_entries
+
+4. ✅ **Job Dialogs - Field Alignment**
+   - add-job-dialog.tsx - Matches database schema exactly
+   - edit-job-dialog.tsx - Matches add dialog (full parity)
+   - Removed description field (not in schema)
+   - Pay type selector with dynamic fields:
+     - hourly → hourly_rate
+     - daily → daily_rate
+     - monthly/salary → monthly_salary (single field, different labels)
+   - Currency selector
+   - Color picker
+   - Active status toggle
+
+5. ✅ **Actions Layer**
+   - time-entries/actions.ts - Complete CRUD for time entries
+   - jobs/actions.ts - Updated for new schema
+   - Fixed all references to use correct field names
+
+### 🎯 Key Architectural Decisions
+
+#### 1. **Separation of Concerns**
+- **time_entries** = WHEN you worked (time tracking only)
+- **income_records** = MONEY you received (financial tracking)
+- **expense_records** = MONEY you spent (financial tracking)
+
+#### 2. **Payment Type Strategy**
+- **Hourly/Daily**: Auto-generate income when shift completed
+- **Monthly/Salary**: Track time only, manual income entry (don't slice salary into daily amounts)
+
+#### 3. **Timezone Simplification**
+- Use PostgreSQL TIME type (not TIMESTAMPTZ)
+- Store local time without timezone info
+- User's device handles display timezone
+- Works seamlessly across web/mobile
+
+#### 4. **Template Simplification**
+- No template/manual mode tabs
+- Templates as optional dropdown helper
+- Always show editable time inputs
+- User can select template AND modify times
+
+#### 5. **Historical Integrity**
+- Income records never auto-recalculate
+- Transparent calculation_basis stored as JSONB
+- Manual overrides clearly flagged (is_manual: true/false)
 
 ### 🐛 Recently Fixed Issues
-1. ✅ Daily/salary shifts not showing in totals - FIXED (missing fields in query)
-2. ✅ `new Date()` hydration warning - FIXED (moved to useEffect)
-3. ✅ Currency symbols showing wrong - FIXED (using getCurrencySymbol())
-4. ✅ Decimals showing .00 unnecessarily - FIXED (formatCurrency())
-5. ✅ Cancelled/planned shifts counting in totals - FIXED (status filtering)
-6. ✅ Float precision showing 55.1999999...6 - FIXED (Math.round to 2 decimals)
-7. ✅ Template list showing old templates on job change - FIXED (immediate clear on change)
+1. ✅ Jobs page error "Could not find relationship between 'jobs' and 'shifts'" - FIXED (updated to time_entries)
+2. ✅ Job creation error "Could not find 'annual_salary' column" - FIXED (uses monthly_salary for both monthly/salary)
+3. ✅ Job creation error "Could not find 'description' column" - FIXED (removed from forms)
+4. ✅ Job edit dialog missing pay_type and rate fields - FIXED (now matches add dialog)
 
-### 🔨 In Progress - Financial Records System
-**Current Focus:** Implementing comprehensive income/expense tracking
-
-### ✅ Completed Today (Phase 1 Progress)
-1. ✅ Created `financial_categories` table with RLS
-2. ✅ Created `financial_records` table with RLS
-3. ✅ Added `show_in_fixed_income` column to jobs table
-4. ✅ Created default categories for all users
-5. ✅ Implemented `finances/actions.ts` with all backend functions
-6. ✅ Created user preferences system (localStorage + database sync)
-7. ✅ Applied manual migrations to Supabase
-8. ✅ Regenerated TypeScript types
-
----
-
-## Phase 1: Financial Records System (CURRENT PRIORITY)
-
-### Overview
-Separate shift-based income (hourly/daily) from fixed income (monthly/salary) and add support for one-time income/expense records.
-
-### 1.1 Database Schema
-
-#### A. Create `financial_categories` table
-```sql
-CREATE TABLE financial_categories (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
-  icon TEXT, -- Emoji like '💰', '⛽', etc.
-  color TEXT, -- Hex color for UI
-  created_at TIMESTAMPTZ DEFAULT now(),
-
-  UNIQUE(user_id, name, type)
-);
-
--- Seed default categories (insert for each new user)
--- Income categories: Bonus (💰), Freelance (💼), Gift (🎁), Other Income (💵)
--- Expense categories: Gas (⛽), Equipment (🔧), Subscription (📱), Other Expense (💸)
-```
-
-#### B. Create `financial_records` table
-```sql
-CREATE TABLE financial_records (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES auth.users ON DELETE CASCADE,
-  job_id UUID REFERENCES jobs ON DELETE SET NULL, -- Optional link
-  category_id UUID REFERENCES financial_categories ON DELETE SET NULL,
-
-  -- Type
-  type TEXT NOT NULL CHECK (type IN ('income', 'expense')),
-
-  -- Money
-  amount DECIMAL(10, 2) NOT NULL CHECK (amount > 0),
-  currency TEXT NOT NULL DEFAULT 'USD',
-
-  -- Date & Details
-  date DATE NOT NULL,
-  description TEXT NOT NULL,
-  notes TEXT,
-
-  -- Metadata
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-
-  -- Indexes for performance
-  INDEX idx_financial_records_user_date (user_id, date DESC),
-  INDEX idx_financial_records_type (user_id, type)
-);
-```
-
-#### C. Update `jobs` table
-```sql
--- Mark if job contributes to fixed income (monthly/salary jobs)
-ALTER TABLE jobs ADD COLUMN show_in_fixed_income BOOLEAN DEFAULT false;
-
--- This will be TRUE for pay_type = 'monthly' or 'salary'
--- FALSE for 'hourly' or 'daily'
-```
-
-### 1.2 Backend Actions
-
-**New file:** `app/(authenticated)/finances/actions.ts`
-
-```typescript
-// Get all financial records for a date range
-export async function getFinancialRecords(startDate: string, endDate: string)
-
-// Create a financial record
-export async function createFinancialRecord(data: {
-  type: 'income' | 'expense'
-  category_id: string
-  amount: number
-  currency: string
-  date: string
-  description: string
-  notes?: string
-  job_id?: string
-})
-
-// Update a financial record
-export async function updateFinancialRecord(id: string, data: Partial<...>)
-
-// Delete a financial record
-export async function deleteFinancialRecord(id: string)
-
-// Get/Create/Update/Delete categories
-export async function getCategories(type: 'income' | 'expense')
-export async function createCategory(data: { name, type, icon, color })
-export async function updateCategory(id: string, data: Partial<...>)
-export async function deleteCategory(id: string)
-
-// Get monthly summary (shift income + fixed income + other income - expenses)
-export async function getMonthlyFinancialSummary(year: number, month: number) {
-  return {
-    shiftIncome: { USD: 2450, EUR: 0 },     // Hourly/daily jobs only
-    fixedIncome: { USD: 3000 },             // Monthly/salary jobs
-    otherIncome: { USD: 250 },              // Financial records (income)
-    expenses: { USD: 120 },                 // Financial records (expense)
-    netIncome: { USD: 5580 }                // Total - expenses
-  }
-}
-```
-
-### 1.3 UI Components
-
-#### A. Update Calendar Stats Cards - TWO-STATE DESIGN
-
-**Design Philosophy:** Clean minimal view by default, expandable details on demand
-
-**STATE 1: MINIMAL (Default)**
-```
-Desktop view:
-┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────────┐
-│ 💼 Shift Income      │  │ 🔄 Fixed Income      │  │ 💰 Other Income      │
-│ $2,450        [▼]    │  │ $3,000        [▼]    │  │ $250           [▼]   │
-└──────────────────────┘  └──────────────────────┘  └──────────────────────┘
-
-┌──────────────────────┐  ┌────────────────────────────────────────────────┐
-│ 💸 Expenses          │  │ 💵 Net Income: $5,580                         │
-│ $120          [▼]    │  │                                               │
-└──────────────────────┘  └────────────────────────────────────────────────┘
-```
-
-**STATE 2: DETAILED (Expanded)**
-Click [▼] to expand individual card:
-```
-┌──────────────────────┐
-│ 💼 Shift Income [▲]  │
-│ $2,450               │
-│ ─────────────────    │
-│ • Job A:    $1,800   │
-│ • Job C:      $650   │
-│                      │
-│ 12 shifts, 96h       │
-└──────────────────────┘
-
-┌──────────────────────┐
-│ 🔄 Fixed Income [▲]  │
-│ $3,000               │
-│ ─────────────────    │
-│ • Job B (Monthly)    │
-│   $3,000/mo          │
-│                      │
-│ 22 shifts tracked    │
-└──────────────────────┘
-
-┌──────────────────────┐
-│ 💰 Other Income [▲]  │
-│ $250                 │
-│ ─────────────────    │
-│ • Freelance:   $200  │
-│ • Bonus:        $50  │
-│                      │
-│ [View Details →]     │
-└──────────────────────┘
-
-┌──────────────────────┐
-│ 💸 Expenses [▲]      │
-│ $120                 │
-│ ─────────────────    │
-│ • Gas:          $80  │
-│ • Equipment:    $40  │
-│                      │
-│ [View Details →]     │
-└──────────────────────┘
-```
-
-**Mobile view:** Stack cards vertically, same two-state behavior
-
-**Implementation:**
-- Store expanded/collapsed state in localStorage per card
-- Animate expansion with smooth height transition
-- Show minimal by default for clean first impression
-- User can expand only cards they care about
-
-#### B. Add Financial Record Dialog
-
-**New component:** `app/(authenticated)/finances/add-financial-record-dialog.tsx`
+### 📊 Database Schema Summary
 
 ```
-┌─────────────────────────────────────┐
-│ Add Financial Record          [×]   │
-├─────────────────────────────────────┤
-│                                     │
-│ Type:  ⦿ Income  ○ Expense         │
-│                                     │
-│ Amount: [________] [USD ▼]          │
-│                                     │
-│ Date:   [2024-12-15]                │
-│                                     │
-│ Category: [Select ▼]                │
-│   💰 Bonus                          │
-│   💼 Freelance                      │
-│   🎁 Gift                           │
-│   💵 Other Income                   │
-│   ─────────────────                 │
-│   + Manage Categories               │
-│                                     │
-│ Description: [_______________]      │
-│                                     │
-│ Notes (optional):                   │
-│ [____________________________]      │
-│                                     │
-│ Link to job (optional):             │
-│ [Select job ▼]                      │
-│                                     │
-│           [Cancel]  [Save]          │
-└─────────────────────────────────────┘
-```
+jobs
+├── id (UUID)
+├── user_id (UUID)
+├── name (TEXT) *
+├── color (TEXT)
+├── is_active (BOOLEAN)
+├── pay_type (TEXT) * - 'hourly' | 'daily' | 'monthly' | 'salary'
+├── hourly_rate (DECIMAL)
+├── daily_rate (DECIMAL)
+├── monthly_salary (DECIMAL)
+├── currency (TEXT)
+├── currency_symbol (TEXT)
+├── pto_days_per_year (INTEGER)
+├── sick_days_per_year (INTEGER)
+├── personal_days_per_year (INTEGER)
+└── salary_history (JSONB)
 
-#### C. Financial Records List/Detail View
+time_entries
+├── id (UUID)
+├── user_id (UUID)
+├── date (DATE) *
+├── entry_type (TEXT) * - 'work_shift' | 'day_off'
+├── job_id (UUID) → jobs
+├── template_id (UUID) → shift_templates
+├── start_time (TIME)
+├── end_time (TIME)
+├── scheduled_hours (DECIMAL)
+├── actual_hours (DECIMAL) *
+├── is_overnight (BOOLEAN)
+├── day_off_type (TEXT) - 'pto' | 'sick' | 'personal' | 'unpaid' | etc.
+├── is_full_day (BOOLEAN)
+├── status (TEXT) * - 'planned' | 'in_progress' | 'completed' | 'cancelled'
+└── notes (TEXT)
 
-**New component:** `app/(authenticated)/finances/financial-records-drawer.tsx`
+income_records
+├── id (UUID)
+├── user_id (UUID)
+├── date (DATE) *
+├── source_type (TEXT) * - 'job_shift' | 'job_salary' | 'bonus' | 'freelance' | 'other'
+├── job_id (UUID) → jobs
+├── time_entry_id (UUID) → time_entries
+├── amount (DECIMAL) *
+├── currency (TEXT) *
+├── calculation_basis (JSONB) - {hours, rate, formula}
+├── is_manual (BOOLEAN)
+└── notes (TEXT)
 
-```
-┌─────────────────────────────────────┐
-│ Other Income - December 2024   [×]  │
-├─────────────────────────────────────┤
-│                                     │
-│ Dec 15, 2024                        │
-│ 💼 Freelance - Web Design           │
-│ $200                                │
-│ Notes: Logo redesign project        │
-│                       [Edit] [Delete]│
-├─────────────────────────────────────┤
-│ Dec 20, 2024                        │
-│ 💰 Bonus - Q4 Performance           │
-│ $50                                 │
-│                       [Edit] [Delete]│
-├─────────────────────────────────────┤
-│ Total                         $250  │
-│                                     │
-│              [+ Add Record]         │
-└─────────────────────────────────────┘
-```
+expense_records
+├── id (UUID)
+├── user_id (UUID)
+├── date (DATE) *
+├── category_id (UUID) → expense_categories *
+├── amount (DECIMAL) *
+├── currency (TEXT) *
+├── description (TEXT)
+└── notes (TEXT)
 
-#### D. Category Management Dialog
+expense_categories
+├── id (UUID)
+├── user_id (UUID)
+├── name (TEXT) *
+├── icon (TEXT) - emoji
+└── color (TEXT)
 
-**New component:** `app/(authenticated)/finances/manage-categories-dialog.tsx`
-
-```
-┌─────────────────────────────────────┐
-│ Manage Categories             [×]   │
-├─────────────────────────────────────┤
-│ [Income] [Expense]  ← tabs          │
-│                                     │
-│ Income Categories:                  │
-│ ┌─────────────────────────────┐    │
-│ │ 💰 Bonus            [Edit] [×]│   │
-│ │ 💼 Freelance        [Edit] [×]│   │
-│ │ 🎁 Gift             [Edit] [×]│   │
-│ │ 💵 Other Income     [Edit] [×]│   │
-│ └─────────────────────────────┘    │
-│                                     │
-│ [+ Add New Category]                │
-│                                     │
-│           [Close]                   │
-└─────────────────────────────────────┘
-```
-
-#### E. Update Calendar to Show Financial Records
-
-**In `month-calendar.tsx`:**
-- Show icons on calendar days: 💵 (income), 💸 (expense)
-- Click to see details in day drawer
-
-**In `day-shifts-drawer.tsx`:**
-- Add section below shifts:
-```
-┌─────────────────────────────────────┐
-│ Shifts (2)                          │
-│ [shifts displayed here]             │
-├─────────────────────────────────────┤
-│ Financial Records (1)               │
-│ 💵 Freelance Payment        +$200   │
-│                        [Edit] [Delete]│
-└─────────────────────────────────────┘
-```
-
-#### F. View Settings/Filters
-
-**Update calendar header with filter button:**
-```
-┌────────────────────────────────────────┐
-│ December 2024           [⚙️ Filter]   │
-└────────────────────────────────────────┘
-
-Filter Dialog:
-┌────────────────────────────────────┐
-│ Calendar View Settings        [×]  │
-├────────────────────────────────────┤
-│ Show in Calendar:                  │
-│ ☑ Work Shifts (Hourly/Daily)      │
-│ ☑ Time Off (PTO/Sick/etc)         │
-│ ☑ Fixed Income Jobs (time track)  │
-│ ☑ Other Income Records             │
-│ ☑ Expense Records                  │
-│                                    │
-│ Show in Totals:                    │
-│ ☑ Shift Income                     │
-│ ☑ Fixed Income                     │
-│ ☑ Other Income                     │
-│ ☑ Expenses (subtract)              │
-│ ☑ Calculate Net Income             │
-│                                    │
-│        [Reset]  [Save]             │
-└────────────────────────────────────┘
-```
-
-**Save preferences to BOTH:**
-- `localStorage` - instant UI response (no network delay)
-- `user_preferences` database table - persistent across devices
-- Sync strategy: Update localStorage immediately, sync to database in background
-- On login: Load from database, cache to localStorage
-
-### 1.4 Calculation Logic Updates
-
-**Update `getShiftStats` to separate income types:**
-
-```typescript
-export async function getShiftStats(startDate: string, endDate: string) {
-  // Get shifts
-  const shifts = await getShifts(startDate, endDate)
-
-  // Separate by pay type
-  const shiftIncome = {} // hourly + daily only
-  const fixedIncome = {} // monthly + salary
-
-  shifts.forEach(shift => {
-    if (shift.status !== 'completed') return
-
-    const payType = shift.jobs?.pay_type || 'hourly'
-    const earnings = calculateShiftEarnings(shift, shift.jobs)
-    const currency = shift.jobs?.currency || 'USD'
-
-    if (payType === 'hourly' || payType === 'daily') {
-      shiftIncome[currency] = (shiftIncome[currency] || 0) + earnings
-    } else if (payType === 'monthly') {
-      // Don't count per-shift, show monthly_rate
-      fixedIncome[currency] = shift.jobs.monthly_rate
-    } else if (payType === 'salary') {
-      // Don't count per-shift, show annual_salary / 12
-      fixedIncome[currency] = (shift.jobs.annual_salary || 0) / 12
-    }
-  })
-
-  // Get financial records
-  const records = await getFinancialRecords(startDate, endDate)
-  const otherIncome = {}
-  const expenses = {}
-
-  records.forEach(record => {
-    if (record.type === 'income') {
-      otherIncome[record.currency] = (otherIncome[record.currency] || 0) + record.amount
-    } else {
-      expenses[record.currency] = (expenses[record.currency] || 0) + record.amount
-    }
-  })
-
-  return {
-    shiftIncome,
-    fixedIncome,
-    otherIncome,
-    expenses,
-    // ... other stats
-  }
-}
+shift_templates
+├── id (UUID)
+├── user_id (UUID)
+├── job_id (UUID) → jobs *
+├── name (TEXT) *
+├── short_code (TEXT) - e.g. "M", "E", "N"
+├── color (TEXT)
+├── start_time (TIME) *
+├── end_time (TIME) *
+├── expected_hours (DECIMAL) *
+├── default_custom_rate (DECIMAL)
+└── default_holiday_multiplier (DECIMAL)
 ```
 
 ---
 
-## Phase 2: Polish & Optimization (AFTER Phase 1)
+## Phase 2: Income & Expense UI (NEXT PRIORITY)
 
-### 2.1 Error Handling & User Experience
-- [ ] **User-friendly error messages for database constraints**
-  - [ ] Duplicate shift constraint error → "A shift already exists at this time for this job"
-  - [ ] Missing required fields → Clear field-specific messages
-  - [ ] Network errors → Retry mechanism with friendly message
-  - [ ] Invalid data → Highlight problematic fields with explanations
-- [ ] Visual indicator (✏️ icon) for shifts with manual earnings override
-- [ ] Toast notifications with action buttons (undo, view details)
-- [ ] Loading states for all async operations
-- [ ] Optimistic UI updates where possible
+### 2.1 Income Management Page
+- [ ] Create `/income` page
+- [ ] List all income records (grouped by month)
+- [ ] Filter by source type, job, date range
+- [ ] Add manual income dialog
+- [ ] Edit/delete income records
+- [ ] Show calculation_basis for auto-generated income
+- [ ] Multi-currency support
 
-### 2.2 Advanced Features
-- [ ] Recurring financial records (auto-create monthly)
-- [ ] Budget tracking (set monthly limits)
-- [ ] Category analytics (spending by category)
-- [ ] Tax preparation (mark deductible expenses)
+### 2.2 Expense Management Page
+- [ ] Create `/expenses` page
+- [ ] List all expenses (grouped by month)
+- [ ] Filter by category, date range
+- [ ] Add expense dialog
+- [ ] Edit/delete expenses
+- [ ] Category management UI
+- [ ] Multi-currency support
+
+### 2.3 Dashboard/Summary
+- [ ] Update home page with financial overview
+- [ ] Income vs expenses chart
+- [ ] Category breakdown
+- [ ] Monthly trends
+- [ ] Multi-currency handling in summaries
+
+---
+
+## Phase 3: Advanced Features
+
+### 3.1 Reports & Analytics
+- [ ] Monthly/yearly reports
 - [ ] Export to CSV/PDF
+- [ ] Tax preparation summary
+- [ ] Job performance comparison
+- [ ] Time utilization analysis
 
-### 2.3 UX Enhancements
-- [ ] Batch shift creation (create multiple days at once)
-- [ ] Smart defaults (remember last selected values)
-- [ ] Keyboard shortcuts
-- [ ] Right-click context menu on calendar
-- [ ] Drag & drop shifts to reschedule
+### 3.2 Recurring Transactions
+- [ ] Set up recurring income (e.g., monthly salary)
+- [ ] Set up recurring expenses (e.g., subscriptions)
+- [ ] Auto-generation with notifications
 
-### 2.4 Analytics Dashboard
-- [ ] Income trends chart
-- [ ] Expense breakdown pie chart
-- [ ] Month-over-month comparison
-- [ ] Year-to-date totals
-- [ ] Category spending analysis
-
----
-
-## Implementation Order
-
-### Week 1: Database & Backend (THIS WEEK)
-1. ✅ Review and finalize database schema
-2. ✅ **Create migration for financial_categories table**
-3. ✅ **Create migration for financial_records table**
-4. ✅ **Add show_in_fixed_income to jobs table**
-5. ✅ **Create seed data for default categories**
-6. ✅ **Implement backend actions (finances/actions.ts)**
-7. ✅ **Create user preferences table and utility**
-8. ✅ **Regenerate TypeScript types**
-9. 🔨 **Update getShiftStats to separate income types**
-
-### Week 2: UI Components
-9. 🔨 **Create AddFinancialRecordDialog component**
-10. 🔨 **Create FinancialRecordsDrawer component**
-11. 🔨 **Create ManageCategoriesDialog component**
-12. 🔨 **Update calendar stats cards (3 new cards)**
-13. 🔨 **Update day-shifts-drawer to show financial records**
-14. 🔨 **Update month-calendar to show icons**
-15. 🔨 **Add filter/settings dialog**
-
-### Week 3: Testing & Refinement
-16. 🔨 **Test all income/expense scenarios**
-17. 🔨 **Test multi-currency with financial records**
-18. 🔨 **Test fixed income calculations**
-19. 🔨 **Mobile responsiveness check**
-20. 🔨 **Performance optimization**
-
-### Week 4+: Advanced Features
-21. 🔨 Recurring records
-22. 🔨 Budget tracking
-23. 🔨 Analytics dashboard
-24. 🔨 Export functionality
+### 3.3 Mobile Optimization
+- [ ] Progressive Web App (PWA)
+- [ ] Offline support
+- [ ] Push notifications
+- [ ] Quick entry shortcuts
 
 ---
 
-## Testing Checklist
+## Technical Debt & Cleanup
 
-### Financial Records
-- [ ] Create income record (custom category)
-- [ ] Create expense record (default category)
-- [ ] Edit financial record
-- [ ] Delete financial record
-- [ ] Create custom category
-- [ ] Delete custom category (check records still work)
-- [ ] Link financial record to job
-- [ ] Create records in multiple currencies
-- [ ] Verify totals calculate correctly
+### Currently Unused Components (TODO: Remove or Update)
+- [ ] IncomeStatsCards component (needs rewrite for new schema)
+- [ ] StatCardMobile component (needs rewrite for new schema)
+- [ ] Old stats calculation logic in calendar page
 
-### Fixed Income
-- [ ] Create monthly salary job ($3000/mo)
-- [ ] Create shifts for salary job (track time)
-- [ ] Verify shifts don't show earnings
-- [ ] Verify Fixed Income card shows $3000
-- [ ] Create annual salary job ($60k/yr)
-- [ ] Verify shows $5000/mo in Fixed Income
-
-### Combined View
-- [ ] Day with: shift + salary tracking + income record + expense
-- [ ] Verify calendar shows all icons
-- [ ] Verify day drawer shows all items
-- [ ] Verify totals separate correctly
-- [ ] Test filter settings (hide/show different types)
-
-### Multi-Currency
-- [ ] Shift in USD, financial record in EUR
-- [ ] Multiple currencies in same day
-- [ ] Verify separate totals per currency
-- [ ] Verify no mixing of currencies
+### Missing Functionality
+- [ ] Stats calculation for new time_entries schema
+- [ ] Income display in calendar view
+- [ ] Benefits tracking (PTO days used/remaining)
 
 ---
 
-## Success Metrics
+## Notes & Decisions
 
-### Performance
-- Financial record creation: < 500ms
-- Category management: < 300ms
-- Monthly stats load: < 2 seconds
+### Why Separate time_entries and income_records?
+1. **Clarity**: Time tracking vs money tracking are distinct concerns
+2. **Flexibility**: Can add income not tied to shifts (bonuses, freelance)
+3. **Monthly jobs**: Don't need to split monthly salary into daily amounts
+4. **Historical accuracy**: Income snapshots never recalculate
+5. **Audit trail**: Clear calculation_basis for transparency
 
-### Features
-- ✅ Support hourly, daily, monthly, salary pay types
-- 🔨 Separate shift-based vs fixed income
-- 🔨 Custom income/expense categories
-- 🔨 Multi-currency throughout
-- 🔨 Complete financial picture per month
+### Why Use TIME Instead of TIMESTAMPTZ?
+1. **Simplicity**: No timezone conversion math needed
+2. **Portability**: Works across different devices/timezones
+3. **User intent**: Users think in local time, not UTC
+4. **Mobile-friendly**: Easier to handle on mobile apps
 
-### UX
-- Clear visual distinction: shifts vs salary vs records
-- Easy to add one-time income/expense
-- Intuitive category management
-- No confusion about totals
-- Mobile-first design
-
----
-
-## Database Migration Files to Create
-
-1. `20241210_create_financial_categories.sql`
-2. `20241210_create_financial_records.sql`
-3. `20241210_update_jobs_add_fixed_income_flag.sql`
-4. `20241210_seed_default_categories.sql` (function to run on user creation)
+### Why Optional Templates?
+1. **User preference**: Some users prefer manual entry
+2. **Flexibility**: Can use template AND modify times
+3. **Not primary**: Templates are helpers, not required workflow
+4. **Reduced complexity**: No mode switching, always show inputs
 
 ---
 
-## Next Immediate Steps
+## Migration Notes
 
-### Today:
-1. **Finalize database schema** (confirm with user)
-2. **Create migration files**
-3. **Run migrations in Supabase**
-4. **Regenerate types**
+### From Old Schema to New Schema
+- Ran `00_fresh_start_time_entries.sql` migration
+- Dropped old `shifts` table
+- Created new `time_entries`, `income_records`, `expense_records` tables
+- Auto-income trigger installed
+- Default expense categories created
+- TypeScript types regenerated
 
-### Tomorrow:
-5. **Create finances/actions.ts**
-6. **Update getShiftStats logic**
-7. **Start building AddFinancialRecordDialog**
-
-**Estimated Time for Phase 1**: 30-35 hours
-**Priority**: Database → Backend → UI Components → Testing
+### Breaking Changes
+- All references to `shifts` changed to `time_entries`
+- Earnings no longer stored in time_entries (moved to income_records)
+- Templates are optional (not required for entry)
+- No description field on jobs table
+- Single `monthly_salary` field for both monthly and salary pay types

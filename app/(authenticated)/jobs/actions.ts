@@ -80,24 +80,24 @@ export async function unarchiveJob(jobId: string) {
   return { success: true }
 }
 
-export async function deleteJob(jobId: string, deleteShifts: boolean = false) {
+export async function deleteJob(jobId: string, deleteEntries: boolean = false) {
   const { user, supabase } = await getAuthenticatedUser()
 
-  // If deleteShifts is true, we need to manually delete shifts first
+  // If deleteEntries is true, we need to manually delete time entries first
   // (since we changed CASCADE to SET NULL)
-  if (deleteShifts) {
-    const { error: shiftsError } = await supabase
-      .from('shifts')
+  if (deleteEntries) {
+    const { error: entriesError } = await supabase
+      .from('time_entries')
       .delete()
       .eq('job_id', jobId)
       .eq('user_id', user.id)
 
-    if (shiftsError) {
-      return { error: shiftsError.message }
+    if (entriesError) {
+      return { error: entriesError.message }
     }
   }
 
-  // Delete job (templates will CASCADE, shifts will SET NULL if not deleted above)
+  // Delete job (templates will CASCADE, time_entries will SET NULL if not deleted above)
   const { error } = await supabase
     .from('jobs')
     .delete()
@@ -137,10 +137,10 @@ export async function updateJob(jobId: string, data: Omit<JobInsert, 'user_id'>)
 export async function getJobs() {
   const { user, supabase } = await getAuthenticatedUser()
 
-  // Fetch jobs with template and shift counts for this user
+  // Fetch jobs with template and time entry counts for this user
   const { data: jobs, error } = await supabase
     .from('jobs')
-    .select('*, shift_templates(count), shifts(count)')
+    .select('*, shift_templates(count), time_entries(count)')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
@@ -148,11 +148,11 @@ export async function getJobs() {
     return { error: error.message, jobs: null }
   }
 
-  // Transform the data to include template_count and shift_count as numbers
+  // Transform the data to include template_count and entry_count as numbers
   const jobsWithCounts = jobs?.map(job => ({
     ...job,
     template_count: job.shift_templates?.[0]?.count || 0,
-    shift_count: job.shifts?.[0]?.count || 0
+    entry_count: job.time_entries?.[0]?.count || 0
   }))
 
   return { jobs: jobsWithCounts, error: null }

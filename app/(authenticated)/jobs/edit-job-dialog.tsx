@@ -57,10 +57,13 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
 
   const [formData, setFormData] = useState({
     name: job.name,
+    pay_type: job.pay_type,
     hourly_rate: job.hourly_rate?.toString() || "",
+    daily_rate: job.daily_rate?.toString() || "",
+    monthly_salary: job.monthly_salary?.toString() || "",
     currency: job.currency || "USD",
-    color: job.color || "#3B82F6",
     description: job.description || "",
+    color: job.color || "#3B82F6",
     is_active: job.is_active ?? true,
   });
 
@@ -70,10 +73,13 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
 
     const result = await updateJob(job.id, {
       name: formData.name,
-      hourly_rate: parseFloat(formData.hourly_rate),
+      pay_type: formData.pay_type,
+      hourly_rate: formData.pay_type === "hourly" && formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
+      daily_rate: formData.pay_type === "daily" && formData.daily_rate ? parseFloat(formData.daily_rate) : null,
+      monthly_salary: (formData.pay_type === "monthly" || formData.pay_type === "salary") && formData.monthly_salary ? parseFloat(formData.monthly_salary) : null,
       currency: formData.currency,
-      color: formData.color,
       description: formData.description || null,
+      color: formData.color,
       is_active: formData.is_active,
     });
 
@@ -122,21 +128,80 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
               />
             </div>
 
-            {/* Hourly Rate */}
+            {/* Pay Type */}
             <div className="grid gap-2">
-              <Label htmlFor="edit-hourly_rate">Hourly Rate *</Label>
-              <Input
-                id="edit-hourly_rate"
-                type="number"
-                step="0.01"
-                value={formData.hourly_rate}
-                onChange={(e) =>
-                  setFormData({ ...formData, hourly_rate: e.target.value })
+              <Label htmlFor="edit-pay_type">Pay Type *</Label>
+              <Select
+                value={formData.pay_type}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, pay_type: value })
                 }
-                placeholder="15.50"
-                required
-              />
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select pay type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hourly">Hourly Rate</SelectItem>
+                  <SelectItem value="daily">Daily Rate</SelectItem>
+                  <SelectItem value="monthly">Monthly Salary</SelectItem>
+                  <SelectItem value="salary">Annual Salary</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            {/* Rate Input - Dynamic based on pay type */}
+            {formData.pay_type === "hourly" && (
+              <div className="grid gap-2">
+                <Label htmlFor="edit-hourly_rate">Hourly Rate *</Label>
+                <Input
+                  id="edit-hourly_rate"
+                  type="number"
+                  step="0.01"
+                  value={formData.hourly_rate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, hourly_rate: e.target.value })
+                  }
+                  placeholder="15.50"
+                  required
+                />
+              </div>
+            )}
+
+            {formData.pay_type === "daily" && (
+              <div className="grid gap-2">
+                <Label htmlFor="edit-daily_rate">Daily Rate *</Label>
+                <Input
+                  id="edit-daily_rate"
+                  type="number"
+                  step="0.01"
+                  value={formData.daily_rate}
+                  onChange={(e) =>
+                    setFormData({ ...formData, daily_rate: e.target.value })
+                  }
+                  placeholder="120.00"
+                  required
+                />
+              </div>
+            )}
+
+            {(formData.pay_type === "monthly" || formData.pay_type === "salary") && (
+              <div className="grid gap-2">
+                <Label htmlFor="edit-monthly_salary">
+                  {formData.pay_type === "salary" ? "Annual Salary *" : "Monthly Salary *"}
+                </Label>
+                <Input
+                  id="edit-monthly_salary"
+                  type="number"
+                  step="0.01"
+                  value={formData.monthly_salary}
+                  onChange={(e) =>
+                    setFormData({ ...formData, monthly_salary: e.target.value })
+                  }
+                  placeholder={formData.pay_type === "salary" ? "45000.00" : "3000.00"}
+                  required
+                />
+              </div>
+            )}
 
             {/* Currency */}
             <div className="grid gap-2">
@@ -169,7 +234,7 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                placeholder="Optional notes"
+                placeholder="Optional notes (location, manager, etc.)"
               />
             </div>
 
@@ -197,7 +262,7 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
               <div className="space-y-0.5">
                 <Label htmlFor="edit-is_active">Active Status</Label>
                 <p className="text-sm text-muted-foreground">
-                  Job is currently active and accepting shifts
+                  Job is currently active and accepting entries
                 </p>
               </div>
               <Switch

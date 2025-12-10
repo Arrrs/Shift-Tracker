@@ -126,8 +126,7 @@ export function calculateShiftEarnings(
     pay_type?: string | null;
     hourly_rate?: number | null;
     daily_rate?: number | null;
-    monthly_rate?: number | null;
-    annual_salary?: number | null;
+    monthly_salary?: number | null;
   } | null
 ): number {
   if (!job) return 0;
@@ -142,9 +141,10 @@ export function calculateShiftEarnings(
       if (payType === 'daily') {
         earnings = job.daily_rate || 0;
       } else if (payType === 'monthly') {
-        earnings = (job.monthly_rate || 0) / 30.44;
+        earnings = (job.monthly_salary || 0) / 30.44;
       } else if (payType === 'salary') {
-        earnings = (job.annual_salary || 0) / 365;
+        // For salary type, monthly_salary stores annual amount
+        earnings = (job.monthly_salary || 0) / 365;
       } else {
         earnings = hours * (job.hourly_rate || 0);
       }
@@ -156,9 +156,10 @@ export function calculateShiftEarnings(
   if (payType === 'daily') {
     return Math.round((job.daily_rate || 0) * 100) / 100;
   } else if (payType === 'monthly') {
-    return Math.round(((job.monthly_rate || 0) / 22) * 100) / 100; // 22 working days per month
+    return Math.round(((job.monthly_salary || 0) / 22) * 100) / 100; // 22 working days per month
   } else if (payType === 'salary') {
-    return Math.round(((job.annual_salary || 0) / 260) * 100) / 100; // 260 working days per year
+    // For salary type, monthly_salary stores annual amount
+    return Math.round(((job.monthly_salary || 0) / 260) * 100) / 100; // 260 working days per year
   }
 
   // Hourly rate (with custom rates and holiday pay)

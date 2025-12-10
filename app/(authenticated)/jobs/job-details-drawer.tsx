@@ -26,6 +26,7 @@ import {
 import { Eye } from "lucide-react";
 import { Database } from "@/lib/database.types";
 import { ShiftTemplatesList } from "./shift-templates-list";
+import { getCurrencySymbol } from "@/lib/utils/time-format";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 
@@ -54,6 +55,37 @@ export function JobDetailsDrawer({
     return () => window.removeEventListener("resize", checkDesktop);
   }, []);
 
+  // Format rate display based on pay_type
+  const getRateDisplay = () => {
+    const symbol = getCurrencySymbol(job.currency || 'USD');
+
+    switch (job.pay_type) {
+      case 'daily':
+        return {
+          label: 'Daily Rate',
+          value: `${symbol} ${job.daily_rate?.toFixed(2) || '0.00'} ${job.currency || 'USD'}`
+        };
+      case 'monthly':
+        return {
+          label: 'Monthly Salary',
+          value: `${symbol} ${job.monthly_salary?.toFixed(2) || '0.00'} ${job.currency || 'USD'}`
+        };
+      case 'salary':
+        return {
+          label: 'Annual Salary',
+          value: `${symbol} ${job.monthly_salary?.toFixed(0) || '0'} ${job.currency || 'USD'}`
+        };
+      case 'hourly':
+      default:
+        return {
+          label: 'Hourly Rate',
+          value: `${symbol} ${job.hourly_rate?.toFixed(2) || '0.00'} ${job.currency || 'USD'}`
+        };
+    }
+  };
+
+  const rateDisplay = getRateDisplay();
+
   const jobDetails = (
     <div className="px-4 pb-4 space-y-6">
           {/* Status */}
@@ -66,13 +98,13 @@ export function JobDetailsDrawer({
             </Badge>
           </div>
 
-          {/* Hourly Rate */}
+          {/* Rate */}
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-2">
-              Hourly Rate
+              {rateDisplay.label}
             </h3>
             <p className="text-2xl font-semibold">
-              ${job.hourly_rate?.toFixed(2) || "0.00"} {job.currency || "USD"}
+              {rateDisplay.value}
             </p>
           </div>
 

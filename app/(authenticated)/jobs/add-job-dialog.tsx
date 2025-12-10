@@ -54,8 +54,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
     pay_type: "hourly",
     hourly_rate: "",
     daily_rate: "",
-    monthly_rate: "",
-    annual_salary: "",
+    monthly_salary: "",
     currency: "USD",
     color: "#3b82f6",
     description: "",
@@ -71,8 +70,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
       pay_type: formData.pay_type,
       hourly_rate: formData.pay_type === "hourly" && formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
       daily_rate: formData.pay_type === "daily" && formData.daily_rate ? parseFloat(formData.daily_rate) : null,
-      monthly_rate: formData.pay_type === "monthly" && formData.monthly_rate ? parseFloat(formData.monthly_rate) : null,
-      annual_salary: formData.pay_type === "salary" && formData.annual_salary ? parseFloat(formData.annual_salary) : null,
+      monthly_salary: (formData.pay_type === "monthly" || formData.pay_type === "salary") && formData.monthly_salary ? parseFloat(formData.monthly_salary) : null,
       currency: formData.currency,
       color: formData.color,
       description: formData.description || null,
@@ -94,8 +92,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
         pay_type: "hourly",
         hourly_rate: "",
         daily_rate: "",
-        monthly_rate: "",
-        annual_salary: "",
+        monthly_salary: "",
         currency: "USD",
         color: "#3b82f6",
         description: "",
@@ -193,35 +190,20 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
               </div>
             )}
 
-            {formData.pay_type === "monthly" && (
+            {(formData.pay_type === "monthly" || formData.pay_type === "salary") && (
               <div className="grid gap-2">
-                <Label htmlFor="monthly_rate">Monthly Rate *</Label>
+                <Label htmlFor="monthly_salary">
+                  {formData.pay_type === "salary" ? "Annual Salary *" : "Monthly Salary *"}
+                </Label>
                 <Input
-                  id="monthly_rate"
+                  id="monthly_salary"
                   type="number"
                   step="0.01"
-                  value={formData.monthly_rate}
+                  value={formData.monthly_salary}
                   onChange={(e) =>
-                    setFormData({ ...formData, monthly_rate: e.target.value })
+                    setFormData({ ...formData, monthly_salary: e.target.value })
                   }
-                  placeholder="3000.00"
-                  required
-                />
-              </div>
-            )}
-
-            {formData.pay_type === "salary" && (
-              <div className="grid gap-2">
-                <Label htmlFor="annual_salary">Annual Salary *</Label>
-                <Input
-                  id="annual_salary"
-                  type="number"
-                  step="0.01"
-                  value={formData.annual_salary}
-                  onChange={(e) =>
-                    setFormData({ ...formData, annual_salary: e.target.value })
-                  }
-                  placeholder="45000.00"
+                  placeholder={formData.pay_type === "salary" ? "45000.00" : "3000.00"}
                   required
                 />
               </div>
@@ -258,7 +240,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                placeholder="Optional notes"
+                placeholder="Optional notes (location, manager, etc.)"
               />
             </div>
 

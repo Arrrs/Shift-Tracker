@@ -5,17 +5,18 @@ import { cn } from "@/lib/utils";
 import { Database } from "@/lib/database.types";
 import { getStatusInfo, getCurrencySymbol, formatCurrency } from "@/lib/utils/time-format";
 
-type Shift = Database["public"]["Tables"]["shifts"]["Row"] & {
+type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
+  shift_templates: Database["public"]["Tables"]["shift_templates"]["Row"] | null;
 };
 
 interface MonthCalendarProps {
   currentDate: Date;
-  shifts?: Shift[];
+  entries?: TimeEntry[];
   onDayClick?: (date: Date) => void;
 }
 
-export function MonthCalendar({ currentDate, shifts = [], onDayClick }: MonthCalendarProps) {
+export function MonthCalendar({ currentDate, entries = [], onDayClick }: MonthCalendarProps) {
   const calendar = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -88,44 +89,16 @@ export function MonthCalendar({ currentDate, shifts = [], onDayClick }: MonthCal
 
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-  // Get shifts for a specific date
-  const getShiftsForDate = (date: Date) => {
+  // Get time entries for a specific date
+  const getEntriesForDate = (date: Date) => {
     const dateStr = date.toISOString().split("T")[0];
-    return shifts.filter((shift) => shift.date === dateStr);
+    return entries.filter((entry) => entry.date === dateStr);
   };
 
-  // Get earnings by currency for a date - only count completed shifts
-  const getEarningsForDate = (date: Date): { amount: number; currency: string; isMulti: boolean } => {
-    const dayShifts = getShiftsForDate(date);
-    const completedDayShifts = dayShifts.filter(s => s.status === 'completed');
-    const earningsByCurrency: Record<string, number> = {};
-
-    completedDayShifts.forEach((shift) => {
-      // SNAPSHOT ARCHITECTURE: Use stored earnings
-      const earnings = shift.actual_earnings || 0;
-      const currency = shift.earnings_currency || shift.jobs?.currency || 'USD';
-
-      // Skip if no earnings (time tracking only or fixed income)
-      if (earnings === 0 || shift.actual_earnings === null) return;
-
-      if (!earningsByCurrency[currency]) {
-        earningsByCurrency[currency] = 0;
-      }
-      earningsByCurrency[currency] += earnings;
-    });
-
-    const currencies = Object.keys(earningsByCurrency);
-
-    if (currencies.length === 0) {
-      return { amount: 0, currency: 'USD', isMulti: false };
-    }
-
-    if (currencies.length === 1) {
-      return { amount: earningsByCurrency[currencies[0]], currency: currencies[0], isMulti: false };
-    }
-
-    // Multiple currencies - return the first one with a flag
-    return { amount: earningsByCurrency[currencies[0]], currency: currencies[0], isMulti: true };
+  // Get simple count for a date (no earnings in new schema - will be in income_records)
+  const getEntryCountForDate = (date: Date): number => {
+    const dayEntries = getEntriesForDate(date);
+    return dayEntries.length;
   };
 
   return (
@@ -145,9 +118,8 @@ export function MonthCalendar({ currentDate, shifts = [], onDayClick }: MonthCal
       {/* Calendar grid - 6 rows of equal height */}
       <div className="grid grid-cols-7 grid-rows-6 gap-1 md:gap-2 flex-1 min-h-0">
         {calendar.map((day, index) => {
-          const dayShifts = getShiftsForDate(day.date);
-          const earnings = getEarningsForDate(day.date);
-          const hasShifts = dayShifts.length > 0;
+          const dayEntries = getEntriesForDate(day.date);
+          const hasEntries = dayEntries.length > 0;
 
           return (
             <button
@@ -159,54 +131,48 @@ export function MonthCalendar({ currentDate, shifts = [], onDayClick }: MonthCal
                 !day.isCurrentMonth && "text-muted-foreground/40 bg-muted/20",
                 day.isToday && "border-primary border-2 font-semibold",
                 day.isCurrentMonth && "cursor-pointer",
-                hasShifts && day.isCurrentMonth && "bg-primary/5"
+                hasEntries && day.isCurrentMonth && "bg-primary/5"
               )}
               disabled={!day.isCurrentMonth}
             >
               <div className="flex flex-col h-full min-h-0">
                 <span className="text-xs md:text-sm mb-0.5 md:mb-1">{day.dayNumber}</span>
 
-                {/* Shift indicators */}
-                {day.isCurrentMonth && hasShifts && (
+                {/* Entry indicators */}
+                {day.isCurrentMonth && hasEntries && (
                   <div className="flex-1 flex flex-col gap-0.5 md:gap-1 overflow-hidden min-h-0">
-                    {/* Shift color dots with status indicators */}
+                    {/* Entry color dots with status indicators */}
                     <div className="flex gap-0.5 md:gap-1 flex-wrap items-center">
-                      {dayShifts.slice(0, 3).map((shift, idx) => {
-                        const status = getStatusInfo(shift.status);
+                      {dayEntries.slice(0, 3).map((entry, idx) => {
+                        const status = getStatusInfo(entry.status || "planned");
                         return (
                           <div
                             key={idx}
                             className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full flex-shrink-0 relative"
                             style={{
-                              backgroundColor: shift.jobs?.color || "#9CA3AF",
-                              opacity: shift.status === "cancelled" ? 0.4 : 1,
-                              border: shift.status === "completed" ? "1.5px solid #10B981" :
-                                      shift.status === "in_progress" ? "1.5px solid #F59E0B" :
+                              backgroundColor: entry.jobs?.color || "#9CA3AF",
+                              opacity: entry.status === "cancelled" ? 0.4 : 1,
+                              border: entry.status === "completed" ? "1.5px solid #10B981" :
+                                      entry.status === "in_progress" ? "1.5px solid #F59E0B" :
                                       "none",
                             }}
-                            title={`${shift.jobs?.name || "Personal Time"} - ${status.label}`}
+                            title={`${entry.jobs?.name || entry.entry_type === "day_off" ? "Day Off" : "Personal Time"} - ${status.label}`}
                           />
                         );
                       })}
-                      {dayShifts.length > 3 && (
+                      {dayEntries.length > 3 && (
                         <span className="text-[9px] md:text-[10px] text-muted-foreground">
-                          +{dayShifts.length - 3}
+                          +{dayEntries.length - 3}
                         </span>
                       )}
                     </div>
 
-                    {/* Earnings display with status emoji for single shift */}
-                    {earnings.amount > 0 && (
+                    {/* Entry count or hours display */}
+                    {dayEntries.length === 1 && (
                       <div className="text-[9px] md:text-[10px] font-medium text-muted-foreground truncate flex items-center gap-0.5">
-                        <span>
-                          {getCurrencySymbol(earnings.currency)} {formatCurrency(earnings.amount)}
-                          {earnings.isMulti && <span className="text-[8px]">+</span>}
+                        <span className="text-[8px] md:text-[9px]">
+                          {getStatusInfo(dayEntries[0].status || "planned").emoji}
                         </span>
-                        {dayShifts.length === 1 && (
-                          <span className="text-[8px] md:text-[9px]">
-                            {getStatusInfo(dayShifts[0].status).emoji}
-                          </span>
-                        )}
                       </div>
                     )}
                   </div>
