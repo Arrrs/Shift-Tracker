@@ -469,16 +469,22 @@ export type Database = {
         Row: {
           actual_hours: number
           created_at: string | null
+          custom_currency: string | null
+          custom_daily_rate: number | null
           custom_hourly_rate: number | null
           date: string
           day_off_type: string | null
           end_time: string | null
           entry_type: string
+          holiday_fixed_amount: number | null
+          holiday_multiplier: number | null
           id: string
           is_full_day: boolean | null
+          is_holiday: boolean | null
           is_overnight: boolean | null
           job_id: string | null
           notes: string | null
+          pay_override_type: string | null
           scheduled_hours: number | null
           start_time: string | null
           status: string | null
@@ -489,16 +495,22 @@ export type Database = {
         Insert: {
           actual_hours: number
           created_at?: string | null
+          custom_currency?: string | null
+          custom_daily_rate?: number | null
           custom_hourly_rate?: number | null
           date: string
           day_off_type?: string | null
           end_time?: string | null
           entry_type: string
+          holiday_fixed_amount?: number | null
+          holiday_multiplier?: number | null
           id?: string
           is_full_day?: boolean | null
+          is_holiday?: boolean | null
           is_overnight?: boolean | null
           job_id?: string | null
           notes?: string | null
+          pay_override_type?: string | null
           scheduled_hours?: number | null
           start_time?: string | null
           status?: string | null
@@ -509,16 +521,22 @@ export type Database = {
         Update: {
           actual_hours?: number
           created_at?: string | null
+          custom_currency?: string | null
+          custom_daily_rate?: number | null
           custom_hourly_rate?: number | null
           date?: string
           day_off_type?: string | null
           end_time?: string | null
           entry_type?: string
+          holiday_fixed_amount?: number | null
+          holiday_multiplier?: number | null
           id?: string
           is_full_day?: boolean | null
+          is_holiday?: boolean | null
           is_overnight?: boolean | null
           job_id?: string | null
           notes?: string | null
+          pay_override_type?: string | null
           scheduled_hours?: number | null
           start_time?: string | null
           status?: string | null

@@ -20,11 +20,14 @@ import { EditTimeEntryDialog } from "./edit-time-entry-dialog";
 import { AddTimeEntryDialog } from "./add-time-entry-dialog";
 import { Clock, DollarSign } from "lucide-react";
 import { formatTimeFromTimestamp, getStatusInfo, getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time-format";
+import { getIncomeRecords } from "@/app/(authenticated)/time-entries/actions";
 
 type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
   shift_templates: Database["public"]["Tables"]["shift_templates"]["Row"] | null;
 };
+
+type IncomeRecord = Database["public"]["Tables"]["income_records"]["Row"];
 
 interface DayShiftsDrawerProps {
   date: Date | null;
@@ -45,6 +48,8 @@ export function DayShiftsDrawer({
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [incomeRecords, setIncomeRecords] = useState<IncomeRecord[]>([]);
+  const [loadingIncome, setLoadingIncome] = useState(false);
 
   // Detect mobile on mount (client-side only to avoid hydration mismatch)
   useEffect(() => {
@@ -53,6 +58,23 @@ export function DayShiftsDrawer({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Fetch income records for the selected day
+  useEffect(() => {
+    if (!date || !open) return;
+
+    const fetchIncome = async () => {
+      setLoadingIncome(true);
+      const dateStr = date.toISOString().split("T")[0];
+      const result = await getIncomeRecords(dateStr, dateStr);
+      if (result.records) {
+        setIncomeRecords(result.records);
+      }
+      setLoadingIncome(false);
+    };
+
+    fetchIncome();
+  }, [date, open, entries]);
 
   if (!date) return null;
 
@@ -70,6 +92,10 @@ export function DayShiftsDrawer({
   const completedEntries = dayEntries.filter(e => e.status === 'completed');
   const totalHours = completedEntries.reduce((sum, entry) => sum + (entry.actual_hours || 0), 0);
 
+  // Calculate expected hours - all non-cancelled entries
+  const activeEntries = dayEntries.filter(e => e.status !== 'cancelled');
+  const expectedHours = activeEntries.reduce((sum, entry) => sum + (entry.actual_hours || 0), 0);
+
   // Calculate total worked hours vs day-off hours - only count completed entries
   const totalWorkedHours = completedEntries
     .filter(e => e.entry_type === 'work_shift')
@@ -78,8 +104,54 @@ export function DayShiftsDrawer({
     .filter(e => e.entry_type === 'day_off')
     .reduce((sum, entry) => sum + (entry.actual_hours || 0), 0);
 
-  // Note: Earnings are now tracked separately in income_records table
-  // This component only shows time entries
+  // Calculate income totals by currency (completed only)
+  const incomeByCurrency: Record<string, number> = {};
+  incomeRecords.forEach((record) => {
+    const currency = record.currency || 'USD';
+    incomeByCurrency[currency] = (incomeByCurrency[currency] || 0) + record.amount;
+  });
+
+  // Calculate expected income by currency (all non-cancelled work shifts)
+  // For completed shifts: use actual income records
+  // For planned/in-progress shifts: estimate based on job rates (if job exists)
+  const expectedIncomeByCurrency: Record<string, number> = {};
+
+  // First, add all completed shift income from income records
+  incomeRecords.forEach((record) => {
+    const currency = record.currency || 'USD';
+    expectedIncomeByCurrency[currency] = (expectedIncomeByCurrency[currency] || 0) + record.amount;
+  });
+
+  // Then, add estimated income for planned/in-progress shifts with jobs
+  const hasPlannedShifts = activeEntries.some(e =>
+    e.entry_type === 'work_shift' && e.status !== 'completed' && e.status !== 'cancelled'
+  );
+
+  activeEntries.forEach((entry) => {
+    // Only estimate for non-completed work shifts that have a job
+    if (entry.entry_type === 'work_shift' &&
+        entry.status !== 'completed' &&
+        entry.status !== 'cancelled' &&
+        entry.jobs) {
+      const job = entry.jobs;
+      const currency = entry.custom_currency || job.currency || 'USD';
+      let estimatedAmount = 0;
+
+      // Use actual_hours or fall back to scheduled_hours for planned shifts
+      const hours = entry.actual_hours || entry.scheduled_hours || 0;
+
+      if (job.pay_type === 'hourly' && job.hourly_rate) {
+        estimatedAmount = hours * job.hourly_rate;
+      } else if (job.pay_type === 'daily' && job.daily_rate) {
+        estimatedAmount = job.daily_rate;
+      }
+
+      // Add estimated income for planned shifts
+      if (estimatedAmount > 0) {
+        expectedIncomeByCurrency[currency] = (expectedIncomeByCurrency[currency] || 0) + estimatedAmount;
+      }
+    }
+  });
 
   const handleEntryClick = (entry: TimeEntry) => {
     setSelectedEntry(entry);
@@ -98,14 +170,52 @@ export function DayShiftsDrawer({
           <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
             {/* Hours Breakdown */}
             <div>
-              <p className="text-xs text-muted-foreground mb-1">Total Hours</p>
+              <p className="text-xs text-muted-foreground mb-1">Hours (Completed)</p>
               <p className="text-lg font-semibold">{formatHours(totalHours)}</p>
               {totalDayOffHours > 0 && (
                 <p className="text-xs text-muted-foreground">
                   Worked: {formatHours(totalWorkedHours)} | Day-off: {formatHours(totalDayOffHours)}
                 </p>
               )}
+              {expectedHours !== totalHours && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Expected: {formatHours(expectedHours)} (incl. planned)
+                </p>
+              )}
             </div>
+
+            {/* Income Totals by Currency */}
+            {Object.keys(incomeByCurrency).length > 0 && (
+              <div className="border-t pt-3">
+                <p className="text-xs text-muted-foreground mb-1">Income (Completed)</p>
+                <div className="space-y-1">
+                  {Object.entries(incomeByCurrency).map(([currency, amount]) => (
+                    <div key={currency} className="flex items-center gap-1">
+                      <span className="text-lg font-semibold text-green-600 dark:text-green-400">
+                        {getCurrencySymbol(currency)}{amount.toFixed(2)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{currency}</span>
+                    </div>
+                  ))}
+                </div>
+                {/* Expected Income - show if there are any planned shifts */}
+                {hasPlannedShifts && Object.keys(expectedIncomeByCurrency).length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-dashed">
+                    <p className="text-xs text-muted-foreground mb-1">Expected (incl. planned)</p>
+                    <div className="space-y-1">
+                      {Object.entries(expectedIncomeByCurrency).map(([currency, amount]) => (
+                        <div key={currency} className="flex items-center gap-1">
+                          <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                            {getCurrencySymbol(currency)}{amount.toFixed(2)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{currency}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -130,6 +240,9 @@ export function DayShiftsDrawer({
                 const status = getStatusInfo(entry.status || "planned");
                 const isWorkShift = entry.entry_type === 'work_shift';
                 const isDayOff = entry.entry_type === 'day_off';
+
+                // Find income record for this entry
+                const incomeRecord = incomeRecords.find(r => r.time_entry_id === entry.id);
 
                 // Calculate display rate based on pay type
                 const payType = entry.jobs?.pay_type || 'hourly';
@@ -221,6 +334,43 @@ export function DayShiftsDrawer({
                                 </span>
                               </div>
                             )}
+
+                            {/* Show calculated income for completed shifts */}
+                            {incomeRecord && entry.status === 'completed' && (
+                              <div className="flex items-center gap-1.5 text-xs font-medium text-green-600 dark:text-green-400 mt-1">
+                                <DollarSign className="h-3 w-3" />
+                                <span>
+                                  Earned: {getCurrencySymbol(incomeRecord.currency)}{incomeRecord.amount.toFixed(2)}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Show estimated income for planned/in-progress shifts */}
+                            {entry.status !== 'completed' && entry.status !== 'cancelled' && entry.jobs && (
+                              (() => {
+                                const job = entry.jobs;
+                                const currency = entry.custom_currency || job.currency || 'USD';
+                                let estimatedAmount = 0;
+
+                                // Use actual_hours or fall back to scheduled_hours for planned shifts
+                                const hours = entry.actual_hours || entry.scheduled_hours || 0;
+
+                                if (job.pay_type === 'hourly' && job.hourly_rate) {
+                                  estimatedAmount = hours * job.hourly_rate;
+                                } else if (job.pay_type === 'daily' && job.daily_rate) {
+                                  estimatedAmount = job.daily_rate;
+                                }
+
+                                return estimatedAmount > 0 ? (
+                                  <div className="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 mt-1">
+                                    <DollarSign className="h-3 w-3" />
+                                    <span>
+                                      Expected: {getCurrencySymbol(currency)}{estimatedAmount.toFixed(2)}
+                                    </span>
+                                  </div>
+                                ) : null;
+                              })()
+                            )}
                           </div>
                         )}
 
@@ -284,14 +434,14 @@ export function DayShiftsDrawer({
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent>
+        <DrawerContent className="max-h-[85vh]">
           <DrawerHeader>
             <DrawerTitle>{formattedDate}</DrawerTitle>
             <DrawerDescription>
               {dayEntries.length} {dayEntries.length === 1 ? "entry" : "entries"}
             </DrawerDescription>
           </DrawerHeader>
-          <div className="px-4 pb-4">{content}</div>
+          <div className="px-4 pb-4 overflow-y-auto">{content}</div>
         </DrawerContent>
       </Drawer>
     );

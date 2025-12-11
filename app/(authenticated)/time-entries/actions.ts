@@ -74,6 +74,13 @@ type CreateTimeEntryData =
       scheduled_hours: number;
       actual_hours: number;
       is_overnight?: boolean;
+      // Pay customization fields
+      pay_override_type?: string | null;
+      custom_hourly_rate?: number | null;
+      custom_daily_rate?: number | null;
+      is_holiday?: boolean;
+      holiday_multiplier?: number | null;
+      holiday_fixed_amount?: number | null;
       status?: string;
       notes?: string;
     }
@@ -171,4 +178,26 @@ export async function getShiftTemplates(jobId: string) {
   }
 
   return { templates, error: null };
+}
+
+// ============================================
+// GET INCOME RECORDS
+// ============================================
+
+export async function getIncomeRecords(startDate: string, endDate: string) {
+  const { user, supabase } = await getAuthenticatedUser();
+
+  const { data: records, error } = await supabase
+    .from("income_records")
+    .select("*")
+    .eq("user_id", user.id)
+    .gte("date", startDate)
+    .lte("date", endDate)
+    .order("date", { ascending: true });
+
+  if (error) {
+    return { error: error.message, records: null };
+  }
+
+  return { records, error: null };
 }
