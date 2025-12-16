@@ -18,9 +18,14 @@ import {
 import { Database } from "@/lib/database.types";
 import { EditTimeEntryDialog } from "./edit-time-entry-dialog";
 import { AddTimeEntryDialog } from "./add-time-entry-dialog";
-import { Clock, DollarSign } from "lucide-react";
+import { EditFinancialRecordDialog } from "./edit-financial-record-dialog";
+import { AddFinancialRecordDialog } from "../finances/add-financial-record-dialog";
+import { Clock, Coins, TrendingUp, TrendingDown, Plus, ChevronDown } from "lucide-react";
 import { formatTimeFromTimestamp, getStatusInfo, getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time-format";
 import { getIncomeRecords } from "@/app/(authenticated)/time-entries/actions";
+import { getFinancialRecords } from "@/app/(authenticated)/finances/actions";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
@@ -28,6 +33,11 @@ type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
 };
 
 type IncomeRecord = Database["public"]["Tables"]["income_records"]["Row"];
+
+type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] & {
+  financial_categories?: Database["public"]["Tables"]["financial_categories"]["Row"] | null;
+  jobs?: Database["public"]["Tables"]["jobs"]["Row"] | null;
+};
 
 interface DayShiftsDrawerProps {
   date: Date | null;
@@ -50,6 +60,14 @@ export function DayShiftsDrawer({
   const [isMobile, setIsMobile] = useState(false);
   const [incomeRecords, setIncomeRecords] = useState<IncomeRecord[]>([]);
   const [loadingIncome, setLoadingIncome] = useState(false);
+
+  // Financial records state
+  const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>([]);
+  const [loadingFinancial, setLoadingFinancial] = useState(false);
+  const [selectedFinancialRecord, setSelectedFinancialRecord] = useState<FinancialRecord | null>(null);
+  const [editFinancialDialogOpen, setEditFinancialDialogOpen] = useState(false);
+  const [addFinancialDialogOpen, setAddFinancialDialogOpen] = useState(false);
+  const [addFinancialType, setAddFinancialType] = useState<"income" | "expense">("income");
 
   // Detect mobile on mount (client-side only to avoid hydration mismatch)
   useEffect(() => {
@@ -75,6 +93,23 @@ export function DayShiftsDrawer({
 
     fetchIncome();
   }, [date, open, entries]);
+
+  // Fetch financial records for the selected day
+  useEffect(() => {
+    if (!date || !open) return;
+
+    const fetchFinancial = async () => {
+      setLoadingFinancial(true);
+      const dateStr = date.toISOString().split("T")[0];
+      const result = await getFinancialRecords(dateStr, dateStr);
+      if (result.records) {
+        setFinancialRecords(result.records);
+      }
+      setLoadingFinancial(false);
+    };
+
+    fetchFinancial();
+  }, [date, open]);
 
   if (!date) return null;
 
@@ -104,11 +139,33 @@ export function DayShiftsDrawer({
     .filter(e => e.entry_type === 'day_off')
     .reduce((sum, entry) => sum + (entry.actual_hours || 0), 0);
 
-  // Calculate income totals by currency (completed only)
-  const incomeByCurrency: Record<string, number> = {};
+  // Calculate income totals by currency (completed shifts only - from income_records)
+  const shiftIncomeByCurrency: Record<string, number> = {};
+  console.log('DEBUG - Income records for', dateStr, ':', incomeRecords.length, 'records');
   incomeRecords.forEach((record) => {
+    console.log('  Income:', {
+      id: record.id.substring(0, 8),
+      time_entry_id: record.time_entry_id?.substring(0, 8) || 'NULL',
+      amount: record.amount,
+      currency: record.currency,
+      date: record.date,
+    });
     const currency = record.currency || 'USD';
-    incomeByCurrency[currency] = (incomeByCurrency[currency] || 0) + record.amount;
+    shiftIncomeByCurrency[currency] = (shiftIncomeByCurrency[currency] || 0) + record.amount;
+  });
+  console.log('DEBUG - Shift income by currency:', shiftIncomeByCurrency);
+
+  // Calculate financial records totals by currency and type
+  const financialIncomeByCurrency: Record<string, number> = {};
+  const financialExpenseByCurrency: Record<string, number> = {};
+
+  financialRecords.forEach((record) => {
+    const currency = record.currency || 'USD';
+    if (record.type === 'income') {
+      financialIncomeByCurrency[currency] = (financialIncomeByCurrency[currency] || 0) + Number(record.amount);
+    } else if (record.type === 'expense') {
+      financialExpenseByCurrency[currency] = (financialExpenseByCurrency[currency] || 0) + Number(record.amount);
+    }
   });
 
   // Calculate expected income by currency (all non-cancelled work shifts)
@@ -122,33 +179,76 @@ export function DayShiftsDrawer({
     expectedIncomeByCurrency[currency] = (expectedIncomeByCurrency[currency] || 0) + record.amount;
   });
 
-  // Then, add estimated income for planned/in-progress shifts with jobs
+  // Backwards compatibility - keep incomeByCurrency for existing code
+  const incomeByCurrency = shiftIncomeByCurrency;
+
+  // Then, add estimated income for planned/in-progress shifts
   const hasPlannedShifts = activeEntries.some(e =>
     e.entry_type === 'work_shift' && e.status !== 'completed' && e.status !== 'cancelled'
   );
 
   activeEntries.forEach((entry) => {
-    // Only estimate for non-completed work shifts that have a job
+    // Only estimate for non-completed work shifts
     if (entry.entry_type === 'work_shift' &&
         entry.status !== 'completed' &&
-        entry.status !== 'cancelled' &&
-        entry.jobs) {
-      const job = entry.jobs;
-      const currency = entry.custom_currency || job.currency || 'USD';
-      let estimatedAmount = 0;
+        entry.status !== 'cancelled') {
 
-      // Use actual_hours or fall back to scheduled_hours for planned shifts
+      const currency = entry.custom_currency || entry.jobs?.currency || 'USD';
+      let estimatedAmount = 0;
       const hours = entry.actual_hours || entry.scheduled_hours || 0;
 
-      if (job.pay_type === 'hourly' && job.hourly_rate) {
-        estimatedAmount = hours * job.hourly_rate;
-      } else if (job.pay_type === 'daily' && job.daily_rate) {
-        estimatedAmount = job.daily_rate;
+      console.log('DEBUG - Calculating expected income for planned shift:', {
+        id: entry.id.substring(0, 8),
+        status: entry.status,
+        hours,
+        pay_override_type: entry.pay_override_type,
+        custom_hourly_rate: entry.custom_hourly_rate,
+        custom_daily_rate: entry.custom_daily_rate,
+        holiday_fixed_amount: entry.holiday_fixed_amount,
+        holiday_multiplier: entry.holiday_multiplier,
+        hasJob: !!entry.jobs,
+        jobPayType: entry.jobs?.pay_type,
+        jobHourlyRate: entry.jobs?.hourly_rate,
+        jobDailyRate: entry.jobs?.daily_rate,
+        currency,
+      });
+
+      // Priority 1: Fixed amount
+      if (entry.pay_override_type === 'fixed_amount' && entry.holiday_fixed_amount) {
+        estimatedAmount = entry.holiday_fixed_amount;
+        console.log('  → Using fixed amount:', estimatedAmount);
+      }
+      // Priority 2: Custom rates with optional multiplier
+      else if (entry.custom_hourly_rate && hours > 0) {
+        const multiplier = entry.holiday_multiplier || 1;
+        estimatedAmount = hours * entry.custom_hourly_rate * multiplier;
+        console.log('  → Using custom hourly:', { hours, rate: entry.custom_hourly_rate, multiplier, estimatedAmount });
+      }
+      else if (entry.custom_daily_rate) {
+        const multiplier = entry.holiday_multiplier || 1;
+        estimatedAmount = entry.custom_daily_rate * multiplier;
+        console.log('  → Using custom daily:', { rate: entry.custom_daily_rate, multiplier, estimatedAmount });
+      }
+      // Priority 3: Job rates with optional multiplier (ONLY hourly/daily, NOT salary)
+      else if (entry.jobs && (entry.jobs.pay_type === 'hourly' || entry.jobs.pay_type === 'daily')) {
+        const job = entry.jobs;
+        const multiplier = entry.holiday_multiplier || 1;
+
+        if (job.pay_type === 'hourly' && job.hourly_rate && hours > 0) {
+          estimatedAmount = hours * job.hourly_rate * multiplier;
+          console.log('  → Using job hourly:', { hours, rate: job.hourly_rate, multiplier, estimatedAmount });
+        } else if (job.pay_type === 'daily' && job.daily_rate) {
+          estimatedAmount = job.daily_rate * multiplier;
+          console.log('  → Using job daily:', { rate: job.daily_rate, multiplier, estimatedAmount });
+        }
+      } else {
+        console.log('  → No calculable rate (salary or no rate)');
       }
 
       // Add estimated income for planned shifts
       if (estimatedAmount > 0) {
         expectedIncomeByCurrency[currency] = (expectedIncomeByCurrency[currency] || 0) + estimatedAmount;
+        console.log('  → Added to expected total:', { currency, amount: estimatedAmount, newTotal: expectedIncomeByCurrency[currency] });
       }
     }
   });
@@ -158,7 +258,27 @@ export function DayShiftsDrawer({
     setEditDialogOpen(true);
   };
 
-  const handleEditSuccess = () => {
+  const handleEditSuccess = async () => {
+    // Refetch income records after edit/delete
+    if (date) {
+      const dateStr = date.toISOString().split("T")[0];
+      const result = await getIncomeRecords(dateStr, dateStr);
+      if (result.records) {
+        setIncomeRecords(result.records);
+      }
+    }
+    onEntryChange?.();
+  };
+
+  const handleFinancialSuccess = async () => {
+    // Refetch financial records after edit/delete/add
+    if (date) {
+      const dateStr = date.toISOString().split("T")[0];
+      const result = await getFinancialRecords(dateStr, dateStr);
+      if (result.records) {
+        setFinancialRecords(result.records);
+      }
+    }
     onEntryChange?.();
   };
 
@@ -184,29 +304,78 @@ export function DayShiftsDrawer({
               )}
             </div>
 
-            {/* Income Totals by Currency */}
-            {Object.keys(incomeByCurrency).length > 0 && (
-              <div className="border-t pt-3">
-                <p className="text-xs text-muted-foreground mb-1">Income (Completed)</p>
-                <div className="space-y-1">
-                  {Object.entries(incomeByCurrency).map(([currency, amount]) => (
-                    <div key={currency} className="flex items-center gap-1">
-                      <span className="text-lg font-semibold text-green-600 dark:text-green-400">
-                        {getCurrencySymbol(currency)}{amount.toFixed(2)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">{currency}</span>
+            {/* Financial Summary by Currency */}
+            {(Object.keys(shiftIncomeByCurrency).length > 0 ||
+              Object.keys(expectedIncomeByCurrency).length > 0 ||
+              Object.keys(financialIncomeByCurrency).length > 0 ||
+              Object.keys(financialExpenseByCurrency).length > 0) && (
+              <div className="border-t pt-3 space-y-3">
+                {/* Shift Income (Completed) */}
+                {Object.keys(shiftIncomeByCurrency).length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">💼 Shift Income</p>
+                    <div className="space-y-1">
+                      {Object.entries(shiftIncomeByCurrency).map(([currency, amount]) => (
+                        <div key={currency} className="flex items-center gap-1">
+                          <span className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
+                            {getCurrencySymbol(currency)}{amount.toFixed(2)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{currency}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                {/* Expected Income - show if there are any planned shifts */}
+                  </div>
+                )}
+
+                {/* Expected Income from Planned Shifts */}
                 {hasPlannedShifts && Object.keys(expectedIncomeByCurrency).length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-dashed">
-                    <p className="text-xs text-muted-foreground mb-1">Expected (incl. planned)</p>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">📅 Expected (Planned Shifts)</p>
                     <div className="space-y-1">
                       {Object.entries(expectedIncomeByCurrency).map(([currency, amount]) => (
                         <div key={currency} className="flex items-center gap-1">
-                          <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                          <span className="text-base font-semibold text-amber-600 dark:text-amber-400">
                             {getCurrencySymbol(currency)}{amount.toFixed(2)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{currency}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Other Income (Financial Records) */}
+                {Object.keys(financialIncomeByCurrency).length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                      <TrendingUp className="h-3 w-3" />
+                      Other Income
+                    </p>
+                    <div className="space-y-1">
+                      {Object.entries(financialIncomeByCurrency).map(([currency, amount]) => (
+                        <div key={currency} className="flex items-center gap-1">
+                          <span className="text-base font-semibold text-green-600 dark:text-green-400">
+                            {getCurrencySymbol(currency)}{amount.toFixed(2)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{currency}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Expenses (Financial Records) */}
+                {Object.keys(financialExpenseByCurrency).length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                      <TrendingDown className="h-3 w-3" />
+                      Expenses
+                    </p>
+                    <div className="space-y-1">
+                      {Object.entries(financialExpenseByCurrency).map(([currency, amount]) => (
+                        <div key={currency} className="flex items-center gap-1">
+                          <span className="text-base font-semibold text-red-600 dark:text-red-400">
+                            -{getCurrencySymbol(currency)}{amount.toFixed(2)}
                           </span>
                           <span className="text-xs text-muted-foreground">{currency}</span>
                         </div>
@@ -220,19 +389,39 @@ export function DayShiftsDrawer({
         )}
 
         {/* Entries List */}
-        {dayEntries.length === 0 ? (
+        {dayEntries.length === 0 && financialRecords.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-4">
               No entries for this day
             </p>
-            <button
-              onClick={() => setAddDialogOpen(true)}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-            >
-              + Add Entry
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="gap-1">
+                  <Plus className="h-4 w-4" />
+                  Add Entry
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setAddDialogOpen(true)}>
+                  💼 Add Shift
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  setAddFinancialType('income');
+                  setAddFinancialDialogOpen(true);
+                }}>
+                  💰 Add Income
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  setAddFinancialType('expense');
+                  setAddFinancialDialogOpen(true);
+                }}>
+                  💸 Add Expense
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-        ) : (
+        ) : (dayEntries.length > 0 || financialRecords.length > 0) && (
           <div className="space-y-3">
             <div className="space-y-2">
               {dayEntries.map((entry) => {
@@ -316,54 +505,85 @@ export function DayShiftsDrawer({
                                 {entry.start_time} - {entry.end_time}
                               </span>
                               <span className="ml-1">({formatHours(entry.actual_hours || 0)})</span>
-                              {entry.is_overnight && (
-                                <span className="text-orange-500 text-[10px]">overnight</span>
-                              )}
-                              {entry.shift_templates && (
-                                <span className="text-blue-500 text-[10px] ml-1">
-                                  📋 {entry.shift_templates.short_code || entry.shift_templates.name}
-                                </span>
-                              )}
                             </div>
+
+                            {/* Badges row - overnight and template */}
+                            {(entry.is_overnight || entry.shift_templates) && (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {entry.is_overnight && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
+                                    🌙 overnight
+                                  </span>
+                                )}
+                                {entry.shift_templates && (
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                                    📋 {entry.shift_templates.short_code || entry.shift_templates.name}
+                                  </span>
+                                )}
+                              </div>
+                            )}
 
                             {entry.jobs && (
                               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <DollarSign className="h-3 w-3" />
+                                <Coins className="h-3 w-3" />
                                 <span>
                                   {getCurrencySymbol(entry.jobs.currency || 'USD')} {rateDisplay}
                                 </span>
                               </div>
                             )}
 
-                            {/* Show calculated income for completed shifts */}
-                            {incomeRecord && entry.status === 'completed' && (
-                              <div className="flex items-center gap-1.5 text-xs font-medium text-green-600 dark:text-green-400 mt-1">
-                                <DollarSign className="h-3 w-3" />
-                                <span>
-                                  Earned: {getCurrencySymbol(incomeRecord.currency)}{incomeRecord.amount.toFixed(2)}
-                                </span>
-                              </div>
-                            )}
+                            {/* Show calculated income for completed shifts - only for calculable pay types */}
+                            {incomeRecord && entry.status === 'completed' && (() => {
+                              // Only show earned amount if it's calculable per shift (not salary)
+                              const isCalculablePayType = entry.jobs ?
+                                (entry.jobs.pay_type === 'hourly' || entry.jobs.pay_type === 'daily') :
+                                (entry.custom_hourly_rate || entry.custom_daily_rate || entry.holiday_fixed_amount);
+
+                              return isCalculablePayType ? (
+                                <div className="flex items-center gap-1.5 text-xs font-medium text-green-600 dark:text-green-400 mt-1">
+                                  <Coins className="h-3 w-3" />
+                                  <span>
+                                    Earned: {getCurrencySymbol(incomeRecord.currency)}{incomeRecord.amount.toFixed(2)}
+                                  </span>
+                                </div>
+                              ) : null;
+                            })()}
 
                             {/* Show estimated income for planned/in-progress shifts */}
-                            {entry.status !== 'completed' && entry.status !== 'cancelled' && entry.jobs && (
+                            {entry.status !== 'completed' && entry.status !== 'cancelled' && (
                               (() => {
-                                const job = entry.jobs;
-                                const currency = entry.custom_currency || job.currency || 'USD';
+                                const currency = entry.custom_currency || entry.jobs?.currency || 'USD';
                                 let estimatedAmount = 0;
-
-                                // Use actual_hours or fall back to scheduled_hours for planned shifts
                                 const hours = entry.actual_hours || entry.scheduled_hours || 0;
 
-                                if (job.pay_type === 'hourly' && job.hourly_rate) {
-                                  estimatedAmount = hours * job.hourly_rate;
-                                } else if (job.pay_type === 'daily' && job.daily_rate) {
-                                  estimatedAmount = job.daily_rate;
+                                // Priority 1: Fixed amount
+                                if (entry.pay_override_type === 'fixed_amount' && entry.holiday_fixed_amount) {
+                                  estimatedAmount = entry.holiday_fixed_amount;
+                                }
+                                // Priority 2: Custom rates with optional multiplier
+                                else if (entry.custom_hourly_rate && hours > 0) {
+                                  const multiplier = entry.holiday_multiplier || 1;
+                                  estimatedAmount = hours * entry.custom_hourly_rate * multiplier;
+                                }
+                                else if (entry.custom_daily_rate) {
+                                  const multiplier = entry.holiday_multiplier || 1;
+                                  estimatedAmount = entry.custom_daily_rate * multiplier;
+                                }
+                                // Priority 3: Job rates with optional multiplier (ONLY hourly/daily, NOT salary)
+                                else if (entry.jobs && (entry.jobs.pay_type === 'hourly' || entry.jobs.pay_type === 'daily')) {
+                                  const job = entry.jobs;
+                                  const multiplier = entry.holiday_multiplier || 1;
+
+                                  if (job.pay_type === 'hourly' && job.hourly_rate && hours > 0) {
+                                    estimatedAmount = hours * job.hourly_rate * multiplier;
+                                  } else if (job.pay_type === 'daily' && job.daily_rate) {
+                                    estimatedAmount = job.daily_rate * multiplier;
+                                  }
                                 }
 
                                 return estimatedAmount > 0 ? (
                                   <div className="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 mt-1">
-                                    <DollarSign className="h-3 w-3" />
+                                    <Coins className="h-3 w-3" />
                                     <span>
                                       Expected: {getCurrencySymbol(currency)}{estimatedAmount.toFixed(2)}
                                     </span>
@@ -402,14 +622,102 @@ export function DayShiftsDrawer({
               })}
             </div>
 
-            {/* Add Entry Button */}
+            {/* Financial Records Section */}
+            {financialRecords.length > 0 && (
+              <div className="space-y-2 mt-4">
+                <h4 className="text-sm font-medium text-muted-foreground px-1">Financial Records</h4>
+                {financialRecords.map((record) => {
+                  const isIncome = record.type === 'income';
+                  const category = record.financial_categories;
+
+                  return (
+                    <button
+                      key={record.id}
+                      onClick={() => {
+                        setSelectedFinancialRecord(record);
+                        setEditFinancialDialogOpen(true);
+                      }}
+                      className={`w-full border rounded-lg p-3 hover:bg-muted/50 transition-colors text-left ${
+                        isIncome ? 'border-green-200 dark:border-green-900' : 'border-red-200 dark:border-red-900'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            {isIncome ? (
+                              <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+                            ) : (
+                              <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
+                            )}
+                            <span className="font-medium text-sm">{record.description}</span>
+                          </div>
+
+                          {category && (
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                              <span>{category.icon}</span>
+                              <span>{category.name}</span>
+                            </div>
+                          )}
+
+                          {record.jobs && (
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
+                              <div className="w-2 h-2 rounded" style={{ backgroundColor: record.jobs.color || "#3B82F6" }} />
+                              <span>{record.jobs.name}</span>
+                            </div>
+                          )}
+
+                          {record.notes && (
+                            <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                              {record.notes}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="text-right">
+                          <div className={`text-base font-semibold ${
+                            isIncome ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                          }`}>
+                            {isIncome ? '+' : '-'}{getCurrencySymbol(record.currency)}{Number(record.amount).toFixed(2)}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            {record.currency}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Add Button with Dropdown */}
             <div className="pt-2 border-t flex justify-end pt-3">
-              <button
-                onClick={() => setAddDialogOpen(true)}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-              >
-                + Add Entry
-              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="gap-1">
+                    <Plus className="h-4 w-4" />
+                    Add
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setAddDialogOpen(true)}>
+                    💼 Add Shift
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    setAddFinancialType('income');
+                    setAddFinancialDialogOpen(true);
+                  }}>
+                    💰 Add Income
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    setAddFinancialType('expense');
+                    setAddFinancialDialogOpen(true);
+                  }}>
+                    💸 Add Expense
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         )}
@@ -427,6 +735,21 @@ export function DayShiftsDrawer({
         onOpenChange={setAddDialogOpen}
         initialDate={dateStr}
         onSuccess={handleEditSuccess}
+      />
+
+      <EditFinancialRecordDialog
+        record={selectedFinancialRecord}
+        open={editFinancialDialogOpen}
+        onOpenChange={setEditFinancialDialogOpen}
+        onSuccess={handleFinancialSuccess}
+      />
+
+      <AddFinancialRecordDialog
+        open={addFinancialDialogOpen}
+        onOpenChange={setAddFinancialDialogOpen}
+        selectedDate={date}
+        defaultType={addFinancialType}
+        onSuccess={handleFinancialSuccess}
       />
     </>
   );

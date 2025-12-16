@@ -4,19 +4,26 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Database } from "@/lib/database.types";
 import { getStatusInfo, getCurrencySymbol, formatCurrency } from "@/lib/utils/time-format";
+import { TrendingUp, TrendingDown } from "lucide-react";
 
 type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
   shift_templates: Database["public"]["Tables"]["shift_templates"]["Row"] | null;
 };
 
+type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] & {
+  financial_categories?: Database["public"]["Tables"]["financial_categories"]["Row"] | null;
+  jobs?: Database["public"]["Tables"]["jobs"]["Row"] | null;
+};
+
 interface MonthCalendarProps {
   currentDate: Date;
   entries?: TimeEntry[];
+  financialRecords?: FinancialRecord[];
   onDayClick?: (date: Date) => void;
 }
 
-export function MonthCalendar({ currentDate, entries = [], onDayClick }: MonthCalendarProps) {
+export function MonthCalendar({ currentDate, entries = [], financialRecords = [], onDayClick }: MonthCalendarProps) {
   const calendar = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -95,6 +102,12 @@ export function MonthCalendar({ currentDate, entries = [], onDayClick }: MonthCa
     return entries.filter((entry) => entry.date === dateStr);
   };
 
+  // Get financial records for a specific date
+  const getFinancialRecordsForDate = (date: Date) => {
+    const dateStr = date.toISOString().split("T")[0];
+    return financialRecords.filter((record) => record.date === dateStr);
+  };
+
   // Get simple count for a date (no earnings in new schema - will be in income_records)
   const getEntryCountForDate = (date: Date): number => {
     const dayEntries = getEntriesForDate(date);
@@ -119,7 +132,14 @@ export function MonthCalendar({ currentDate, entries = [], onDayClick }: MonthCa
       <div className="grid grid-cols-7 grid-rows-6 gap-1 md:gap-2 flex-1 min-h-0">
         {calendar.map((day, index) => {
           const dayEntries = getEntriesForDate(day.date);
+          const dayFinancialRecords = getFinancialRecordsForDate(day.date);
           const hasEntries = dayEntries.length > 0;
+          const hasFinancialRecords = dayFinancialRecords.length > 0;
+          const hasAnyContent = hasEntries || hasFinancialRecords;
+
+          // Count financial records by type
+          const incomeRecords = dayFinancialRecords.filter(r => r.type === 'income');
+          const expenseRecords = dayFinancialRecords.filter(r => r.type === 'expense');
 
           return (
             <button
@@ -131,7 +151,7 @@ export function MonthCalendar({ currentDate, entries = [], onDayClick }: MonthCa
                 !day.isCurrentMonth && "text-muted-foreground/40 bg-muted/20",
                 day.isToday && "border-primary border-2 font-semibold",
                 day.isCurrentMonth && "cursor-pointer",
-                hasEntries && day.isCurrentMonth && "bg-primary/5"
+                hasAnyContent && day.isCurrentMonth && "bg-primary/5"
               )}
               disabled={!day.isCurrentMonth}
             >
@@ -139,40 +159,59 @@ export function MonthCalendar({ currentDate, entries = [], onDayClick }: MonthCa
                 <span className="text-xs md:text-sm mb-0.5 md:mb-1">{day.dayNumber}</span>
 
                 {/* Entry indicators */}
-                {day.isCurrentMonth && hasEntries && (
+                {day.isCurrentMonth && hasAnyContent && (
                   <div className="flex-1 flex flex-col gap-0.5 md:gap-1 overflow-hidden min-h-0">
-                    {/* Entry color dots with status indicators */}
-                    <div className="flex gap-0.5 md:gap-1 flex-wrap items-center">
-                      {dayEntries.slice(0, 3).map((entry, idx) => {
-                        const status = getStatusInfo(entry.status || "planned");
-                        return (
-                          <div
-                            key={idx}
-                            className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full flex-shrink-0 relative"
-                            style={{
-                              backgroundColor: entry.jobs?.color || "#9CA3AF",
-                              opacity: entry.status === "cancelled" ? 0.4 : 1,
-                              border: entry.status === "completed" ? "1.5px solid #10B981" :
-                                      entry.status === "in_progress" ? "1.5px solid #F59E0B" :
-                                      "none",
-                            }}
-                            title={`${entry.jobs?.name || entry.entry_type === "day_off" ? "Day Off" : "Personal Time"} - ${status.label}`}
-                          />
-                        );
-                      })}
-                      {dayEntries.length > 3 && (
-                        <span className="text-[9px] md:text-[10px] text-muted-foreground">
-                          +{dayEntries.length - 3}
-                        </span>
-                      )}
-                    </div>
+                    {/* Shift entry color dots with status indicators */}
+                    {hasEntries && (
+                      <div className="flex gap-0.5 md:gap-1 flex-wrap items-center">
+                        {dayEntries.slice(0, 3).map((entry, idx) => {
+                          const status = getStatusInfo(entry.status || "planned");
+                          return (
+                            <div
+                              key={idx}
+                              className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full flex-shrink-0 relative"
+                              style={{
+                                backgroundColor: entry.jobs?.color || "#9CA3AF",
+                                opacity: entry.status === "cancelled" ? 0.4 : 1,
+                                border: entry.status === "completed" ? "1.5px solid #10B981" :
+                                        entry.status === "in_progress" ? "1.5px solid #F59E0B" :
+                                        "none",
+                              }}
+                              title={`${entry.jobs?.name || entry.entry_type === "day_off" ? "Day Off" : "Personal Time"} - ${status.label}`}
+                            />
+                          );
+                        })}
+                        {dayEntries.length > 3 && (
+                          <span className="text-[9px] md:text-[10px] text-muted-foreground">
+                            +{dayEntries.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
 
-                    {/* Entry count or hours display */}
-                    {dayEntries.length === 1 && (
-                      <div className="text-[9px] md:text-[10px] font-medium text-muted-foreground truncate flex items-center gap-0.5">
-                        <span className="text-[8px] md:text-[9px]">
-                          {getStatusInfo(dayEntries[0].status || "planned").emoji}
-                        </span>
+                    {/* Financial record indicators */}
+                    {hasFinancialRecords && (
+                      <div className="flex gap-1 items-center justify-start">
+                        {incomeRecords.length > 0 && (
+                          <div className="flex items-center gap-0.5">
+                            <TrendingUp className="h-2.5 w-2.5 md:h-3 md:w-3 text-green-600 dark:text-green-400" />
+                            {incomeRecords.length > 1 && (
+                              <span className="text-[9px] md:text-[10px] text-green-600 dark:text-green-400 font-medium">
+                                {incomeRecords.length}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        {expenseRecords.length > 0 && (
+                          <div className="flex items-center gap-0.5">
+                            <TrendingDown className="h-2.5 w-2.5 md:h-3 md:w-3 text-red-600 dark:text-red-400" />
+                            {expenseRecords.length > 1 && (
+                              <span className="text-[9px] md:text-[10px] text-red-600 dark:text-red-400 font-medium">
+                                {expenseRecords.length}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

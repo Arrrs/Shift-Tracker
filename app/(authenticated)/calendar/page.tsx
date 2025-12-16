@@ -3,17 +3,20 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, List, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Calendar, List, ChevronLeft, ChevronRight, Loader2, Plus, ChevronDown } from "lucide-react";
 import { MonthCalendar } from "./month-calendar";
 import { ListView } from "./list-view";
 import { AddTimeEntryDialog } from "./add-time-entry-dialog";
+import { AddFinancialRecordDialog } from "../finances/add-financial-record-dialog";
 import { GoToDateDialog } from "./go-to-date-dialog";
 import { DayShiftsDrawer } from "./day-shifts-drawer";
 import { IncomeStatsCards } from "./income-stats-cards";
 import { StatCardMobile } from "./stat-card";
 import { getTimeEntries } from "../time-entries/actions";
+import { getFinancialRecords } from "../finances/actions";
 import { Database } from "@/lib/database.types";
 import { getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time-format";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type ViewMode = "calendar" | "list";
 type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
@@ -21,10 +24,16 @@ type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
   shift_templates: Database["public"]["Tables"]["shift_templates"]["Row"] | null;
 };
 
+type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] & {
+  financial_categories?: Database["public"]["Tables"]["financial_categories"]["Row"] | null;
+  jobs?: Database["public"]["Tables"]["jobs"]["Row"] | null;
+};
+
 export default function CalendarPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [entries, setEntries] = useState<TimeEntry[]>([]);
+  const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>([]);
   const [stats, setStats] = useState({
     totalEarnings: 0,
     totalHours: 0,
@@ -45,6 +54,8 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayDrawerOpen, setDayDrawerOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [addFinancialDialogOpen, setAddFinancialDialogOpen] = useState(false);
+  const [addFinancialType, setAddFinancialType] = useState<"income" | "expense">("income");
 
   // Initialize current date on client side only
   useEffect(() => {
@@ -97,6 +108,12 @@ export default function CalendarPage() {
         setEntries(entriesResult.entries as TimeEntry[]);
       }
 
+      // Load financial records
+      const financialResult = await getFinancialRecords(startDate, endDate);
+      if (financialResult.records) {
+        setFinancialRecords(financialResult.records as FinancialRecord[]);
+      }
+
       // TODO: Load stats from new schema
       // const statsResult = await getTimeEntryStats(startDate, endDate);
       // if (statsResult.stats) {
@@ -113,6 +130,10 @@ export default function CalendarPage() {
   }, [currentDate, refreshTrigger]);
 
   const handleEntryChange = () => {
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
+  const handleFinancialSuccess = () => {
     setRefreshTrigger((prev) => prev + 1);
   };
 
@@ -145,9 +166,32 @@ export default function CalendarPage() {
             <List className="h-4 w-4 md:mr-2" />
             <span className="hidden md:inline">List</span>
           </Button>
-          <Button size="sm" onClick={() => setAddDialogOpen(true)}>
-            + Add
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" className="gap-1">
+                <Plus className="h-4 w-4" />
+                <span className="hidden md:inline">Add</span>
+                <ChevronDown className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setAddDialogOpen(true)}>
+                💼 Add Shift
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                setAddFinancialType('income');
+                setAddFinancialDialogOpen(true);
+              }}>
+                💰 Add Income
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                setAddFinancialType('expense');
+                setAddFinancialDialogOpen(true);
+              }}>
+                💸 Add Expense
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -156,6 +200,15 @@ export default function CalendarPage() {
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
         onSuccess={handleEntryChange}
+      />
+
+      {/* Add Financial Record Dialog */}
+      <AddFinancialRecordDialog
+        open={addFinancialDialogOpen}
+        onOpenChange={setAddFinancialDialogOpen}
+        selectedDate={currentDate || undefined}
+        defaultType={addFinancialType}
+        onSuccess={handleFinancialSuccess}
       />
 
       {/* Stats Cards - Mobile Only */}
@@ -223,9 +276,9 @@ export default function CalendarPage() {
       </div>
 
       {/* Main Layout */}
-      <div className="flex-1 min-h-0 lg:grid lg:grid-cols-[1fr_280px] lg:gap-6">
+      <div className="flex-1 min-h-0 lg:grid lg:grid-cols-[1fr_280px] lg:gap-6 overflow-hidden">
         {/* Calendar Section */}
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full min-h-0">
           {/* Month Navigation */}
           <div className="flex items-center justify-between mb-3 flex-shrink-0">
             <div className="flex items-center gap-2">
@@ -256,12 +309,14 @@ export default function CalendarPage() {
                 <MonthCalendar
                   currentDate={currentDate}
                   entries={entries}
+                  financialRecords={financialRecords}
                   onDayClick={handleDayClick}
                 />
               ) : null
             ) : (
               <ListView
                 entries={entries}
+                financialRecords={financialRecords}
                 loading={loading}
                 onEntryChange={handleEntryChange}
               />
