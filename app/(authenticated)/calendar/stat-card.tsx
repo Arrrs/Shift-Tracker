@@ -51,7 +51,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "rounded-lg p-4 transition-all duration-200",
+        "rounded-lg p-3 transition-all duration-200",
         gradient,
         border,
         hasExpandableContent && "cursor-pointer hover:shadow-md",
@@ -63,8 +63,8 @@ export function StatCard({
       }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-sm text-muted-foreground flex items-center gap-1.5">
+      <div className="flex items-center justify-between mb-1.5">
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
           <span>{icon}</span>
           <span>{title}</span>
         </p>
@@ -77,9 +77,9 @@ export function StatCard({
             }}
           >
             {isExpanded ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              <ChevronUp className="h-3 w-3 text-muted-foreground" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              <ChevronDown className="h-3 w-3 text-muted-foreground" />
             )}
           </button>
         )}
@@ -87,16 +87,16 @@ export function StatCard({
 
       {/* Value */}
       {loading ? (
-        <div className="flex items-center justify-center py-2">
-          <Loader2 className={cn("h-6 w-6 animate-spin", textColor)} />
+        <div className="flex items-center justify-center py-1.5">
+          <Loader2 className={cn("h-4 w-4 animate-spin", textColor)} />
         </div>
       ) : (
-        <div className={cn("text-2xl font-bold", textColor)}>{value}</div>
+        <div className={cn("text-xl font-bold", textColor)}>{value}</div>
       )}
 
       {/* Expanded Content */}
       {isExpanded && expandedContent && (
-        <div className="mt-3 pt-3 border-t border-current/10 text-sm">
+        <div className="mt-2 pt-2 border-t border-current/10 text-xs">
           {expandedContent}
         </div>
       )}

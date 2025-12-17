@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Home, Briefcase, Calendar, Settings, Menu, Hourglass } from "lucide-react";
+import { Home, Briefcase, Calendar, Settings, Menu, Hourglass, Tags } from "lucide-react";
 
 export function Sidebar() {
   const [open, setOpen] = useState(false);
@@ -39,6 +39,12 @@ export function Sidebar() {
             <Button variant="ghost" className="w-full justify-start">
               <Briefcase className="mr-2 h-4 w-4" />
               Jobs
+            </Button>
+          </Link>
+          <Link href="/categories" onClick={() => setOpen(false)}>
+            <Button variant="ghost" className="w-full justify-start">
+              <Tags className="mr-2 h-4 w-4" />
+              Categories
             </Button>
           </Link>
           <Link href="/countdown" onClick={() => setOpen(false)}>

@@ -155,16 +155,26 @@ export function DayShiftsDrawer({
   });
   console.log('DEBUG - Shift income by currency:', shiftIncomeByCurrency);
 
-  // Calculate financial records totals by currency and type
+  // Calculate financial records totals by currency, type, and status
   const financialIncomeByCurrency: Record<string, number> = {};
   const financialExpenseByCurrency: Record<string, number> = {};
+  const plannedFinancialIncomeByCurrency: Record<string, number> = {};
+  const plannedFinancialExpenseByCurrency: Record<string, number> = {};
 
   financialRecords.forEach((record) => {
     const currency = record.currency || 'USD';
-    if (record.type === 'income') {
+    const isCompleted = record.status === 'completed';
+    const isPlanned = record.status === 'planned';
+
+    // Only include completed and planned records in totals (exclude cancelled)
+    if (record.type === 'income' && isCompleted) {
       financialIncomeByCurrency[currency] = (financialIncomeByCurrency[currency] || 0) + Number(record.amount);
-    } else if (record.type === 'expense') {
+    } else if (record.type === 'expense' && isCompleted) {
       financialExpenseByCurrency[currency] = (financialExpenseByCurrency[currency] || 0) + Number(record.amount);
+    } else if (record.type === 'income' && isPlanned) {
+      plannedFinancialIncomeByCurrency[currency] = (plannedFinancialIncomeByCurrency[currency] || 0) + Number(record.amount);
+    } else if (record.type === 'expense' && isPlanned) {
+      plannedFinancialExpenseByCurrency[currency] = (plannedFinancialExpenseByCurrency[currency] || 0) + Number(record.amount);
     }
   });
 
@@ -308,7 +318,9 @@ export function DayShiftsDrawer({
             {(Object.keys(shiftIncomeByCurrency).length > 0 ||
               Object.keys(expectedIncomeByCurrency).length > 0 ||
               Object.keys(financialIncomeByCurrency).length > 0 ||
-              Object.keys(financialExpenseByCurrency).length > 0) && (
+              Object.keys(financialExpenseByCurrency).length > 0 ||
+              Object.keys(plannedFinancialIncomeByCurrency).length > 0 ||
+              Object.keys(plannedFinancialExpenseByCurrency).length > 0) && (
               <div className="border-t pt-3 space-y-3">
                 {/* Shift Income (Completed) */}
                 {Object.keys(shiftIncomeByCurrency).length > 0 && (
@@ -364,7 +376,7 @@ export function DayShiftsDrawer({
                   </div>
                 )}
 
-                {/* Expenses (Financial Records) */}
+                {/* Expenses (Financial Records - Completed) */}
                 {Object.keys(financialExpenseByCurrency).length > 0 && (
                   <div>
                     <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
@@ -375,6 +387,46 @@ export function DayShiftsDrawer({
                       {Object.entries(financialExpenseByCurrency).map(([currency, amount]) => (
                         <div key={currency} className="flex items-center gap-1">
                           <span className="text-base font-semibold text-red-600 dark:text-red-400">
+                            -{getCurrencySymbol(currency)}{amount.toFixed(2)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{currency}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Planned Financial Income */}
+                {Object.keys(plannedFinancialIncomeByCurrency).length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                      <TrendingUp className="h-3 w-3" />
+                      Expected Income (Planned)
+                    </p>
+                    <div className="space-y-1">
+                      {Object.entries(plannedFinancialIncomeByCurrency).map(([currency, amount]) => (
+                        <div key={currency} className="flex items-center gap-1">
+                          <span className="text-base font-semibold text-amber-600 dark:text-amber-400">
+                            {getCurrencySymbol(currency)}{amount.toFixed(2)}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{currency}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Planned Financial Expenses */}
+                {Object.keys(plannedFinancialExpenseByCurrency).length > 0 && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                      <TrendingDown className="h-3 w-3" />
+                      Expected Expenses (Planned)
+                    </p>
+                    <div className="space-y-1">
+                      {Object.entries(plannedFinancialExpenseByCurrency).map(([currency, amount]) => (
+                        <div key={currency} className="flex items-center gap-1">
+                          <span className="text-base font-semibold text-amber-600 dark:text-amber-400">
                             -{getCurrencySymbol(currency)}{amount.toFixed(2)}
                           </span>
                           <span className="text-xs text-muted-foreground">{currency}</span>
@@ -629,6 +681,18 @@ export function DayShiftsDrawer({
                 {financialRecords.map((record) => {
                   const isIncome = record.type === 'income';
                   const category = record.financial_categories;
+                  const status = record.status || 'completed';
+                  const isCancelled = status === 'cancelled';
+                  const isPlanned = status === 'planned';
+                  const isCompleted = status === 'completed';
+
+                  // Status border color
+                  let borderColor = isIncome ? 'border-green-200 dark:border-green-900' : 'border-red-200 dark:border-red-900';
+                  if (isCancelled) {
+                    borderColor = 'border-gray-300 dark:border-gray-700';
+                  } else if (isPlanned) {
+                    borderColor = 'border-amber-200 dark:border-amber-900';
+                  }
 
                   return (
                     <button
@@ -637,9 +701,8 @@ export function DayShiftsDrawer({
                         setSelectedFinancialRecord(record);
                         setEditFinancialDialogOpen(true);
                       }}
-                      className={`w-full border rounded-lg p-3 hover:bg-muted/50 transition-colors text-left ${
-                        isIncome ? 'border-green-200 dark:border-green-900' : 'border-red-200 dark:border-red-900'
-                      }`}
+                      className={`w-full border rounded-lg p-3 hover:bg-muted/50 transition-colors text-left ${borderColor}`}
+                      style={{ opacity: isCancelled ? 0.5 : 1 }}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
@@ -650,6 +713,8 @@ export function DayShiftsDrawer({
                               <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
                             )}
                             <span className="font-medium text-sm">{record.description}</span>
+                            {isPlanned && <span className="text-xs">📅</span>}
+                            {isCancelled && <span className="text-xs">❌</span>}
                           </div>
 
                           {category && (
@@ -675,12 +740,18 @@ export function DayShiftsDrawer({
 
                         <div className="text-right">
                           <div className={`text-base font-semibold ${
+                            isCancelled ? 'text-gray-400 dark:text-gray-600' :
+                            isPlanned ? 'text-amber-600 dark:text-amber-400' :
                             isIncome ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                           }`}>
                             {isIncome ? '+' : '-'}{getCurrencySymbol(record.currency)}{Number(record.amount).toFixed(2)}
                           </div>
-                          <p className="text-[10px] text-muted-foreground">
-                            {record.currency}
+                          <p className={`text-[10px] ${
+                            isCancelled ? 'text-gray-400 dark:text-gray-600' :
+                            isPlanned ? 'text-amber-600 dark:text-amber-400' :
+                            'text-muted-foreground'
+                          }`}>
+                            {isPlanned ? 'Expected' : isCancelled ? 'Cancelled' : 'Completed'}
                           </p>
                         </div>
                       </div>

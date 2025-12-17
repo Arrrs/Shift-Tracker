@@ -41,6 +41,7 @@ export function AddFinancialRecordDialog({
     description: "",
     notes: "",
     job_id: "",
+    status: "completed" as "completed" | "planned" | "cancelled",
   });
 
   // Update type when defaultType changes
@@ -55,11 +56,25 @@ export function AddFinancialRecordDialog({
       if (!error && cats) {
         setCategories(cats);
         // Clear category selection when type changes so user picks appropriate category
-        setFormData((prev) => ({ ...prev, category_id: "" }));
+        setFormData((prev) => ({ ...prev, category_id: "", amount: "", currency: prev.currency }));
       }
     }
     loadCategories();
   }, [type]);
+
+  // Auto-fill amount, currency, and description when category with defaults is selected
+  const handleCategoryChange = (categoryId: string) => {
+    const selectedCategory = categories.find(cat => cat.id === categoryId);
+
+    setFormData((prev) => ({
+      ...prev,
+      category_id: categoryId,
+      // Auto-fill default values if available (user can still change them)
+      amount: selectedCategory?.default_amount ? String(selectedCategory.default_amount) : prev.amount,
+      currency: selectedCategory?.default_currency || prev.currency,
+      description: selectedCategory?.default_description || prev.description,
+    }));
+  };
 
   // Load jobs once
   useEffect(() => {
@@ -91,6 +106,12 @@ export function AddFinancialRecordDialog({
         return;
       }
 
+      if (!formData.description) {
+        toast.error("Please enter a description");
+        setLoading(false);
+        return;
+      }
+
       const result = await createFinancialRecord({
         type,
         amount,
@@ -100,6 +121,7 @@ export function AddFinancialRecordDialog({
         description: formData.description,
         notes: formData.notes || null,
         job_id: formData.job_id || null,
+        status: formData.status,
       });
 
       if (result.error) {
@@ -117,6 +139,7 @@ export function AddFinancialRecordDialog({
           description: "",
           notes: "",
           job_id: "",
+          status: "completed",
         });
       }
     } catch (error) {
@@ -158,6 +181,26 @@ export function AddFinancialRecordDialog({
                 </Label>
               </div>
             </RadioGroup>
+          </div>
+
+          {/* Status */}
+          <div className="space-y-2">
+            <Label htmlFor="status">Status</Label>
+            <Select
+              value={formData.status}
+              onValueChange={(value: "completed" | "planned" | "cancelled") =>
+                setFormData({ ...formData, status: value })
+              }
+            >
+              <SelectTrigger id="status">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="completed">✅ Completed</SelectItem>
+                <SelectItem value="planned">📅 Planned</SelectItem>
+                <SelectItem value="cancelled">❌ Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Amount & Currency */}
@@ -212,7 +255,7 @@ export function AddFinancialRecordDialog({
             <Label htmlFor="category">Category</Label>
             <Select
               value={formData.category_id}
-              onValueChange={(value) => setFormData({ ...formData, category_id: value })}
+              onValueChange={handleCategoryChange}
             >
               <SelectTrigger id="category">
                 <SelectValue placeholder="Select category" />
@@ -236,7 +279,6 @@ export function AddFinancialRecordDialog({
               placeholder="What was this for?"
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              required
             />
           </div>
 

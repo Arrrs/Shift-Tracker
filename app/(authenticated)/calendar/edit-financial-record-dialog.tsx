@@ -46,6 +46,7 @@ export function EditFinancialRecordDialog({
     description: "",
     notes: "",
     job_id: "",
+    status: "completed" as "completed" | "planned" | "cancelled",
   });
 
   // Load record data when dialog opens
@@ -60,6 +61,7 @@ export function EditFinancialRecordDialog({
         description: record.description,
         notes: record.notes || "",
         job_id: record.job_id || "",
+        status: (record.status || "completed") as "completed" | "planned" | "cancelled",
       });
     }
   }, [record, open]);
@@ -114,6 +116,7 @@ export function EditFinancialRecordDialog({
         description: formData.description,
         notes: formData.notes || null,
         job_id: formData.job_id || null,
+        status: formData.status,
       });
 
       if (result.error) {
@@ -186,6 +189,26 @@ export function EditFinancialRecordDialog({
                 </Label>
               </div>
             </RadioGroup>
+          </div>
+
+          {/* Status */}
+          <div className="space-y-2">
+            <Label htmlFor="status-edit">Status</Label>
+            <Select
+              value={formData.status}
+              onValueChange={(value: "completed" | "planned" | "cancelled") =>
+                setFormData({ ...formData, status: value })
+              }
+            >
+              <SelectTrigger id="status-edit">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="completed">✅ Completed</SelectItem>
+                <SelectItem value="planned">📅 Planned</SelectItem>
+                <SelectItem value="cancelled">❌ Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Amount & Currency */}

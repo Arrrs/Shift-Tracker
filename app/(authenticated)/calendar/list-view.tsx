@@ -118,8 +118,8 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
               >
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               {/* Left side: Date and Job */}
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
+              <div className="flex-1 space-y-1.5">
+                <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
                   <h3 className="font-semibold text-base">
                     {formattedDate}
                   </h3>
@@ -134,20 +134,13 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
                     </span>
                   )}
                   <span className="text-sm">{status.emoji}</span>
-                  {entry.is_overnight && (
-                    <span className="text-[10px] text-orange-500">overnight</span>
-                  )}
-                  {entry.shift_templates && (
-                    <span className="text-blue-500 text-[10px]">
-                      📋 {entry.shift_templates.short_code || entry.shift_templates.name}
-                    </span>
-                  )}
                 </div>
+
                 <div className="flex items-center gap-2">
                   {entry.jobs ? (
                     <>
                       <div
-                        className="w-2 h-2 rounded"
+                        className="w-2 h-2 rounded flex-shrink-0"
                         style={{ backgroundColor: entry.jobs.color || "#3B82F6" }}
                       />
                       <p className="text-sm text-muted-foreground">
@@ -156,15 +149,32 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
                     </>
                   ) : (
                     <>
-                      <div className="w-2 h-2 rounded bg-gray-400" />
+                      <div className="w-2 h-2 rounded bg-gray-400 flex-shrink-0" />
                       <p className="text-sm text-muted-foreground">
                         {isDayOff ? "Day Off" : "Personal Time"}
                       </p>
                     </>
                   )}
                 </div>
+
+                {/* Badges row - overnight and template */}
+                {(entry.is_overnight || entry.shift_templates) && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {entry.is_overnight && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
+                        🌙 overnight
+                      </span>
+                    )}
+                    {entry.shift_templates && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                        📋 {entry.shift_templates.short_code || entry.shift_templates.name}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {entry.notes && (
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                  <p className="text-xs text-muted-foreground line-clamp-1">
                     {entry.notes}
                   </p>
                 )}
@@ -244,13 +254,24 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
               year: "numeric",
             });
 
+            // Status styling
+            const status = record.status || 'completed';
+            const isCancelled = status === 'cancelled';
+            const isPlanned = status === 'planned';
+
+            let borderColor = isIncome ? 'border-green-200 dark:border-green-900' : 'border-red-200 dark:border-red-900';
+            if (isCancelled) {
+              borderColor = 'border-gray-300 dark:border-gray-700';
+            } else if (isPlanned) {
+              borderColor = 'border-amber-200 dark:border-amber-900';
+            }
+
             return (
               <div
                 key={`financial-${record.id}`}
                 onClick={() => handleFinancialClick(record)}
-                className={`border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer ${
-                  isIncome ? 'border-green-200 dark:border-green-900' : 'border-red-200 dark:border-red-900'
-                }`}
+                className={`border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer ${borderColor}`}
+                style={{ opacity: isCancelled ? 0.5 : 1 }}
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                   {/* Left side: Date and Details */}
@@ -267,6 +288,8 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
                       <span className="text-sm font-medium">
                         {isIncome ? 'Income' : 'Expense'}
                       </span>
+                      {isPlanned && <span className="text-xs">📅</span>}
+                      {isCancelled && <span className="text-xs">❌</span>}
                     </div>
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium">
@@ -294,13 +317,21 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
 
                   {/* Right side: Amount */}
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Amount</p>
+                    <p className="text-xs text-muted-foreground">
+                      {isPlanned ? 'Expected' : isCancelled ? 'Cancelled' : 'Amount'}
+                    </p>
                     <p className={`text-lg font-bold ${
+                      isCancelled ? 'text-gray-400 dark:text-gray-600' :
+                      isPlanned ? 'text-amber-600 dark:text-amber-400' :
                       isIncome ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                     }`}>
                       {isIncome ? '+' : '-'}{getCurrencySymbol(record.currency)}{Number(record.amount).toFixed(2)}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
+                    <p className={`text-[10px] ${
+                      isCancelled ? 'text-gray-400 dark:text-gray-600' :
+                      isPlanned ? 'text-amber-600 dark:text-amber-400' :
+                      'text-muted-foreground'
+                    }`}>
                       {record.currency}
                     </p>
                   </div>

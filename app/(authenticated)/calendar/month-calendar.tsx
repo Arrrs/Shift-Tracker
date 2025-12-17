@@ -137,9 +137,10 @@ export function MonthCalendar({ currentDate, entries = [], financialRecords = []
           const hasFinancialRecords = dayFinancialRecords.length > 0;
           const hasAnyContent = hasEntries || hasFinancialRecords;
 
-          // Count financial records by type
-          const incomeRecords = dayFinancialRecords.filter(r => r.type === 'income');
-          const expenseRecords = dayFinancialRecords.filter(r => r.type === 'expense');
+          // Count financial records by type and status (exclude cancelled)
+          const incomeRecords = dayFinancialRecords.filter(r => r.type === 'income' && r.status !== 'cancelled');
+          const expenseRecords = dayFinancialRecords.filter(r => r.type === 'expense' && r.status !== 'cancelled');
+          const hasPlannedFinancials = dayFinancialRecords.some(r => r.status === 'planned');
 
           return (
             <button
@@ -191,25 +192,21 @@ export function MonthCalendar({ currentDate, entries = [], financialRecords = []
 
                     {/* Financial record indicators */}
                     {hasFinancialRecords && (
-                      <div className="flex gap-1 items-center justify-start">
+                      <div className="flex flex-col gap-0.5 items-start">
                         {incomeRecords.length > 0 && (
                           <div className="flex items-center gap-0.5">
                             <TrendingUp className="h-2.5 w-2.5 md:h-3 md:w-3 text-green-600 dark:text-green-400" />
-                            {incomeRecords.length > 1 && (
-                              <span className="text-[9px] md:text-[10px] text-green-600 dark:text-green-400 font-medium">
-                                {incomeRecords.length}
-                              </span>
-                            )}
+                            <span className="text-[9px] md:text-[10px] text-green-600 dark:text-green-400 font-medium">
+                              {incomeRecords.length}
+                            </span>
                           </div>
                         )}
                         {expenseRecords.length > 0 && (
                           <div className="flex items-center gap-0.5">
                             <TrendingDown className="h-2.5 w-2.5 md:h-3 md:w-3 text-red-600 dark:text-red-400" />
-                            {expenseRecords.length > 1 && (
-                              <span className="text-[9px] md:text-[10px] text-red-600 dark:text-red-400 font-medium">
-                                {expenseRecords.length}
-                              </span>
-                            )}
+                            <span className="text-[9px] md:text-[10px] text-red-600 dark:text-red-400 font-medium">
+                              {expenseRecords.length}
+                            </span>
                           </div>
                         )}
                       </div>

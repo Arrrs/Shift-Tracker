@@ -53,39 +53,48 @@ export function IncomeStatsCards({
     loadFinancials();
   }, [currentDate]);
 
-  // NEVER MIX CURRENCIES - show per currency
-  // We'll display the primary currency (first one found) and warn if multiple currencies exist
+  // Calculate totals by currency (never mix currencies)
+  const totalEarningsByCurrency: Record<string, number> = {};
+  const otherIncomeByCurrency: Record<string, number> = {};
+  const expensesByCurrency: Record<string, number> = {};
+  const netIncomeByCurrency: Record<string, number> = {};
 
-  const hasMixedCurrencies =
-    Object.keys(shiftIncomeByCurrency).length > 1 ||
-    (fixedIncome && Object.keys(fixedIncome).length > 1) ||
-    (financialSummary && Object.keys(financialSummary).length > 1);
+  // Add shift income
+  Object.entries(shiftIncomeByCurrency).forEach(([currency, amount]) => {
+    totalEarningsByCurrency[currency] = (totalEarningsByCurrency[currency] || 0) + amount;
+  });
 
-  // Use the first currency found in shift income, or default to USD
-  const primaryCurrency = Object.keys(shiftIncomeByCurrency)[0] || 'USD';
+  // Add fixed income
+  if (fixedIncome) {
+    Object.entries(fixedIncome as Record<string, {total: number}>).forEach(([currency, data]) => {
+      totalEarningsByCurrency[currency] = (totalEarningsByCurrency[currency] || 0) + data.total;
+    });
+  }
 
-  const shiftIncomeTotal = shiftIncomeByCurrency[primaryCurrency] || 0;
+  // Add other income by currency
+  if (financialSummary) {
+    Object.entries(financialSummary as Record<string, {income: number; expense: number}>).forEach(([currency, data]) => {
+      otherIncomeByCurrency[currency] = data.income;
+      expensesByCurrency[currency] = data.expense;
+    });
+  }
 
-  const fixedIncomeTotal = fixedIncome && fixedIncome[primaryCurrency]
-    ? fixedIncome[primaryCurrency].total
-    : 0;
+  // Calculate net income by currency
+  const allCurrencies = new Set([
+    ...Object.keys(totalEarningsByCurrency),
+    ...Object.keys(otherIncomeByCurrency),
+    ...Object.keys(expensesByCurrency)
+  ]);
 
-  // Merge shift income and fixed income into a single "Total Earnings" value
-  const totalEarnings = shiftIncomeTotal + fixedIncomeTotal;
-
-  const otherIncomeTotal = financialSummary && financialSummary[primaryCurrency]
-    ? financialSummary[primaryCurrency].income
-    : 0;
-
-  const expensesTotal = financialSummary && financialSummary[primaryCurrency]
-    ? financialSummary[primaryCurrency].expense
-    : 0;
-
-  // Only calculate net income if all are in the same currency
-  const netIncome = totalEarnings + otherIncomeTotal - expensesTotal;
+  allCurrencies.forEach(currency => {
+    const earnings = totalEarningsByCurrency[currency] || 0;
+    const otherIncome = otherIncomeByCurrency[currency] || 0;
+    const expenses = expensesByCurrency[currency] || 0;
+    netIncomeByCurrency[currency] = earnings + otherIncome - expenses;
+  });
 
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-2.5 lg:grid-cols-2">
       {/* Total Earnings Card (combines shift income + fixed income) */}
       <StatCard
         cardId="total-earnings"
@@ -94,10 +103,20 @@ export function IncomeStatsCards({
         value={
           loading || loadingFinancials ? (
             "..."
-          ) : totalEarnings === 0 ? (
-            `${getCurrencySymbol(primaryCurrency)}0`
+          ) : Object.keys(totalEarningsByCurrency).length === 0 ? (
+            "$0"
+          ) : Object.keys(totalEarningsByCurrency).length === 1 ? (
+            Object.entries(totalEarningsByCurrency).map(([currency, amount]) => (
+              `${getCurrencySymbol(currency)}${formatCurrency(amount)}`
+            ))[0]
           ) : (
-            `${getCurrencySymbol(primaryCurrency)}${formatCurrency(totalEarnings)}`
+            <div className="space-y-0.5">
+              {Object.entries(totalEarningsByCurrency).map(([currency, amount]) => (
+                <div key={currency} className="text-xl font-bold">
+                  {getCurrencySymbol(currency)}{formatCurrency(amount)}
+                </div>
+              ))}
+            </div>
           )
         }
         loading={loading || loadingFinancials}
@@ -115,7 +134,6 @@ export function IncomeStatsCards({
                     <div key={job.jobId} className="flex justify-between text-xs">
                       <span className="text-muted-foreground">{job.jobName}:</span>
                       <span className="font-medium">
-                        {getCurrencySymbol(primaryCurrency)}
                         {formatCurrency(job.amount)}
                       </span>
                     </div>
@@ -162,10 +180,20 @@ export function IncomeStatsCards({
         value={
           loadingFinancials ? (
             "..."
-          ) : otherIncomeTotal === 0 ? (
-            `${getCurrencySymbol(primaryCurrency)}0`
+          ) : Object.keys(otherIncomeByCurrency).length === 0 ? (
+            "$0"
+          ) : Object.keys(otherIncomeByCurrency).length === 1 ? (
+            Object.entries(otherIncomeByCurrency).map(([currency, amount]) => (
+              `${getCurrencySymbol(currency)}${formatCurrency(amount)}`
+            ))[0]
           ) : (
-            `${getCurrencySymbol(primaryCurrency)}${formatCurrency(otherIncomeTotal)}`
+            <div className="space-y-0.5">
+              {Object.entries(otherIncomeByCurrency).map(([currency, amount]) => (
+                <div key={currency} className="text-xl font-bold">
+                  {getCurrencySymbol(currency)}{formatCurrency(amount)}
+                </div>
+              ))}
+            </div>
           )
         }
         loading={loadingFinancials}
@@ -173,7 +201,7 @@ export function IncomeStatsCards({
         border="border border-green-500/20"
         textColor="text-green-600 dark:text-green-400"
         expandedContent={
-          financialSummary && otherIncomeTotal > 0 ? (
+          financialSummary && Object.values(otherIncomeByCurrency).some(v => v > 0) ? (
             <div className="space-y-2">
               {Object.entries(financialSummary as Record<string, {incomeByCategory: Record<string, {amount: number; icon: string}>}>).map(([currency, data]) =>
                 Object.entries(data.incomeByCategory).map(([catName, catData]) => (
@@ -201,10 +229,20 @@ export function IncomeStatsCards({
         value={
           loadingFinancials ? (
             "..."
-          ) : expensesTotal === 0 ? (
-            `${getCurrencySymbol(primaryCurrency)}0`
+          ) : Object.keys(expensesByCurrency).length === 0 ? (
+            "$0"
+          ) : Object.keys(expensesByCurrency).length === 1 ? (
+            Object.entries(expensesByCurrency).map(([currency, amount]) => (
+              `${getCurrencySymbol(currency)}${formatCurrency(amount)}`
+            ))[0]
           ) : (
-            `${getCurrencySymbol(primaryCurrency)}${formatCurrency(expensesTotal)}`
+            <div className="space-y-0.5">
+              {Object.entries(expensesByCurrency).map(([currency, amount]) => (
+                <div key={currency} className="text-xl font-bold">
+                  {getCurrencySymbol(currency)}{formatCurrency(amount)}
+                </div>
+              ))}
+            </div>
           )
         }
         loading={loadingFinancials}
@@ -212,7 +250,7 @@ export function IncomeStatsCards({
         border="border border-red-500/20"
         textColor="text-red-600 dark:text-red-400"
         expandedContent={
-          financialSummary && expensesTotal > 0 ? (
+          financialSummary && Object.values(expensesByCurrency).some(v => v > 0) ? (
             <div className="space-y-2">
               {Object.entries(financialSummary as Record<string, {expenseByCategory: Record<string, {amount: number; icon: string}>}>).map(([currency, data]) =>
                 Object.entries(data.expenseByCategory).map(([catName, catData]) => (
@@ -233,20 +271,26 @@ export function IncomeStatsCards({
       />
 
       {/* Net Income Card */}
-      <div className="bg-gradient-to-br from-gray-500/10 to-slate-500/10 border border-gray-500/20 rounded-lg p-4">
-        <p className="text-sm text-muted-foreground mb-2">💵 Net Income</p>
+      <div className="bg-gradient-to-br from-gray-500/10 to-slate-500/10 border border-gray-500/20 rounded-lg p-3">
+        <p className="text-xs text-muted-foreground mb-1.5">💵 Net Income</p>
         {loading || loadingFinancials ? (
-          <div className="text-2xl font-bold text-gray-600 dark:text-gray-400">...</div>
+          <div className="text-xl font-bold text-gray-600 dark:text-gray-400">...</div>
+        ) : Object.keys(netIncomeByCurrency).length === 0 ? (
+          <div className="text-xl font-bold text-gray-900 dark:text-gray-100">$0</div>
+        ) : Object.keys(netIncomeByCurrency).length === 1 ? (
+          Object.entries(netIncomeByCurrency).map(([currency, amount]) => (
+            <div key={currency} className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              {getCurrencySymbol(currency)}{formatCurrency(amount)}
+            </div>
+          ))
         ) : (
-          <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {getCurrencySymbol(primaryCurrency)}
-            {formatCurrency(netIncome)}
+          <div className="space-y-0.5">
+            {Object.entries(netIncomeByCurrency).map(([currency, amount]) => (
+              <div key={currency} className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                {getCurrencySymbol(currency)}{formatCurrency(amount)}
+              </div>
+            ))}
           </div>
-        )}
-        {hasMixedCurrencies && (
-          <p className="text-[10px] text-yellow-600 dark:text-yellow-400 mt-1">
-            ⚠️ Multiple currencies detected - showing {primaryCurrency} only
-          </p>
         )}
       </div>
     </div>
