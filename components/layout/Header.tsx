@@ -1,8 +1,5 @@
 import Link from 'next/link'
-import { ThemeSwitcher } from '@/components/theme-switcher'
 import { Sidebar } from './Sidebar'
-
-
 
 export function Header() {
   return (
@@ -14,16 +11,14 @@ export function Header() {
         </div>
 
         {/* Center: Logo/Title */}
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center flex-1">
           <Link href="/dashboard" className="font-bold text-lg">
             Shift Tracker
           </Link>
         </div>
 
-        {/* Right: Theme switcher */}
-        <div className="flex flex-1 items-center justify-end">
-          <ThemeSwitcher />
-        </div>
+        {/* Right: Empty space for balance */}
+        <div className="flex-1" />
       </div>
     </header>
   )

@@ -15,8 +15,28 @@ import { Briefcase, Clock, Info, Search } from "lucide-react";
 import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { getCurrencySymbol } from "@/lib/utils/time-format";
+import { useTranslation } from "@/lib/i18n/use-translation";
+
+// Helper function to format job rate display
+function formatJobRate(job: any): string {
+  const symbol = getCurrencySymbol(job.currency || 'USD');
+
+  switch (job.pay_type) {
+    case 'daily':
+      return `${symbol} ${job.daily_rate?.toFixed(2) || '0.00'}/day`;
+    case 'monthly':
+      return `${symbol} ${job.monthly_salary?.toFixed(2) || '0.00'}/mo`;
+    case 'salary':
+      return `${symbol} ${job.monthly_salary?.toFixed(0) || '0'}/yr`;
+    case 'hourly':
+    default:
+      return `${symbol} ${job.hourly_rate?.toFixed(2) || '0.00'}/hr`;
+  }
+}
 
 function JobsList() {
+  const { t } = useTranslation();
   const [jobs, setJobs] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +69,7 @@ function JobsList() {
   );
 
   if (error) {
-    return <div>Error loading jobs: {error}</div>;
+    return <div>{t("errorLoadingJobs")}: {error}</div>;
   }
 
   if (loading) {
@@ -103,12 +123,12 @@ function JobsList() {
           </div>
           <div className="space-y-2">
             <h3 className="text-lg font-semibold">
-              {showArchived ? "No archived jobs" : "No active jobs"}
+              {showArchived ? t("noArchivedJobs") : t("noActiveJobs")}
             </h3>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
               {showArchived
-                ? "Jobs that you archive will appear here."
-                : "Jobs represent different positions or roles you work. Each job can have its own hourly rate and shift templates."
+                ? t("jobsArchivedWillAppearHere")
+                : t("jobsRepresentPositions")
               }
             </p>
           </div>
@@ -117,12 +137,12 @@ function JobsList() {
               <div className="space-y-3 max-w-md mx-auto text-left bg-muted/50 p-4 rounded-lg">
                 <h4 className="font-medium flex items-center gap-2">
                   <Info className="h-4 w-4" />
-                  Getting Started
+                  {t("gettingStarted")}
                 </h4>
                 <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                  <li>Create a job (e.g., "Barista", "Server", "Retail")</li>
-                  <li>Add shift templates to your job (e.g., "Morning Shift 9-5")</li>
-                  <li>Use templates to quickly log shifts in your calendar</li>
+                  <li>{t("createAJob")}</li>
+                  <li>{t("addShiftTemplates")}</li>
+                  <li>{t("useTemplatesQuickly")}</li>
                 </ol>
               </div>
               <div>
@@ -141,11 +161,11 @@ function JobsList() {
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="text-left p-4">Name</th>
-                <th className="text-left p-4">Rate</th>
-                <th className="text-left p-4">Templates</th>
-                <th className="text-left p-4">Status</th>
-                <th className="text-right p-4">Actions</th>
+                <th className="text-left p-4">{t("name")}</th>
+                <th className="text-left p-4">{t("rate")}</th>
+                <th className="text-left p-4">{t("templates")}</th>
+                <th className="text-left p-4">{t("status")}</th>
+                <th className="text-right p-4">{t("actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -154,7 +174,7 @@ function JobsList() {
                   <tr className="border-b last:border-0 hover:bg-muted/50 cursor-pointer">
                     <td className="p-4">{job.name}</td>
                     <td className="p-4">
-                      ${job.hourly_rate.toFixed(2)} {job.currency}
+                      {formatJobRate(job)}
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
@@ -166,7 +186,7 @@ function JobsList() {
                     </td>
                     <td className="p-4">
                       <Badge variant={job.is_active ? "default" : "secondary"}>
-                        {job.is_active ? "Active" : "Archived"}
+                        {job.is_active ? t("active") : t("archived")}
                       </Badge>
                     </td>
                     <td className="p-4 text-right" onClick={(e) => e.stopPropagation()}>
@@ -219,7 +239,7 @@ function JobsList() {
                   <div className="space-y-1">
                     <h3 className="font-semibold">{job.name}</h3>
                     <p className="text-sm text-muted-foreground">
-                      ${job.hourly_rate.toFixed(2)} {job.currency}
+                      {formatJobRate(job)}
                     </p>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
@@ -227,7 +247,7 @@ function JobsList() {
                     </div>
                   </div>
                   <Badge variant={job.is_active ? "default" : "secondary"}>
-                    {job.is_active ? "Active" : "Archived"}
+                    {job.is_active ? t("active") : t("archived")}
                   </Badge>
                 </div>
 
@@ -277,7 +297,7 @@ function JobsList() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search jobs by name or description..."
+          placeholder={t("searchJobsByName")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
@@ -286,9 +306,9 @@ function JobsList() {
 
       <Tabs defaultValue="active" className="w-full">
         <TabsList>
-          <TabsTrigger value="active">Active ({activeJobs.length})</TabsTrigger>
-          <TabsTrigger value="archived">Archived ({archivedJobs.length})</TabsTrigger>
-          <TabsTrigger value="all">All ({filteredJobs.length})</TabsTrigger>
+          <TabsTrigger value="active">{t("active")} ({activeJobs.length})</TabsTrigger>
+          <TabsTrigger value="archived">{t("archived")} ({archivedJobs.length})</TabsTrigger>
+          <TabsTrigger value="all">{t("all")} ({filteredJobs.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="active" className="mt-6">
@@ -308,6 +328,7 @@ function JobsList() {
 }
 
 export default function JobsPage() {
+  const { t } = useTranslation();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleJobUpdate = () => {
@@ -318,14 +339,14 @@ export default function JobsPage() {
     <div className="min-h-screen p-8">
       {/* Header with title and buttons */}
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Jobs</h1>
+        <h1 className="text-3xl font-bold">{t("jobs")}</h1>
         <div className="flex gap-2">
           <JobsHelpDialog />
           <AddJobDialog onSuccess={handleJobUpdate} />
         </div>
       </div>
 
-      <Suspense fallback={<div className="text-center py-12">Loading jobs...</div>}>
+      <Suspense fallback={<div className="text-center py-12">{t("loading")}...</div>}>
         <JobsList key={refreshTrigger} />
       </Suspense>
     </div>

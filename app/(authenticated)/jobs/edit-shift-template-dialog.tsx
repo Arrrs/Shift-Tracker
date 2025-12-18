@@ -39,7 +39,7 @@ export function EditShiftTemplateDialog({
     short_code: template.short_code || "",
     start_time: template.start_time,
     end_time: template.end_time,
-    expected_hours: template.expected_hours.toString(),
+    expected_hours: template.expected_hours,
     color: template.color || "#3B82F6",
   });
 
@@ -71,7 +71,7 @@ export function EditShiftTemplateDialog({
 
     setFormData({
       ...newFormData,
-      expected_hours: (Math.round(calculatedHours * 2) / 2).toString(), // Round to nearest 0.5
+      expected_hours: Math.round(calculatedHours * 2) / 2, // Round to nearest 0.5
     });
   };
 
@@ -81,7 +81,7 @@ export function EditShiftTemplateDialog({
 
     const result = await updateShiftTemplate(template.id, {
       ...formData,
-      expected_hours: parseFloat(formData.expected_hours),
+      expected_hours: formData.expected_hours,
     });
     setLoading(false);
 
@@ -180,7 +180,7 @@ export function EditShiftTemplateDialog({
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    expected_hours: parseFloat(e.target.value),
+                    expected_hours: parseFloat(e.target.value) || 0,
                   })
                 }
                 required

@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       currency_rates: {
@@ -38,19 +63,266 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_categories: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      expense_records: {
+        Row: {
+          amount: number
+          category_id: string
+          created_at: string | null
+          currency: string
+          date: string
+          description: string | null
+          id: string
+          notes: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category_id: string
+          created_at?: string | null
+          currency?: string
+          date: string
+          description?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string
+          created_at?: string | null
+          currency?: string
+          date?: string
+          description?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_records_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "expense_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_categories: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          default_amount: number | null
+          default_currency: string | null
+          default_description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          default_amount?: number | null
+          default_currency?: string | null
+          default_description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          default_amount?: number | null
+          default_currency?: string | null
+          default_description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      financial_records: {
+        Row: {
+          amount: number
+          category_id: string | null
+          created_at: string | null
+          currency: string
+          date: string
+          description: string
+          id: string
+          job_id: string | null
+          notes: string | null
+          status: string
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category_id?: string | null
+          created_at?: string | null
+          currency?: string
+          date: string
+          description: string
+          id?: string
+          job_id?: string | null
+          notes?: string | null
+          status?: string
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          created_at?: string | null
+          currency?: string
+          date?: string
+          description?: string
+          id?: string
+          job_id?: string | null
+          notes?: string | null
+          status?: string
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_records_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "financial_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_records_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      income_records: {
+        Row: {
+          amount: number
+          calculation_basis: Json | null
+          created_at: string | null
+          currency: string
+          date: string
+          id: string
+          is_manual: boolean | null
+          job_id: string | null
+          notes: string | null
+          source_type: string
+          time_entry_id: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          calculation_basis?: Json | null
+          created_at?: string | null
+          currency?: string
+          date: string
+          id?: string
+          is_manual?: boolean | null
+          job_id?: string | null
+          notes?: string | null
+          source_type: string
+          time_entry_id?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          calculation_basis?: Json | null
+          created_at?: string | null
+          currency?: string
+          date?: string
+          id?: string
+          is_manual?: boolean | null
+          job_id?: string | null
+          notes?: string | null
+          source_type?: string
+          time_entry_id?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "income_records_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "income_records_time_entry_id_fkey"
+            columns: ["time_entry_id"]
+            isOneToOne: false
+            referencedRelation: "time_entries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           color: string | null
           created_at: string | null
           currency: string | null
+          currency_symbol: string | null
           daily_rate: number | null
           description: string | null
           hourly_rate: number | null
           id: string
           is_active: boolean | null
+          monthly_salary: number | null
           name: string
-          overtime_config: Json | null
-          pay_type: string | null
+          pay_type: string
+          personal_days_per_year: number | null
+          pto_days_per_year: number | null
+          salary_history: Json | null
+          sick_days_per_year: number | null
           updated_at: string | null
           user_id: string
         }
@@ -58,14 +330,19 @@ export type Database = {
           color?: string | null
           created_at?: string | null
           currency?: string | null
+          currency_symbol?: string | null
           daily_rate?: number | null
           description?: string | null
           hourly_rate?: number | null
           id?: string
           is_active?: boolean | null
+          monthly_salary?: number | null
           name: string
-          overtime_config?: Json | null
-          pay_type?: string | null
+          pay_type: string
+          personal_days_per_year?: number | null
+          pto_days_per_year?: number | null
+          salary_history?: Json | null
+          sick_days_per_year?: number | null
           updated_at?: string | null
           user_id: string
         }
@@ -73,14 +350,19 @@ export type Database = {
           color?: string | null
           created_at?: string | null
           currency?: string | null
+          currency_symbol?: string | null
           daily_rate?: number | null
           description?: string | null
           hourly_rate?: number | null
           id?: string
           is_active?: boolean | null
+          monthly_salary?: number | null
           name?: string
-          overtime_config?: Json | null
-          pay_type?: string | null
+          pay_type?: string
+          personal_days_per_year?: number | null
+          pto_days_per_year?: number | null
+          salary_history?: Json | null
+          sick_days_per_year?: number | null
           updated_at?: string | null
           user_id?: string
         }
@@ -147,20 +429,14 @@ export type Database = {
           shift_id?: string
           type?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "shift_adjustments_shift_id_fkey"
-            columns: ["shift_id"]
-            isOneToOne: false
-            referencedRelation: "shifts"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       shift_templates: {
         Row: {
           color: string | null
           created_at: string | null
+          default_custom_rate: number | null
+          default_holiday_multiplier: number | null
           end_time: string
           expected_hours: number
           id: string
@@ -174,6 +450,8 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string | null
+          default_custom_rate?: number | null
+          default_holiday_multiplier?: number | null
           end_time: string
           expected_hours: number
           id?: string
@@ -187,6 +465,8 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string | null
+          default_custom_rate?: number | null
+          default_holiday_multiplier?: number | null
           end_time?: string
           expected_hours?: number
           id?: string
@@ -207,74 +487,95 @@ export type Database = {
           },
         ]
       }
-      shifts: {
+      time_entries: {
         Row: {
-          actual_hours: number | null
+          actual_hours: number
           created_at: string | null
+          custom_currency: string | null
+          custom_daily_rate: number | null
+          custom_hourly_rate: number | null
           date: string
+          day_off_type: string | null
           end_time: string | null
+          entry_type: string
+          holiday_fixed_amount: number | null
           holiday_multiplier: number | null
           id: string
+          is_full_day: boolean | null
           is_holiday: boolean | null
-          job_id: string
+          is_overnight: boolean | null
+          job_id: string | null
           notes: string | null
-          overtime_hours: number | null
-          regular_hours: number | null
-          start_time: string
+          pay_override_type: string | null
+          scheduled_hours: number | null
+          start_time: string | null
           status: string | null
           template_id: string | null
-          undertime_hours: number | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
-          actual_hours?: number | null
+          actual_hours: number
           created_at?: string | null
+          custom_currency?: string | null
+          custom_daily_rate?: number | null
+          custom_hourly_rate?: number | null
           date: string
+          day_off_type?: string | null
           end_time?: string | null
+          entry_type: string
+          holiday_fixed_amount?: number | null
           holiday_multiplier?: number | null
           id?: string
+          is_full_day?: boolean | null
           is_holiday?: boolean | null
-          job_id: string
+          is_overnight?: boolean | null
+          job_id?: string | null
           notes?: string | null
-          overtime_hours?: number | null
-          regular_hours?: number | null
-          start_time: string
+          pay_override_type?: string | null
+          scheduled_hours?: number | null
+          start_time?: string | null
           status?: string | null
           template_id?: string | null
-          undertime_hours?: number | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
-          actual_hours?: number | null
+          actual_hours?: number
           created_at?: string | null
+          custom_currency?: string | null
+          custom_daily_rate?: number | null
+          custom_hourly_rate?: number | null
           date?: string
+          day_off_type?: string | null
           end_time?: string | null
+          entry_type?: string
+          holiday_fixed_amount?: number | null
           holiday_multiplier?: number | null
           id?: string
+          is_full_day?: boolean | null
           is_holiday?: boolean | null
-          job_id?: string
+          is_overnight?: boolean | null
+          job_id?: string | null
           notes?: string | null
-          overtime_hours?: number | null
-          regular_hours?: number | null
-          start_time?: string
+          pay_override_type?: string | null
+          scheduled_hours?: number | null
+          start_time?: string | null
           status?: string | null
           template_id?: string | null
-          undertime_hours?: number | null
           updated_at?: string | null
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "shifts_job_id_fkey"
+            foreignKeyName: "time_entries_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "shifts_template_id_fkey"
+            foreignKeyName: "time_entries_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "shift_templates"
@@ -282,39 +583,144 @@ export type Database = {
           },
         ]
       }
+      time_off_records: {
+        Row: {
+          created_at: string | null
+          date: string
+          hours_credited: number | null
+          id: string
+          is_paid: boolean | null
+          job_id: string | null
+          notes: string | null
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          date: string
+          hours_credited?: number | null
+          id?: string
+          is_paid?: boolean | null
+          job_id?: string | null
+          notes?: string | null
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          date?: string
+          hours_credited?: number | null
+          id?: string
+          is_paid?: boolean | null
+          job_id?: string | null
+          notes?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_preferences: {
+        Row: {
+          created_at: string | null
+          default_calendar_view: string | null
+          id: string
+          show_expense_card: boolean | null
+          show_expense_records: boolean | null
+          show_financial_records: boolean | null
+          show_fixed_income_card: boolean | null
+          show_income_records: boolean | null
+          show_other_income_card: boolean | null
+          show_shift_income_card: boolean | null
+          show_shifts: boolean | null
+          show_time_off: boolean | null
+          theme: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          default_calendar_view?: string | null
+          id?: string
+          show_expense_card?: boolean | null
+          show_expense_records?: boolean | null
+          show_financial_records?: boolean | null
+          show_fixed_income_card?: boolean | null
+          show_income_records?: boolean | null
+          show_other_income_card?: boolean | null
+          show_shift_income_card?: boolean | null
+          show_shifts?: boolean | null
+          show_time_off?: boolean | null
+          theme?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          default_calendar_view?: string | null
+          id?: string
+          show_expense_card?: boolean | null
+          show_expense_records?: boolean | null
+          show_financial_records?: boolean | null
+          show_fixed_income_card?: boolean | null
+          show_income_records?: boolean | null
+          show_other_income_card?: boolean | null
+          show_shift_income_card?: boolean | null
+          show_shifts?: boolean | null
+          show_time_off?: boolean | null
+          theme?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_settings: {
         Row: {
+          auto_convert_currency: boolean | null
           clock_style: string | null
+          countdown_settings: Json | null
           created_at: string | null
           dashboard_layout: Json | null
           default_currency: string | null
           id: string
           language: string | null
           notification_prefs: Json | null
+          primary_currency: string | null
+          show_currency_breakdown: boolean | null
           theme: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
+          auto_convert_currency?: boolean | null
           clock_style?: string | null
+          countdown_settings?: Json | null
           created_at?: string | null
           dashboard_layout?: Json | null
           default_currency?: string | null
           id?: string
           language?: string | null
           notification_prefs?: Json | null
+          primary_currency?: string | null
+          show_currency_breakdown?: boolean | null
           theme?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
+          auto_convert_currency?: boolean | null
           clock_style?: string | null
+          countdown_settings?: Json | null
           created_at?: string | null
           dashboard_layout?: Json | null
           default_currency?: string | null
           id?: string
           language?: string | null
           notification_prefs?: Json | null
+          primary_currency?: string | null
+          show_currency_breakdown?: boolean | null
           theme?: string | null
           updated_at?: string | null
           user_id?: string
@@ -326,7 +732,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_scheduled_hours: {
+        Args: {
+          p_end_time: string
+          p_is_overnight?: boolean
+          p_start_time: string
+        }
+        Returns: number
+      }
+      get_pto_balance: {
+        Args: { p_job_id: string; p_user_id: string; p_year?: number }
+        Returns: {
+          personal_remaining: number
+          personal_total: number
+          personal_used: number
+          sick_remaining: number
+          sick_total: number
+          sick_used: number
+          vacation_remaining: number
+          vacation_total: number
+          vacation_used: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
@@ -455,6 +882,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
