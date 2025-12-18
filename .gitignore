@@ -49,3 +49,9 @@ supabase/.temp
 
 # Optional: VS Code Deno settings (if you don't want them)
 # .vscode/
+
+# PWA files
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map

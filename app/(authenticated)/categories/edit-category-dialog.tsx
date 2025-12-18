@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n/use-translation";
 import {
   Dialog,
   DialogContent,
@@ -51,6 +52,7 @@ interface EditCategoryDialogProps {
 }
 
 export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: EditCategoryDialogProps) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: category.name,
@@ -90,11 +92,11 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
     setLoading(false);
 
     if (result.error) {
-      toast.error("Error", {
+      toast.error(t("error"), {
         description: result.error,
       });
     } else {
-      toast.success(`Category "${formData.name}" updated successfully`);
+      toast.success(`${t("category")} "${formData.name}" ${t("savedSuccessfully").toLowerCase()}`);
       onSuccess();
       onOpenChange(false);
     }
@@ -108,9 +110,9 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Edit {category.type === "income" ? "Income" : "Expense"} Category</DialogTitle>
+            <DialogTitle>{t("editCategory")} - {category.type === "income" ? t("income") : t("expense")}</DialogTitle>
             <DialogDescription>
-              Update the details of "{category.name}"
+              {category.name}
             </DialogDescription>
           </DialogHeader>
 
@@ -118,7 +120,7 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
             {/* Category Name */}
             <div className="space-y-2">
               <Label htmlFor="name">
-                Category Name <span className="text-red-500">*</span>
+                {t("categoryName")} <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="name"
@@ -137,7 +139,7 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
 
             {/* Icon Selector */}
             <div className="space-y-2">
-              <Label htmlFor="icon">Icon</Label>
+              <Label htmlFor="icon">{t("categoryIcon")}</Label>
               <p className="text-xs text-muted-foreground">
                 Type any emoji or select from suggestions
               </p>
@@ -174,7 +176,7 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
 
             {/* Color Picker */}
             <div className="space-y-2">
-              <Label htmlFor="color">Color</Label>
+              <Label htmlFor="color">{t("jobColor")}</Label>
               <div className="flex items-center gap-2">
                 <Input
                   id="color"
@@ -201,7 +203,7 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
 
             {/* Default Amount (Optional) */}
             <div className="space-y-2">
-              <Label htmlFor="default_amount">Default Amount (Optional)</Label>
+              <Label htmlFor="default_amount">{t("defaultAmount")} ({t("optional")})</Label>
               <p className="text-xs text-muted-foreground">
                 Auto-fill this amount when creating records with this category
               </p>
@@ -229,7 +231,7 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
 
             {/* Default Description (Optional) */}
             <div className="space-y-2">
-              <Label htmlFor="default_description">Default Description (Optional)</Label>
+              <Label htmlFor="default_description">{t("description")} ({t("optional")})</Label>
               <p className="text-xs text-muted-foreground">
                 Auto-fill this description when creating records with this category
               </p>
@@ -244,11 +246,11 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-              Cancel
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save Changes
+              {t("saveChanges")}
             </Button>
           </DialogFooter>
         </form>

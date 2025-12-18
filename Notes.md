@@ -286,3 +286,33 @@ Pay Types:
 Update calendar visual indicators for day-offs
 
 Add time-off stats to dashboard
+
+
+
+1. Shift Auto-Detection Priority: 
+ - i think both, fyi, because we can start from template the shift that was not planned in the calendar and also start planned shift too. Maybe i don't fully understand what you aks, sorry.
+- if multiple jobs we should use first from the list but also have a dropdown in settings to change current shifts if more than one
+2. Manual Counter Use Cases:
+ - if i have 3 legal breaks i should have input to save default value for this section and on all shifts i'll see this value on start. So shoft starts and i see "3", after break i reduce to "2", and that's all. Simple logic. Also it can start from zero to count in another way.
+- Should counter persist across sessions or reset daily? - can't tell, i think about persisting per shift, but i don't think about other cases, mabe but not sure.
+3. Post-Shift Actions:
+- "Mark as completed" - should this update the time_entries.status to 'completed'? - yes, 
+- Should it automatically calculate actual_hours based on shift start/end? - yes if shift was started as custom, but if it runs by lemplate it should follow template, but actually think of good usefull logic here because i'm not sure, i want have flexibility.
+- What if user marked shift as completed but it's not actually done? - we should ask how to track the shift (with actual hours counted or with hours that we have in template or allow to manually adjust in the same window)
+4. Start Shift on the Go:
+- Should this CREATE a new time_entry in the database? - i think yes, what you think?
+- With which status? 'in_progress'? - i think also yes
+- Should it pre-fill from template if available? - of course, we should have flexibility, use template and also be able to adjust manually
+
+I'm not sure about my answers, we can discuss more if you need.
+
+Also about Feature design:
+Current Time Display can have this or other styles that will be easier to implement in our app related to technologies (we have react on frontend, maybe use some libraries for pretty visualisation or something else that not broke the perfomance), format toggle, responsive sizing. We have mobile first layout, but think of good layout for both (desktop too). Maybe some other adjustments, do what you can.
+Maybe we will add Manual Counter default value in shifts templates later (optional).
+
+You have a lot of recomendations, please continue with them i feel like you know what to do and what will be helpfull for users
+
+Please proceed
+
+
+We dont need these two modes for counter because it works manually. Also change "Break counter" to be just "Counter" without "break" in view

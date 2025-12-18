@@ -27,9 +27,23 @@ export async function getAuthenticatedUser() {
 export async function getFinancialRecords(startDate: string, endDate: string, type?: 'income' | 'expense') {
   const { user, supabase } = await getAuthenticatedUser()
 
+  // Use Supabase joins for optimal performance (single query)
   let query = supabase
     .from('financial_records')
-    .select('*')
+    .select(`
+      *,
+      jobs (
+        id,
+        name,
+        color
+      ),
+      financial_categories (
+        id,
+        name,
+        icon,
+        color
+      )
+    `)
     .eq('user_id', user.id)
     .gte('date', startDate)
     .lte('date', endDate)
@@ -45,48 +59,6 @@ export async function getFinancialRecords(startDate: string, endDate: string, ty
 
   if (error) {
     return { error: error.message, records: null }
-  }
-
-  // Fetch related data manually
-  if (records && records.length > 0) {
-    // Get unique job IDs and category IDs
-    const jobIds = [...new Set(records.map(r => r.job_id).filter(Boolean))]
-    const categoryIds = [...new Set(records.map(r => r.category_id).filter(Boolean))]
-
-    // Fetch jobs
-    let jobsMap: Record<string, any> = {}
-    if (jobIds.length > 0) {
-      const { data: jobs } = await supabase
-        .from('jobs')
-        .select('id, name, color')
-        .in('id', jobIds)
-
-      if (jobs) {
-        jobsMap = Object.fromEntries(jobs.map(job => [job.id, job]))
-      }
-    }
-
-    // Fetch categories
-    let categoriesMap: Record<string, any> = {}
-    if (categoryIds.length > 0) {
-      const { data: categories } = await supabase
-        .from('financial_categories')
-        .select('id, name, icon, color')
-        .in('id', categoryIds)
-
-      if (categories) {
-        categoriesMap = Object.fromEntries(categories.map(cat => [cat.id, cat]))
-      }
-    }
-
-    // Combine data
-    const enrichedRecords = records.map(record => ({
-      ...record,
-      jobs: record.job_id ? jobsMap[record.job_id] || null : null,
-      financial_categories: record.category_id ? categoriesMap[record.category_id] || null : null,
-    }))
-
-    return { records: enrichedRecords, error: null }
   }
 
   return { records, error: null }

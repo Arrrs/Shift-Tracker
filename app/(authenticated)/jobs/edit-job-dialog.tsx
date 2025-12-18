@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTranslation } from "@/lib/i18n/use-translation";
 import {
   Dialog,
   DialogContent,
@@ -52,6 +53,7 @@ interface EditJobDialogProps {
 }
 
 export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJobDialogProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -86,12 +88,12 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
     setLoading(false);
 
     if (result.error) {
-      toast.error("Failed to update job", {
+      toast.error(t("failedToUpdateJob"), {
         description: result.error
       });
     } else {
       setOpen(false);
-      toast.success("Job updated successfully");
+      toast.success(t("jobUpdatedSuccessfully"));
       onSuccess?.();
     }
   };
@@ -99,7 +101,7 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant={variant} size={size} title="Edit job details">
+        <Button variant={variant} size={size} title={t("editJobDetails")}>
           <Pencil className="h-4 w-4" />
         </Button>
       </DialogTrigger>
@@ -107,16 +109,16 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Edit Job</DialogTitle>
+            <DialogTitle>{t("editJob")}</DialogTitle>
             <DialogDescription>
-              Update job details and settings
+              {t("updateJobDetails")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
             {/* Job Name */}
             <div className="grid gap-2">
-              <Label htmlFor="edit-name">Job Name *</Label>
+              <Label htmlFor="edit-name">{t("jobName")} *</Label>
               <Input
                 id="edit-name"
                 value={formData.name}
@@ -130,7 +132,7 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
 
             {/* Pay Type */}
             <div className="grid gap-2">
-              <Label htmlFor="edit-pay_type">Pay Type *</Label>
+              <Label htmlFor="edit-pay_type">{t("payType")} *</Label>
               <Select
                 value={formData.pay_type}
                 onValueChange={(value) =>
@@ -138,13 +140,13 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select pay type" />
+                  <SelectValue placeholder={t("selectPayType")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="hourly">Hourly Rate</SelectItem>
-                  <SelectItem value="daily">Daily Rate</SelectItem>
-                  <SelectItem value="monthly">Monthly Salary</SelectItem>
-                  <SelectItem value="salary">Annual Salary</SelectItem>
+                  <SelectItem value="hourly">{t("hourlyRate")}</SelectItem>
+                  <SelectItem value="daily">{t("dailyRate")}</SelectItem>
+                  <SelectItem value="monthly">{t("monthlySalary")}</SelectItem>
+                  <SelectItem value="salary">{t("annualSalary")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -152,7 +154,7 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
             {/* Rate Input - Dynamic based on pay type */}
             {formData.pay_type === "hourly" && (
               <div className="grid gap-2">
-                <Label htmlFor="edit-hourly_rate">Hourly Rate *</Label>
+                <Label htmlFor="edit-hourly_rate">{t("hourlyRate")} *</Label>
                 <Input
                   id="edit-hourly_rate"
                   type="number"
@@ -169,7 +171,7 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
 
             {formData.pay_type === "daily" && (
               <div className="grid gap-2">
-                <Label htmlFor="edit-daily_rate">Daily Rate *</Label>
+                <Label htmlFor="edit-daily_rate">{t("dailyRate")} *</Label>
                 <Input
                   id="edit-daily_rate"
                   type="number"
@@ -187,7 +189,7 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
             {(formData.pay_type === "monthly" || formData.pay_type === "salary") && (
               <div className="grid gap-2">
                 <Label htmlFor="edit-monthly_salary">
-                  {formData.pay_type === "salary" ? "Annual Salary *" : "Monthly Salary *"}
+                  {formData.pay_type === "salary" ? t("annualSalary") : t("monthlySalary")} *
                 </Label>
                 <Input
                   id="edit-monthly_salary"
@@ -205,7 +207,7 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
 
             {/* Currency */}
             <div className="grid gap-2">
-              <Label htmlFor="edit-currency">Currency</Label>
+              <Label htmlFor="edit-currency">{t("currency")}</Label>
               <Select
                 value={formData.currency}
                 onValueChange={(value) =>
@@ -213,7 +215,7 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select currency" />
+                  <SelectValue placeholder={t("selectCurrency")} />
                 </SelectTrigger>
                 <SelectContent>
                   {CURRENCIES.map((currency) => (
@@ -227,20 +229,20 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
 
             {/* Description */}
             <div className="grid gap-2">
-              <Label htmlFor="edit-description">Description</Label>
+              <Label htmlFor="edit-description">{t("description")}</Label>
               <Input
                 id="edit-description"
                 value={formData.description}
                 onChange={(e) =>
                   setFormData({ ...formData, description: e.target.value })
                 }
-                placeholder="Optional notes (location, manager, etc.)"
+                placeholder={t("optionalNotes")}
               />
             </div>
 
             {/* Color Picker */}
             <div className="grid gap-2">
-              <Label htmlFor="edit-color">Job Color</Label>
+              <Label htmlFor="edit-color">{t("jobColor")}</Label>
               <div className="flex items-center gap-2">
                 <Input
                   id="edit-color"
@@ -260,9 +262,9 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
             {/* Active Status */}
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                <Label htmlFor="edit-is_active">Active Status</Label>
+                <Label htmlFor="edit-is_active">{t("activeStatus")}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Job is currently active and accepting entries
+                  {t("jobIsActive")}
                 </p>
               </div>
               <Switch
@@ -281,10 +283,10 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
               variant="outline"
               onClick={() => setOpen(false)}
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save Changes"}
+              {loading ? t("updating") : t("updateJob")}
             </Button>
           </DialogFooter>
         </form>

@@ -1,0 +1,52 @@
+{
+  "name": "Countdown - Shift Tracker",
+  "short_name": "Countdown",
+  "description": "Track your work shifts, earnings, and manage your schedule",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["productivity", "finance", "business"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Start Shift",
+      "short_name": "Start",
+      "description": "Start a new shift",
+      "url": "/countdown",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Calendar",
+      "short_name": "Calendar",
+      "description": "View shift calendar",
+      "url": "/calendar",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

@@ -112,6 +112,7 @@ export async function createTimeEntry(data: CreateTimeEntryData) {
   }
 
   revalidatePath("/calendar");
+  revalidatePath("/countdown");
   return { entry, error: null };
 }
 
@@ -135,6 +136,7 @@ export async function updateTimeEntry(id: string, data: Partial<CreateTimeEntryD
   }
 
   revalidatePath("/calendar");
+  revalidatePath("/countdown");
   return { entry, error: null };
 }
 
@@ -156,6 +158,7 @@ export async function deleteTimeEntry(id: string) {
   }
 
   revalidatePath("/calendar");
+  revalidatePath("/countdown");
   return { error: null };
 }
 

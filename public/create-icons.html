@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<body>
+<canvas id="canvas192" width="192" height="192"></canvas>
+<canvas id="canvas512" width="512" height="512"></canvas>
+<script>
+function createIcon(canvasId, size) {
+  const canvas = document.getElementById(canvasId);
+  const ctx = canvas.getContext('2d');
+  
+  // Background
+  const gradient = ctx.createLinearGradient(0, 0, size, size);
+  gradient.addColorStop(0, '#3b82f6');
+  gradient.addColorStop(1, '#1d4ed8');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+  
+  // Clock icon
+  ctx.strokeStyle = '#ffffff';
+  ctx.fillStyle = '#ffffff';
+  ctx.lineWidth = size / 24;
+  
+  const centerX = size / 2;
+  const centerY = size / 2;
+  const radius = size / 3;
+  
+  // Clock circle
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+  ctx.stroke();
+  
+  // Hour hand
+  ctx.beginPath();
+  ctx.moveTo(centerX, centerY);
+  ctx.lineTo(centerX + radius * 0.4 * Math.cos(-Math.PI/2 + Math.PI/3), centerY + radius * 0.4 * Math.sin(-Math.PI/2 + Math.PI/3));
+  ctx.stroke();
+  
+  // Minute hand
+  ctx.beginPath();
+  ctx.moveTo(centerX, centerY);
+  ctx.lineTo(centerX + radius * 0.6 * Math.cos(-Math.PI/2), centerY + radius * 0.6 * Math.sin(-Math.PI/2));
+  ctx.stroke();
+  
+  // Center dot
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, size / 48, 0, 2 * Math.PI);
+  ctx.fill();
+  
+  return canvas.toDataURL();
+}
+
+const icon192 = createIcon('canvas192', 192);
+const icon512 = createIcon('canvas512', 512);
+
+console.log('Icons created. Download them manually or use this script in browser.');
+</script>
+</body>
+</html>

@@ -2,6 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +23,7 @@ import { updateFinancialRecord, deleteFinancialRecord, getCategories } from "../
 import { getJobs } from "../jobs/actions";
 import { toast } from "sonner";
 import { Database } from "@/lib/database.types";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] & {
   financial_categories?: Database["public"]["Tables"]["financial_categories"]["Row"] | null;
@@ -32,8 +43,10 @@ export function EditFinancialRecordDialog({
   record,
   onSuccess,
 }: EditFinancialRecordDialogProps) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [type, setType] = useState<"income" | "expense">("income");
@@ -102,7 +115,7 @@ export function EditFinancialRecordDialog({
     try {
       const amount = parseFloat(formData.amount);
       if (isNaN(amount) || amount <= 0) {
-        toast.error("Please enter a valid amount");
+        toast.error(t("pleaseEnterValidAmount"));
         setLoading(false);
         return;
       }
@@ -122,22 +135,23 @@ export function EditFinancialRecordDialog({
       if (result.error) {
         toast.error(result.error);
       } else {
-        toast.success(`${type === "income" ? "Income" : "Expense"} updated`);
+        toast.success(type === "income" ? t("incomeUpdated") : t("expenseUpdated"));
         onOpenChange(false);
         onSuccess?.();
       }
     } catch (error) {
-      toast.error("Failed to update record");
+      toast.error(t("failedToUpdateRecord"));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!record) return;
+  const handleDeleteClick = () => {
+    setDeleteDialogOpen(true);
+  };
 
-    const confirmed = confirm(`Are you sure you want to delete this ${type} record?`);
-    if (!confirmed) return;
+  const handleDeleteConfirm = async () => {
+    if (!record) return;
 
     setDeleting(true);
 
@@ -146,9 +160,10 @@ export function EditFinancialRecordDialog({
     setDeleting(false);
 
     if (result.error) {
-      toast.error("Failed to delete record", { description: result.error });
+      toast.error(t("failedToDeleteRecord"), { description: result.error });
     } else {
-      toast.success("Record deleted");
+      toast.success(t("recordDeleted"));
+      setDeleteDialogOpen(false);
       onOpenChange(false);
       onSuccess?.();
     }
@@ -160,14 +175,14 @@ export function EditFinancialRecordDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Financial Record</DialogTitle>
-          <DialogDescription>Update income or expense details</DialogDescription>
+          <DialogTitle>{t("editFinancialRecord")}</DialogTitle>
+          <DialogDescription>{t("updateIncomeOrExpense")}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Type */}
           <div className="space-y-2">
-            <Label>Type</Label>
+            <Label>{t("type")}</Label>
             <RadioGroup
               value={type}
               onValueChange={(value: string) => {
@@ -179,13 +194,13 @@ export function EditFinancialRecordDialog({
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="income" id="income-edit" />
                 <Label htmlFor="income-edit" className="cursor-pointer">
-                  💰 Income
+                  💰 {t("income")}
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="expense" id="expense-edit" />
                 <Label htmlFor="expense-edit" className="cursor-pointer">
-                  💸 Expense
+                  💸 {t("expense")}
                 </Label>
               </div>
             </RadioGroup>
@@ -193,7 +208,7 @@ export function EditFinancialRecordDialog({
 
           {/* Status */}
           <div className="space-y-2">
-            <Label htmlFor="status-edit">Status</Label>
+            <Label htmlFor="status-edit">{t("status")}</Label>
             <Select
               value={formData.status}
               onValueChange={(value: "completed" | "planned" | "cancelled") =>
@@ -204,9 +219,9 @@ export function EditFinancialRecordDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="completed">✅ Completed</SelectItem>
-                <SelectItem value="planned">📅 Planned</SelectItem>
-                <SelectItem value="cancelled">❌ Cancelled</SelectItem>
+                <SelectItem value="completed">{t("completedStatus")}</SelectItem>
+                <SelectItem value="planned">{t("plannedStatus")}</SelectItem>
+                <SelectItem value="cancelled">{t("cancelledStatus")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -214,7 +229,7 @@ export function EditFinancialRecordDialog({
           {/* Amount & Currency */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="amount-edit">Amount</Label>
+              <Label htmlFor="amount-edit">{t("amount")}</Label>
               <Input
                 id="amount-edit"
                 type="number"
@@ -226,7 +241,7 @@ export function EditFinancialRecordDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="currency-edit">Currency</Label>
+              <Label htmlFor="currency-edit">{t("currency")}</Label>
               <Select
                 value={formData.currency}
                 onValueChange={(value) => setFormData({ ...formData, currency: value })}
@@ -257,7 +272,7 @@ export function EditFinancialRecordDialog({
 
           {/* Date */}
           <div className="space-y-2">
-            <Label htmlFor="date-edit">Date</Label>
+            <Label htmlFor="date-edit">{t("date")}</Label>
             <Input
               id="date-edit"
               type="date"
@@ -269,13 +284,13 @@ export function EditFinancialRecordDialog({
 
           {/* Category */}
           <div className="space-y-2">
-            <Label htmlFor="category-edit">Category</Label>
+            <Label htmlFor="category-edit">{t("category")}</Label>
             <Select
               value={formData.category_id}
               onValueChange={(value) => setFormData({ ...formData, category_id: value })}
             >
               <SelectTrigger id="category-edit">
-                <SelectValue placeholder="Select category" />
+                <SelectValue placeholder={t("selectCategory")} />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((cat) => (
@@ -289,11 +304,11 @@ export function EditFinancialRecordDialog({
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description-edit">Description</Label>
+            <Label htmlFor="description-edit">{t("description")}</Label>
             <Input
               id="description-edit"
               type="text"
-              placeholder="What was this for?"
+              placeholder={t("whatWasThisFor")}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               required
@@ -302,10 +317,10 @@ export function EditFinancialRecordDialog({
 
           {/* Notes (optional) */}
           <div className="space-y-2">
-            <Label htmlFor="notes-edit">Notes (optional)</Label>
+            <Label htmlFor="notes-edit">{t("notes")} ({t("optional")})</Label>
             <Textarea
               id="notes-edit"
-              placeholder="Additional details..."
+              placeholder={t("additionalDetails")}
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={2}
@@ -314,16 +329,16 @@ export function EditFinancialRecordDialog({
 
           {/* Link to Job (optional) */}
           <div className="space-y-2">
-            <Label htmlFor="job-edit">Link to Job (optional)</Label>
+            <Label htmlFor="job-edit">{t("linkToJob")} ({t("optional")})</Label>
             <Select
               value={formData.job_id}
               onValueChange={(value) => setFormData({ ...formData, job_id: value })}
             >
               <SelectTrigger id="job-edit">
-                <SelectValue placeholder="Select job" />
+                <SelectValue placeholder={t("selectJob")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="none">{t("none")}</SelectItem>
                 {jobs.map((job) => (
                   <SelectItem key={job.id} value={job.id}>
                     <div className="flex items-center gap-2">
@@ -341,21 +356,12 @@ export function EditFinancialRecordDialog({
             <Button
               type="button"
               variant="destructive"
-              onClick={handleDelete}
-              disabled={deleting}
+              onClick={handleDeleteClick}
+              disabled={loading || deleting}
               className="flex-shrink-0"
             >
-              {deleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </>
-              )}
+              <Trash2 className="h-4 w-4 mr-2" />
+              {t("delete")}
             </Button>
             <Button
               type="button"
@@ -364,21 +370,53 @@ export function EditFinancialRecordDialog({
               disabled={loading}
               className="flex-1"
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={loading} className="flex-1">
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
+                  {t("saving")}
                 </>
               ) : (
-                "Save Changes"
+                t("saveChanges")
               )}
             </Button>
           </div>
         </form>
       </DialogContent>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("deleteRecord")} {type === "income" ? t("income") : t("expense")}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("deleteRecordConfirmation")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>{t("cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {t("deleting")}
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {t("delete")}
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

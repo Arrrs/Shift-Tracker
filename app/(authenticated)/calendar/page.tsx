@@ -19,6 +19,7 @@ import { getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type ViewMode = "calendar" | "list";
 type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
@@ -32,6 +33,7 @@ type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] 
 };
 
 export default function CalendarPage() {
+  const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [entries, setEntries] = useState<TimeEntry[]>([]);
@@ -107,8 +109,9 @@ export default function CalendarPage() {
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
 
-        const startDate = firstDay.toISOString().split("T")[0];
-        const endDate = lastDay.toISOString().split("T")[0];
+        // Format dates in local timezone to avoid UTC conversion issues
+        const startDate = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`;
+        const endDate = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
 
         // Load all data in parallel for better performance
         const [entriesResult, financialResult, incomeResult] = await Promise.all([
@@ -239,7 +242,7 @@ export default function CalendarPage() {
     <div className="h-full overflow-hidden flex flex-col px-4 py-3 md:p-6 gap-4 lg:gap-6" suppressHydrationWarning>
       {/* Header */}
       <div className="flex justify-between items-center gap-2 mb-0 flex-shrink-0" suppressHydrationWarning>
-        <h1 className="text-xl md:text-3xl font-bold">Calendar</h1>
+        <h1 className="text-xl md:text-3xl font-bold">{t("calendar")}</h1>
 
         {/* View Toggle and Add Button */}
         <div className="flex items-center gap-1.5">
@@ -249,7 +252,7 @@ export default function CalendarPage() {
             onClick={() => setViewMode("calendar")}
           >
             <Calendar className="h-4 w-4 md:mr-2" />
-            <span className="hidden md:inline">Calendar</span>
+            <span className="hidden md:inline">{t("calendar")}</span>
           </Button>
           <Button
             variant={viewMode === "list" ? "default" : "outline"}
@@ -257,31 +260,31 @@ export default function CalendarPage() {
             onClick={() => setViewMode("list")}
           >
             <List className="h-4 w-4 md:mr-2" />
-            <span className="hidden md:inline">List</span>
+            <span className="hidden md:inline">{t("list")}</span>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" className="gap-1">
                 <Plus className="h-4 w-4" />
-                <span className="hidden md:inline">Add</span>
+                <span className="hidden md:inline">{t("add")}</span>
                 <ChevronDown className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setAddDialogOpen(true)}>
-                💼 Add Shift
+                💼 {t("addShift")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => {
                 setAddFinancialType('income');
                 setAddFinancialDialogOpen(true);
               }}>
-                💰 Add Income
+                💰 {t("addIncome")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => {
                 setAddFinancialType('expense');
                 setAddFinancialDialogOpen(true);
               }}>
-                💸 Add Expense
+                💸 {t("addExpense")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -308,7 +311,7 @@ export default function CalendarPage() {
       <div className="lg:hidden mb-3 flex-shrink-0">
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-lg p-2">
-            <p className="text-[10px] text-muted-foreground mb-0.5">Earnings</p>
+            <p className="text-[10px] text-muted-foreground mb-0.5">{t("earnings")}</p>
             {loading ? (
               <div className="flex items-center justify-center py-1">
                 <Loader2 className="h-4 w-4 animate-spin text-green-600 dark:text-green-400" />
@@ -328,7 +331,7 @@ export default function CalendarPage() {
             )}
           </div>
           <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg p-2">
-            <p className="text-[10px] text-muted-foreground mb-0.5">Hours</p>
+            <p className="text-[10px] text-muted-foreground mb-0.5">{t("hours")}</p>
             {loading ? (
               <div className="flex items-center justify-center py-1">
                 <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
@@ -347,7 +350,7 @@ export default function CalendarPage() {
             )}
           </div>
           <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg p-2">
-            <p className="text-[10px] text-muted-foreground mb-0.5">Shifts</p>
+            <p className="text-[10px] text-muted-foreground mb-0.5">{t("shifts")}</p>
             {loading ? (
               <div className="flex items-center justify-center py-1">
                 <Loader2 className="h-4 w-4 animate-spin text-purple-600 dark:text-purple-400" />
@@ -359,7 +362,7 @@ export default function CalendarPage() {
                 </p>
                 {stats.completedShifts > 0 && stats.shiftCount !== stats.completedShifts && (
                   <p className="text-[8px] text-muted-foreground">
-                    {stats.completedShifts} done
+                    {stats.completedShifts} {t("done")}
                   </p>
                 )}
               </>
@@ -372,7 +375,7 @@ export default function CalendarPage() {
           onClick={() => setShowDetailedStats(true)}
           className="mt-2 w-full py-2 text-xs text-muted-foreground hover:text-foreground transition-colors border-t"
         >
-          View Detailed Stats
+          {t("viewDetailedStats")}
         </button>
       </div>
 
@@ -398,7 +401,7 @@ export default function CalendarPage() {
                 <GoToDateDialog currentDate={currentDate} onDateChange={goToDate} />
               )}
               <Button variant="outline" size="sm" onClick={goToToday} className="hidden md:inline-flex">
-                Today
+                {t("today")}
               </Button>
             </div>
           </div>
@@ -442,7 +445,7 @@ export default function CalendarPage() {
           <div className="grid gap-2.5 lg:grid-cols-2">
             {/* Hours Card */}
             <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg p-3">
-              <p className="text-xs text-muted-foreground mb-1.5">⏱️ Hours</p>
+              <p className="text-xs text-muted-foreground mb-1.5">{"⏱️ " + t("hours")}</p>
               {loading ? (
                 <div className="flex items-center justify-center py-1.5">
                   <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
@@ -477,19 +480,19 @@ export default function CalendarPage() {
                     <div className="mt-1.5 space-y-0.5">
                       {stats.completedShifts > 0 && (
                         <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-muted-foreground">Done:</span>
+                          <span className="text-muted-foreground">{t("done")}:</span>
                           <span className="font-medium text-green-600 dark:text-green-400">{stats.completedShifts}</span>
                         </div>
                       )}
                       {stats.inProgressShifts > 0 && (
                         <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-muted-foreground">Active:</span>
+                          <span className="text-muted-foreground">{t("active")}:</span>
                           <span className="font-medium text-amber-600 dark:text-amber-400">{stats.inProgressShifts}</span>
                         </div>
                       )}
                       {stats.plannedShifts > 0 && (
                         <div className="flex items-center justify-between text-[10px]">
-                          <span className="text-muted-foreground">Plan:</span>
+                          <span className="text-muted-foreground">{t("plan")}:</span>
                           <span className="font-medium text-blue-600 dark:text-blue-400">{stats.plannedShifts}</span>
                         </div>
                       )}
@@ -515,7 +518,7 @@ export default function CalendarPage() {
       <Drawer open={showDetailedStats} onOpenChange={setShowDetailedStats}>
         <DrawerContent className="max-h-[85vh]">
           <DrawerHeader>
-            <DrawerTitle>Monthly Stats Details</DrawerTitle>
+            <DrawerTitle>{t("monthlyStatsDetails")}</DrawerTitle>
           </DrawerHeader>
 
           <div className="overflow-y-auto p-4 space-y-3">
@@ -523,7 +526,7 @@ export default function CalendarPage() {
             {Object.keys(stats.shiftIncomeByCurrency).length > 0 && (
               <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg p-4">
                 <p className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-                  💼 Shift Income
+                  {t("shiftIncomeLabel")}
                 </p>
                 <div className="space-y-2">
                   {Object.entries(stats.shiftIncomeByCurrency).map(([currency, amount]) => (
@@ -550,7 +553,7 @@ export default function CalendarPage() {
                 <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-lg p-4">
                   <p className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
                     <TrendingUp className="h-4 w-4" />
-                    Other Income
+                    {t("otherIncome")}
                   </p>
                   <div className="space-y-2">
                     {Object.entries(completedFinancialIncome).map(([currency, amount]) => (
@@ -578,7 +581,7 @@ export default function CalendarPage() {
                 <div className="bg-gradient-to-br from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-lg p-4">
                   <p className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
                     <TrendingDown className="h-4 w-4" />
-                    Expenses
+                    {t("expenses")}
                   </p>
                   <div className="space-y-2">
                     {Object.entries(completedExpenses).map(([currency, amount]) => (
@@ -597,7 +600,7 @@ export default function CalendarPage() {
             {/* Net Income */}
             {Object.keys(stats.earningsByCurrency).length > 0 && (
               <div className="bg-gradient-to-br from-gray-500/10 to-slate-500/10 border border-gray-500/20 rounded-lg p-4">
-                <p className="text-sm font-semibold text-muted-foreground mb-3">💵 Net Income</p>
+                <p className="text-sm font-semibold text-muted-foreground mb-3">{"💵 " + t("netIncome")}</p>
                 <div className="space-y-2">
                   {Object.entries(stats.earningsByCurrency).map(([currency, amount]) => (
                     <div key={currency} className="flex items-center justify-between">
@@ -614,18 +617,18 @@ export default function CalendarPage() {
             {/* Status Breakdown */}
             {stats.shiftCount > 0 && (
               <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg p-4">
-                <p className="text-sm font-semibold text-muted-foreground mb-3">📊 Status Breakdown</p>
+                <p className="text-sm font-semibold text-muted-foreground mb-3">{"📊 " + t("statusBreakdown")}</p>
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Completed</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t("completed")}</p>
                     <p className="text-xl font-bold text-green-600 dark:text-green-400">{stats.completedShifts}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">In Progress</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t("inProgress")}</p>
                     <p className="text-xl font-bold text-amber-600 dark:text-amber-400">{stats.inProgressShifts}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1">Planned</p>
+                    <p className="text-xs text-muted-foreground mb-1">{t("planned")}</p>
                     <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{stats.plannedShifts}</p>
                   </div>
                 </div>
@@ -635,17 +638,17 @@ export default function CalendarPage() {
             {/* Hours Breakdown */}
             {stats.totalActualHours > 0 && (
               <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-lg p-4">
-                <p className="text-sm font-semibold text-muted-foreground mb-3">⏱️ Hours</p>
+                <p className="text-sm font-semibold text-muted-foreground mb-3">{"⏱️ " + t("hours")}</p>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Actual Worked</span>
+                    <span className="text-sm text-muted-foreground">{t("actualWorked")}</span>
                     <span className="text-lg font-bold text-cyan-600 dark:text-cyan-400">
                       {formatHours(stats.totalActualHours)}
                     </span>
                   </div>
                   {stats.totalScheduledHours > 0 && stats.totalScheduledHours !== stats.totalActualHours && (
                     <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Scheduled</span>
+                      <span className="text-sm text-muted-foreground">{t("scheduled")}</span>
                       <span className="text-base font-medium text-muted-foreground">
                         {formatHours(stats.totalScheduledHours)}
                       </span>

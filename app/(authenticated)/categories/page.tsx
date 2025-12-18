@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Search, TrendingUp, TrendingDown, Tags, Plus, ChevronDown } from "lucide-react";
+import { Search, TrendingUp, TrendingDown, Tags, Plus, ChevronDown, Pencil } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,8 +21,10 @@ import { DeleteCategoryButton } from "./delete-category-button";
 import { ArchiveCategoryButton } from "./archive-category-button";
 import { UnarchiveCategoryButton } from "./unarchive-category-button";
 import { getCurrencySymbol } from "@/lib/utils/time-format";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 function CategoriesList() {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<FinancialCategory[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,7 +64,7 @@ function CategoriesList() {
   const archivedCategories = filteredCategories.filter(c => !c.is_active);
 
   if (error) {
-    return <div className="text-center py-8 text-red-600">Error loading categories: {error}</div>;
+    return <div className="text-center py-8 text-red-600">{t("errorLoadingCategories")}: {error}</div>;
   }
 
   if (loading) {
@@ -110,12 +112,12 @@ function CategoriesList() {
           </div>
           <div className="space-y-2">
             <h3 className="text-lg font-semibold">
-              {showArchived ? "No archived categories" : "No categories found"}
+              {showArchived ? t("noArchivedCategories") : t("noActiveCategories")}
             </h3>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
               {showArchived
-                ? "Categories that you archive will appear here."
-                : "Create custom income and expense categories to organize your financial records."
+                ? t("categoriesArchivedWillAppearHere")
+                : t("createCustomCategories")
               }
             </p>
           </div>
@@ -130,11 +132,11 @@ function CategoriesList() {
           <table className="w-full">
             <thead>
               <tr className="border-b bg-muted/50">
-                <th className="text-left p-4">Name</th>
-                <th className="text-left p-4">Type</th>
-                <th className="text-left p-4">Default Amount</th>
-                <th className="text-left p-4">Status</th>
-                <th className="text-right p-4">Actions</th>
+                <th className="text-left p-4">{t("name")}</th>
+                <th className="text-left p-4">{t("type")}</th>
+                <th className="text-left p-4">{t("defaultAmount")}</th>
+                <th className="text-left p-4">{t("status")}</th>
+                <th className="text-right p-4">{t("actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -148,7 +150,7 @@ function CategoriesList() {
                         <span>{category.name}</span>
                         {isMandatory && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                            Required
+                            {t("required")}
                           </span>
                         )}
                       </div>
@@ -175,7 +177,7 @@ function CategoriesList() {
                     </td>
                     <td className="p-4">
                       <Badge variant={category.is_active ? "default" : "secondary"}>
-                        {category.is_active ? "Active" : "Archived"}
+                        {category.is_active ? t("active") : t("archived")}
                       </Badge>
                     </td>
                     <td className="p-4 text-right">
@@ -187,8 +189,9 @@ function CategoriesList() {
                             setSelectedCategory(category);
                             setEditDialogOpen(true);
                           }}
+                          title={t("editCategory")}
                         >
-                          Edit
+                          <Pencil className="h-4 w-4" />
                         </Button>
                         {!isMandatory && (
                           <>
@@ -236,7 +239,7 @@ function CategoriesList() {
                       <h3 className="font-semibold">{category.name}</h3>
                       {isMandatory && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                          Required
+                          {t("required")}
                         </span>
                       )}
                     </div>
@@ -250,13 +253,13 @@ function CategoriesList() {
                     </div>
                     {category.default_amount && category.default_currency && (
                       <p className="text-sm text-muted-foreground">
-                        Default: {getCurrencySymbol(category.default_currency)}
+                        {t("default")}: {getCurrencySymbol(category.default_currency)}
                         {Number(category.default_amount).toFixed(2)}
                       </p>
                     )}
                   </div>
                   <Badge variant={category.is_active ? "default" : "secondary"}>
-                    {category.is_active ? "Active" : "Archived"}
+                    {category.is_active ? t("active") : t("archived")}
                   </Badge>
                 </div>
 
@@ -268,8 +271,9 @@ function CategoriesList() {
                       setSelectedCategory(category);
                       setEditDialogOpen(true);
                     }}
+                    title={t("editCategory")}
                   >
-                    Edit
+                    <Pencil className="h-4 w-4" />
                   </Button>
                   {!isMandatory && (
                     <>
@@ -313,15 +317,15 @@ function CategoriesList() {
         <div className="flex justify-between items-center mb-4">
           <TabsList>
             <TabsTrigger value="all">
-              All ({categoriesList.length})
+              {t("all")} ({categoriesList.length})
             </TabsTrigger>
             <TabsTrigger value="income">
               <TrendingUp className="h-3 w-3 mr-1" />
-              Income ({incomeCategories.length})
+              {t("income")} ({incomeCategories.length})
             </TabsTrigger>
             <TabsTrigger value="expense">
               <TrendingDown className="h-3 w-3 mr-1" />
-              Expense ({expenseCategories.length})
+              {t("expense")} ({expenseCategories.length})
             </TabsTrigger>
           </TabsList>
 
@@ -361,7 +365,7 @@ function CategoriesList() {
                   className="hidden sm:flex"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Income
+                  {t("income")}
                 </Button>
                 <Button
                   size="sm"
@@ -372,7 +376,7 @@ function CategoriesList() {
                   className="hidden sm:flex"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Expense
+                  {t("expense")}
                 </Button>
                 {/* Mobile: Dropdown menu with just icon */}
                 <DropdownMenu>
@@ -389,7 +393,7 @@ function CategoriesList() {
                       }}
                     >
                       <TrendingUp className="h-4 w-4 mr-2 text-green-600" />
-                      Add Income
+                      {t("addIncome")}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => {
@@ -398,7 +402,7 @@ function CategoriesList() {
                       }}
                     >
                       <TrendingDown className="h-4 w-4 mr-2 text-red-600" />
-                      Add Expense
+                      {t("addExpense")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -428,7 +432,7 @@ function CategoriesList() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search categories..."
+          placeholder={t("searchCategories")}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-9"
@@ -437,8 +441,8 @@ function CategoriesList() {
 
       <Tabs defaultValue="active" className="w-full">
         <TabsList>
-          <TabsTrigger value="active">Active ({activeCategories.length})</TabsTrigger>
-          <TabsTrigger value="archived">Archived ({archivedCategories.length})</TabsTrigger>
+          <TabsTrigger value="active">{t("active")} ({activeCategories.length})</TabsTrigger>
+          <TabsTrigger value="archived">{t("archived")} ({archivedCategories.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="active" className="mt-6">
@@ -472,19 +476,20 @@ function CategoriesList() {
 }
 
 export default function CategoriesPage() {
+  const { t } = useTranslation();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   return (
     <div className="min-h-screen p-4 sm:p-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Categories</h1>
+        <h1 className="text-3xl font-bold">{t("categories")}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Organize income and expenses with custom categories
+          {t("organizeIncomeExpenses")}
         </p>
       </div>
 
-      <Suspense fallback={<div className="text-center py-12">Loading categories...</div>}>
+      <Suspense fallback={<div className="text-center py-12">{t("loading")}...</div>}>
         <CategoriesList key={refreshTrigger} />
       </Suspense>
     </div>

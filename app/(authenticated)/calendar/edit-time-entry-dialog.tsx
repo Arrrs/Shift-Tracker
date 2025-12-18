@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n/use-translation";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +25,7 @@ interface EditTimeEntryDialogProps {
 }
 
 export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: EditTimeEntryDialogProps) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -275,7 +277,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
     if (!entry) return;
 
     if (entryType === "work_shift" && (!startTime || !endTime)) {
-      toast.error("Please enter start and end times");
+      toast.error(`${t("startTime")} / ${t("endTime")}`);
       return;
     }
 
@@ -405,9 +407,9 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
     setLoading(false);
 
     if (result.error) {
-      toast.error("Failed to update entry", { description: result.error });
+      toast.error(t("error"), { description: result.error });
     } else {
-      toast.success("Entry updated");
+      toast.success(t("savedSuccessfully"));
       onOpenChange(false);
       onSuccess?.();
     }
@@ -416,7 +418,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
   const handleDelete = async () => {
     if (!entry) return;
 
-    const confirmed = confirm("Are you sure you want to delete this entry?");
+    const confirmed = confirm(t("deleteShift"));
     if (!confirmed) return;
 
     setDeleting(true);
@@ -426,9 +428,9 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
     setDeleting(false);
 
     if (result.error) {
-      toast.error("Failed to delete entry", { description: result.error });
+      toast.error(t("error"), { description: result.error });
     } else {
-      toast.success("Entry deleted");
+      toast.success(t("deletedSuccessfully"));
       onOpenChange(false);
       onSuccess?.();
     }
@@ -440,40 +442,40 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit Time Entry</DialogTitle>
-          <DialogDescription>Update shift or day-off details</DialogDescription>
+          <DialogTitle>{t("editShift")}</DialogTitle>
+          <DialogDescription>{t("workShift")} / {t("dayOff")}</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Type Selector */}
           <div className="space-y-2">
-            <Label>Type</Label>
+            <Label>{t("type")}</Label>
             <Select value={entryType} onValueChange={(v) => setEntryType(v as "work_shift" | "day_off")}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="work_shift">💼 Work Shift</SelectItem>
-                <SelectItem value="day_off">🏖️ Day Off</SelectItem>
+                <SelectItem value="work_shift">💼 {t("workShift")}</SelectItem>
+                <SelectItem value="day_off">🏖️ {t("dayOff")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Date */}
           <div className="space-y-2">
-            <Label htmlFor="date">Date *</Label>
+            <Label htmlFor="date">{t("date")} *</Label>
             <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
           </div>
 
           {/* Job Selection */}
           <div className="space-y-2">
-            <Label>Job {entryType === "work_shift" && "(Optional)"}</Label>
+            <Label>{t("job")} {entryType === "work_shift" && `(${t("optional")})`}</Label>
             <Select value={selectedJobId} onValueChange={setSelectedJobId}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a job" />
+                <SelectValue placeholder={t("selectJob")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">No Job</SelectItem>
+                <SelectItem value="none">{t("none")}</SelectItem>
                 {jobs.map((job) => (
                   <SelectItem key={job.id} value={job.id}>
                     <div className="flex items-center gap-2">
@@ -512,18 +514,18 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
               {/* Times */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="start">Start Time *</Label>
+                  <Label htmlFor="start">{t("startTime")} *</Label>
                   <Input id="start" type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="end">End Time *</Label>
+                  <Label htmlFor="end">{t("endTime")} *</Label>
                   <Input id="end" type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
                 </div>
               </div>
 
               {/* Hours */}
               <div className="space-y-2">
-                <Label htmlFor="hours">Hours Worked *</Label>
+                <Label htmlFor="hours">{t("hoursWorked")} *</Label>
                 <Input
                   id="hours"
                   type="number"
@@ -806,23 +808,23 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
 
           {/* Status */}
           <div className="space-y-2">
-            <Label>Status</Label>
+            <Label>{t("status")}</Label>
             <Select value={status} onValueChange={setStatus}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="planned">📅 Planned</SelectItem>
-                <SelectItem value="in_progress">🔄 In Progress</SelectItem>
-                <SelectItem value="completed">✅ Completed</SelectItem>
-                <SelectItem value="cancelled">❌ Cancelled</SelectItem>
+                <SelectItem value="planned">{t("plannedStatus")}</SelectItem>
+                <SelectItem value="in_progress">{t("inProgressStatus")}</SelectItem>
+                <SelectItem value="completed">{t("completedStatus")}</SelectItem>
+                <SelectItem value="cancelled">{t("cancelledStatus")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Notes */}
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes (optional)</Label>
+            <Label htmlFor="notes">{t("notes")} ({t("optional")})</Label>
             <Input id="notes" placeholder="Add notes..." value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
 
@@ -832,26 +834,26 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
               {deleting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
+                  {t("deleting")}
                 </>
               ) : (
                 <>
                   <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
+                  {t("delete")}
                 </>
               )}
             </Button>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-              Cancel
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={loading} className="flex-1">
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
+                  {t("saving")}
                 </>
               ) : (
-                "Save Changes"
+                t("saveChanges")
               )}
             </Button>
           </div>

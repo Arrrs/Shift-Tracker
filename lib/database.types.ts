@@ -233,6 +233,13 @@ export type Database = {
             referencedRelation: "financial_categories"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "financial_records_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
         ]
       }
       income_records: {
@@ -673,6 +680,7 @@ export type Database = {
         Row: {
           auto_convert_currency: boolean | null
           clock_style: string | null
+          countdown_settings: Json | null
           created_at: string | null
           dashboard_layout: Json | null
           default_currency: string | null
@@ -688,6 +696,7 @@ export type Database = {
         Insert: {
           auto_convert_currency?: boolean | null
           clock_style?: string | null
+          countdown_settings?: Json | null
           created_at?: string | null
           dashboard_layout?: Json | null
           default_currency?: string | null
@@ -703,6 +712,7 @@ export type Database = {
         Update: {
           auto_convert_currency?: boolean | null
           clock_style?: string | null
+          countdown_settings?: Json | null
           created_at?: string | null
           dashboard_layout?: Json | null
           default_currency?: string | null

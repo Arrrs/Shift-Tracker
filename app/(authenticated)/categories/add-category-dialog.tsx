@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n/use-translation";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +51,7 @@ interface AddCategoryDialogProps {
 }
 
 export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCategoryDialogProps) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -77,11 +79,11 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
     setLoading(false);
 
     if (result.error) {
-      toast.error("Error", {
+      toast.error(t("error"), {
         description: result.error,
       });
     } else {
-      toast.success(`Category "${formData.name}" created successfully`);
+      toast.success(`${t("category")} "${formData.name}" ${t("savedSuccessfully").toLowerCase()}`);
       setFormData({
         name: "",
         icon: type === "income" ? "💰" : "💸",
@@ -102,9 +104,9 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Add {type === "income" ? "Income" : "Expense"} Category</DialogTitle>
+            <DialogTitle>{type === "income" ? t("addIncome") : t("addExpense")} {t("category")}</DialogTitle>
             <DialogDescription>
-              Create a new category for tracking your {type === "income" ? "income" : "expenses"}
+              {type === "income" ? t("income") : t("expense")} {t("category").toLowerCase()}
             </DialogDescription>
           </DialogHeader>
 
@@ -112,7 +114,7 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
             {/* Category Name */}
             <div className="space-y-2">
               <Label htmlFor="name">
-                Category Name <span className="text-red-500">*</span>
+                {t("categoryName")} <span className="text-red-500">*</span>
               </Label>
               <Input
                 id="name"
@@ -125,7 +127,7 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
 
             {/* Icon Selector */}
             <div className="space-y-2">
-              <Label htmlFor="icon">Icon</Label>
+              <Label htmlFor="icon">{t("categoryIcon")}</Label>
               <p className="text-xs text-muted-foreground">
                 Type any emoji or select from suggestions
               </p>
@@ -162,7 +164,7 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
 
             {/* Color Picker */}
             <div className="space-y-2">
-              <Label htmlFor="color">Color</Label>
+              <Label htmlFor="color">{t("jobColor")}</Label>
               <div className="flex items-center gap-2">
                 <Input
                   id="color"
@@ -189,7 +191,7 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
 
             {/* Default Amount (Optional) */}
             <div className="space-y-2">
-              <Label htmlFor="default_amount">Default Amount (Optional)</Label>
+              <Label htmlFor="default_amount">{t("defaultAmount")} ({t("optional")})</Label>
               <p className="text-xs text-muted-foreground">
                 Auto-fill this amount when creating records with this category
               </p>
@@ -217,7 +219,7 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
 
             {/* Default Description (Optional) */}
             <div className="space-y-2">
-              <Label htmlFor="default_description">Default Description (Optional)</Label>
+              <Label htmlFor="default_description">{t("description")} ({t("optional")})</Label>
               <p className="text-xs text-muted-foreground">
                 Auto-fill this description when creating records with this category
               </p>
@@ -232,11 +234,11 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-              Cancel
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Create Category
+              {t("addCategory")}
             </Button>
           </DialogFooter>
         </form>

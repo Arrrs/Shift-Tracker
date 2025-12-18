@@ -26,6 +26,15 @@ import { getIncomeRecords } from "@/app/(authenticated)/time-entries/actions";
 import { getFinancialRecords } from "@/app/(authenticated)/finances/actions";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/i18n/use-translation";
+
+// Helper to format date in local timezone without UTC conversion
+const formatLocalDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
@@ -54,6 +63,7 @@ export function DayShiftsDrawer({
   onOpenChange,
   onEntryChange,
 }: DayShiftsDrawerProps) {
+  const { t } = useTranslation();
   const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -77,13 +87,31 @@ export function DayShiftsDrawer({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Reset state when drawer closes or date changes
+  useEffect(() => {
+    if (!open) {
+      setIncomeRecords([]);
+      setFinancialRecords([]);
+      setLoadingIncome(false);
+      setLoadingFinancial(false);
+    }
+  }, [open]);
+
+  // Reset state immediately when date changes (before fetching new data)
+  useEffect(() => {
+    if (date && open) {
+      setIncomeRecords([]);
+      setFinancialRecords([]);
+    }
+  }, [date, open]);
+
   // Fetch income records for the selected day
   useEffect(() => {
     if (!date || !open) return;
 
     const fetchIncome = async () => {
       setLoadingIncome(true);
-      const dateStr = date.toISOString().split("T")[0];
+      const dateStr = formatLocalDate(date);
       const result = await getIncomeRecords(dateStr, dateStr);
       if (result.records) {
         setIncomeRecords(result.records);
@@ -100,7 +128,7 @@ export function DayShiftsDrawer({
 
     const fetchFinancial = async () => {
       setLoadingFinancial(true);
-      const dateStr = date.toISOString().split("T")[0];
+      const dateStr = formatLocalDate(date);
       const result = await getFinancialRecords(dateStr, dateStr);
       if (result.records) {
         setFinancialRecords(result.records);
@@ -113,7 +141,7 @@ export function DayShiftsDrawer({
 
   if (!date) return null;
 
-  const dateStr = date.toISOString().split("T")[0];
+  const dateStr = formatLocalDate(date);
   const dayEntries = entries.filter((entry) => entry.date === dateStr);
 
   const formattedDate = date.toLocaleDateString("en-US", {
@@ -271,7 +299,7 @@ export function DayShiftsDrawer({
   const handleEditSuccess = async () => {
     // Refetch income records after edit/delete
     if (date) {
-      const dateStr = date.toISOString().split("T")[0];
+      const dateStr = formatLocalDate(date);
       const result = await getIncomeRecords(dateStr, dateStr);
       if (result.records) {
         setIncomeRecords(result.records);
@@ -283,7 +311,7 @@ export function DayShiftsDrawer({
   const handleFinancialSuccess = async () => {
     // Refetch financial records after edit/delete/add
     if (date) {
-      const dateStr = date.toISOString().split("T")[0];
+      const dateStr = formatLocalDate(date);
       const result = await getFinancialRecords(dateStr, dateStr);
       if (result.records) {
         setFinancialRecords(result.records);
@@ -300,16 +328,16 @@ export function DayShiftsDrawer({
           <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
             {/* Hours Breakdown */}
             <div>
-              <p className="text-xs text-muted-foreground mb-1">Hours (Completed)</p>
+              <p className="text-xs text-muted-foreground mb-1">{t("hoursCompleted")}</p>
               <p className="text-lg font-semibold">{formatHours(totalHours)}</p>
               {totalDayOffHours > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Worked: {formatHours(totalWorkedHours)} | Day-off: {formatHours(totalDayOffHours)}
+                  {t("worked")}: {formatHours(totalWorkedHours)} | {t("dayOff")}: {formatHours(totalDayOffHours)}
                 </p>
               )}
               {expectedHours !== totalHours && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Expected: {formatHours(expectedHours)} (incl. planned)
+                  {t("expected")}: {formatHours(expectedHours)} ({t("inclPlanned")})
                 </p>
               )}
             </div>
@@ -325,7 +353,7 @@ export function DayShiftsDrawer({
                 {/* Shift Income (Completed) */}
                 {Object.keys(shiftIncomeByCurrency).length > 0 && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1.5">💼 Shift Income</p>
+                    <p className="text-xs text-muted-foreground mb-1.5">{t("shiftIncomeLabel")}</p>
                     <div className="space-y-1">
                       {Object.entries(shiftIncomeByCurrency).map(([currency, amount]) => (
                         <div key={currency} className="flex items-center gap-1">
@@ -342,7 +370,7 @@ export function DayShiftsDrawer({
                 {/* Expected Income from Planned Shifts */}
                 {hasPlannedShifts && Object.keys(expectedIncomeByCurrency).length > 0 && (
                   <div>
-                    <p className="text-xs text-muted-foreground mb-1.5">📅 Expected (Planned Shifts)</p>
+                    <p className="text-xs text-muted-foreground mb-1.5">{t("expectedPlannedShifts")}</p>
                     <div className="space-y-1">
                       {Object.entries(expectedIncomeByCurrency).map(([currency, amount]) => (
                         <div key={currency} className="flex items-center gap-1">
@@ -361,7 +389,7 @@ export function DayShiftsDrawer({
                   <div>
                     <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
                       <TrendingUp className="h-3 w-3" />
-                      Other Income
+                      {t("otherIncome")}
                     </p>
                     <div className="space-y-1">
                       {Object.entries(financialIncomeByCurrency).map(([currency, amount]) => (
@@ -381,7 +409,7 @@ export function DayShiftsDrawer({
                   <div>
                     <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
                       <TrendingDown className="h-3 w-3" />
-                      Expenses
+                      {t("expenses")}
                     </p>
                     <div className="space-y-1">
                       {Object.entries(financialExpenseByCurrency).map(([currency, amount]) => (
@@ -401,7 +429,7 @@ export function DayShiftsDrawer({
                   <div>
                     <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
                       <TrendingUp className="h-3 w-3" />
-                      Expected Income (Planned)
+                      {t("expectedIncomePlanned")}
                     </p>
                     <div className="space-y-1">
                       {Object.entries(plannedFinancialIncomeByCurrency).map(([currency, amount]) => (
@@ -421,7 +449,7 @@ export function DayShiftsDrawer({
                   <div>
                     <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
                       <TrendingDown className="h-3 w-3" />
-                      Expected Expenses (Planned)
+                      {t("expectedExpensesPlanned")}
                     </p>
                     <div className="space-y-1">
                       {Object.entries(plannedFinancialExpenseByCurrency).map(([currency, amount]) => (
@@ -444,31 +472,31 @@ export function DayShiftsDrawer({
         {dayEntries.length === 0 && financialRecords.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-4">
-              No entries for this day
+              {t("noEntriesForThisDay")}
             </p>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button className="gap-1">
                   <Plus className="h-4 w-4" />
-                  Add Entry
+                  {t("addEntry")}
                   <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
                 <DropdownMenuItem onClick={() => setAddDialogOpen(true)}>
-                  💼 Add Shift
+                  💼 {t("addShift")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => {
                   setAddFinancialType('income');
                   setAddFinancialDialogOpen(true);
                 }}>
-                  💰 Add Income
+                  💰 {t("addIncome")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => {
                   setAddFinancialType('expense');
                   setAddFinancialDialogOpen(true);
                 }}>
-                  💸 Add Expense
+                  💸 {t("addExpense")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -530,7 +558,7 @@ export function DayShiftsDrawer({
                             <div className="w-3 h-3 rounded bg-gray-400" />
                           )}
                           <h4 className="font-semibold text-sm">
-                            {entry.jobs?.name || (isDayOff ? "Day Off" : "Personal Time")}
+                            {entry.jobs?.name || (isDayOff ? t("dayOffLabel") : t("personalTime"))}
                           </h4>
                           <span className="text-xs">{status.emoji}</span>
                         </div>
@@ -544,7 +572,7 @@ export function DayShiftsDrawer({
                             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                               <Clock className="h-3 w-3" />
                               <span>
-                                {entry.is_full_day ? 'Full day' : 'Partial day'} ({formatHours(hours)})
+                                {entry.is_full_day ? t("fullDay") : t("partialDay")} ({formatHours(hours)})
                               </span>
                             </div>
                           </div>
@@ -564,7 +592,7 @@ export function DayShiftsDrawer({
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 {entry.is_overnight && (
                                   <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
-                                    🌙 overnight
+                                    🌙 {t("overnight")}
                                   </span>
                                 )}
                                 {entry.shift_templates && (
@@ -595,7 +623,7 @@ export function DayShiftsDrawer({
                                 <div className="flex items-center gap-1.5 text-xs font-medium text-green-600 dark:text-green-400 mt-1">
                                   <Coins className="h-3 w-3" />
                                   <span>
-                                    Earned: {getCurrencySymbol(incomeRecord.currency)}{incomeRecord.amount.toFixed(2)}
+                                    {t("earned")}: {getCurrencySymbol(incomeRecord.currency)}{incomeRecord.amount.toFixed(2)}
                                   </span>
                                 </div>
                               ) : null;
@@ -637,7 +665,7 @@ export function DayShiftsDrawer({
                                   <div className="flex items-center gap-1.5 text-xs font-medium text-amber-600 dark:text-amber-400 mt-1">
                                     <Coins className="h-3 w-3" />
                                     <span>
-                                      Expected: {getCurrencySymbol(currency)}{estimatedAmount.toFixed(2)}
+                                      {t("expected")}: {getCurrencySymbol(currency)}{estimatedAmount.toFixed(2)}
                                     </span>
                                   </div>
                                 ) : null;
@@ -657,7 +685,7 @@ export function DayShiftsDrawer({
                       <div className="text-right">
                         {isDayOff ? (
                           <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                            Time Off
+                            {t("timeOff")}
                           </div>
                         ) : (
                           <div className="text-sm font-semibold text-green-600 dark:text-green-400">
@@ -677,7 +705,7 @@ export function DayShiftsDrawer({
             {/* Financial Records Section */}
             {financialRecords.length > 0 && (
               <div className="space-y-2 mt-4">
-                <h4 className="text-sm font-medium text-muted-foreground px-1">Financial Records</h4>
+                <h4 className="text-sm font-medium text-muted-foreground px-1">{t("financialRecords")}</h4>
                 {financialRecords.map((record) => {
                   const isIncome = record.type === 'income';
                   const category = record.financial_categories;
@@ -751,7 +779,7 @@ export function DayShiftsDrawer({
                             isPlanned ? 'text-amber-600 dark:text-amber-400' :
                             'text-muted-foreground'
                           }`}>
-                            {isPlanned ? 'Expected' : isCancelled ? 'Cancelled' : 'Completed'}
+                            {isPlanned ? t("expected") : isCancelled ? t("cancelled") : t("completed")}
                           </p>
                         </div>
                       </div>
@@ -767,25 +795,25 @@ export function DayShiftsDrawer({
                 <DropdownMenuTrigger asChild>
                   <Button className="gap-1">
                     <Plus className="h-4 w-4" />
-                    Add
+                    {t("add")}
                     <ChevronDown className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => setAddDialogOpen(true)}>
-                    💼 Add Shift
+                    💼 {t("addShift")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
                     setAddFinancialType('income');
                     setAddFinancialDialogOpen(true);
                   }}>
-                    💰 Add Income
+                    💰 {t("addIncome")}
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => {
                     setAddFinancialType('expense');
                     setAddFinancialDialogOpen(true);
                   }}>
-                    💸 Add Expense
+                    💸 {t("addExpense")}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -832,7 +860,7 @@ export function DayShiftsDrawer({
           <DrawerHeader>
             <DrawerTitle>{formattedDate}</DrawerTitle>
             <DrawerDescription>
-              {dayEntries.length} {dayEntries.length === 1 ? "entry" : "entries"}
+              {dayEntries.length} {dayEntries.length === 1 ? t("entry") : t("entries")}
             </DrawerDescription>
           </DrawerHeader>
           <div className="px-4 pb-4 overflow-y-auto">{content}</div>
@@ -847,7 +875,7 @@ export function DayShiftsDrawer({
         <DialogHeader>
           <DialogTitle>{formattedDate}</DialogTitle>
           <DialogDescription>
-            {dayEntries.length} {dayEntries.length === 1 ? "entry" : "entries"}
+            {dayEntries.length} {dayEntries.length === 1 ? t("entry") : t("entries")}
           </DialogDescription>
         </DialogHeader>
         {content}

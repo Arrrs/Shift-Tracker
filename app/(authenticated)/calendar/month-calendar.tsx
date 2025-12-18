@@ -98,13 +98,21 @@ export function MonthCalendar({ currentDate, entries = [], financialRecords = []
 
   // Get time entries for a specific date
   const getEntriesForDate = (date: Date) => {
-    const dateStr = date.toISOString().split("T")[0];
+    // Format date in local timezone to avoid UTC conversion issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     return entries.filter((entry) => entry.date === dateStr);
   };
 
   // Get financial records for a specific date
   const getFinancialRecordsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split("T")[0];
+    // Format date in local timezone to avoid UTC conversion issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     return financialRecords.filter((record) => record.date === dateStr);
   };
 

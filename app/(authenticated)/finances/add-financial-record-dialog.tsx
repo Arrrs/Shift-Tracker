@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useTranslation } from "@/lib/i18n/use-translation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,6 +29,7 @@ export function AddFinancialRecordDialog({
   defaultType = "income",
   onSuccess,
 }: AddFinancialRecordDialogProps) {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
@@ -95,19 +97,19 @@ export function AddFinancialRecordDialog({
     try {
       const amount = parseFloat(formData.amount);
       if (isNaN(amount) || amount <= 0) {
-        toast.error("Please enter a valid amount");
+        toast.error(t("pleaseEnterValidAmount"));
         setLoading(false);
         return;
       }
 
       if (!formData.category_id) {
-        toast.error("Please select a category");
+        toast.error(t("selectCategory"));
         setLoading(false);
         return;
       }
 
       if (!formData.description) {
-        toast.error("Please enter a description");
+        toast.error(t("description"));
         setLoading(false);
         return;
       }
@@ -127,7 +129,7 @@ export function AddFinancialRecordDialog({
       if (result.error) {
         toast.error(result.error);
       } else {
-        toast.success(`${type === "income" ? "Income" : "Expense"} record added`);
+        toast.success(`${type === "income" ? t("income") : t("expense")} ${t("savedSuccessfully").toLowerCase()}`);
         onOpenChange(false);
         onSuccess?.();
         // Reset form
@@ -143,7 +145,7 @@ export function AddFinancialRecordDialog({
         });
       }
     } catch (error) {
-      toast.error("Failed to add record");
+      toast.error(t("error"));
     } finally {
       setLoading(false);
     }
@@ -153,13 +155,13 @@ export function AddFinancialRecordDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Add Financial Record</DialogTitle>
+          <DialogTitle>{t("addFinancialRecord")}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Type */}
           <div className="space-y-2">
-            <Label>Type</Label>
+            <Label>{t("type")}</Label>
             <RadioGroup
               value={type}
               onValueChange={(value: string) => {
@@ -171,13 +173,13 @@ export function AddFinancialRecordDialog({
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="income" id="income" />
                 <Label htmlFor="income" className="cursor-pointer">
-                  💰 Income
+                  💰 {t("income")}
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="expense" id="expense" />
                 <Label htmlFor="expense" className="cursor-pointer">
-                  💸 Expense
+                  💸 {t("expense")}
                 </Label>
               </div>
             </RadioGroup>
@@ -185,7 +187,7 @@ export function AddFinancialRecordDialog({
 
           {/* Status */}
           <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
+            <Label htmlFor="status">{t("status")}</Label>
             <Select
               value={formData.status}
               onValueChange={(value: "completed" | "planned" | "cancelled") =>
@@ -196,9 +198,9 @@ export function AddFinancialRecordDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="completed">✅ Completed</SelectItem>
-                <SelectItem value="planned">📅 Planned</SelectItem>
-                <SelectItem value="cancelled">❌ Cancelled</SelectItem>
+                <SelectItem value="completed">{t("completedStatus")}</SelectItem>
+                <SelectItem value="planned">{t("plannedStatus")}</SelectItem>
+                <SelectItem value="cancelled">{t("cancelledStatus")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -206,7 +208,7 @@ export function AddFinancialRecordDialog({
           {/* Amount & Currency */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="amount">Amount</Label>
+              <Label htmlFor="amount">{t("amount")}</Label>
               <Input
                 id="amount"
                 type="number"
@@ -218,7 +220,7 @@ export function AddFinancialRecordDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="currency">Currency</Label>
+              <Label htmlFor="currency">{t("currency")}</Label>
               <Select
                 value={formData.currency}
                 onValueChange={(value) => setFormData({ ...formData, currency: value })}
@@ -240,7 +242,7 @@ export function AddFinancialRecordDialog({
 
           {/* Date */}
           <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
+            <Label htmlFor="date">{t("date")}</Label>
             <Input
               id="date"
               type="date"
@@ -252,13 +254,13 @@ export function AddFinancialRecordDialog({
 
           {/* Category */}
           <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
+            <Label htmlFor="category">{t("category")}</Label>
             <Select
               value={formData.category_id}
               onValueChange={handleCategoryChange}
             >
               <SelectTrigger id="category">
-                <SelectValue placeholder="Select category" />
+                <SelectValue placeholder={t("selectCategory")} />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((cat) => (
@@ -272,11 +274,11 @@ export function AddFinancialRecordDialog({
 
           {/* Description */}
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">{t("description")}</Label>
             <Input
               id="description"
               type="text"
-              placeholder="What was this for?"
+              placeholder={t("whatWasThisFor")}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
@@ -284,10 +286,10 @@ export function AddFinancialRecordDialog({
 
           {/* Notes (optional) */}
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes (optional)</Label>
+            <Label htmlFor="notes">{t("notes")} ({t("optional")})</Label>
             <Textarea
               id="notes"
-              placeholder="Additional details..."
+              placeholder={t("additionalDetails")}
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
               rows={2}
@@ -296,16 +298,16 @@ export function AddFinancialRecordDialog({
 
           {/* Link to Job (optional) */}
           <div className="space-y-2">
-            <Label htmlFor="job">Link to Job (optional)</Label>
+            <Label htmlFor="job">{t("linkToJob")} ({t("optional")})</Label>
             <Select
               value={formData.job_id}
               onValueChange={(value) => setFormData({ ...formData, job_id: value })}
             >
               <SelectTrigger id="job">
-                <SelectValue placeholder="Select job" />
+                <SelectValue placeholder={t("selectJob")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None</SelectItem>
+                <SelectItem value="none">{t("none")}</SelectItem>
                 {jobs.map((job) => (
                   <SelectItem key={job.id} value={job.id}>
                     {job.name}
@@ -323,11 +325,11 @@ export function AddFinancialRecordDialog({
               onClick={() => onOpenChange(false)}
               disabled={loading}
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={loading}>
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save
+              {t("save")}
             </Button>
           </div>
         </form>
