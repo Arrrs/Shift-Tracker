@@ -94,7 +94,7 @@ export function DeleteJobButton({
         </Button>
       </AlertDialogTrigger>
 
-      <AlertDialogContent className="max-w-lg">
+      <AlertDialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <AlertDialogHeader>
           <AlertDialogTitle>
             {isArchived ? "Permanently Delete Job" : "Archive or Delete Job"}

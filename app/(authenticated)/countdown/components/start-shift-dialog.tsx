@@ -289,7 +289,7 @@ export function StartShiftDialog({
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="pt-4">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}

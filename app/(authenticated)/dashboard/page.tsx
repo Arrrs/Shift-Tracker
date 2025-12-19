@@ -298,7 +298,7 @@ export default function DashboardPage() {
           <CardContent>
             {/* Chart container */}
             <div className="w-full overflow-x-auto -mx-2 px-2">
-              <div className="min-w-[600px]">
+              <div className="min-w-[50px]">
                 {/* Chart area with fixed height */}
                 <div className="h-64 flex items-end justify-center gap-8 mb-4">
                   {yearlyData.map((data, index) => (
@@ -313,7 +313,7 @@ export default function DashboardPage() {
                         return (
                           <div
                             key={currency}
-                            className="flex-1 max-w-[60px] relative group cursor-pointer"
+                            className="flex-1 max-w-[30px] md:max-w-[50px] relative group cursor-pointer"
                           >
                             {earnings !== 0 && (
                               <div

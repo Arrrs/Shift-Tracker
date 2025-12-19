@@ -70,9 +70,19 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
     const result = await createJob({
       name: formData.name,
       pay_type: formData.pay_type,
-      hourly_rate: formData.pay_type === "hourly" && formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
-      daily_rate: formData.pay_type === "daily" && formData.daily_rate ? parseFloat(formData.daily_rate) : null,
-      monthly_salary: (formData.pay_type === "monthly" || formData.pay_type === "salary") && formData.monthly_salary ? parseFloat(formData.monthly_salary) : null,
+      hourly_rate:
+        formData.pay_type === "hourly" && formData.hourly_rate
+          ? parseFloat(formData.hourly_rate)
+          : null,
+      daily_rate:
+        formData.pay_type === "daily" && formData.daily_rate
+          ? parseFloat(formData.daily_rate)
+          : null,
+      monthly_salary:
+        (formData.pay_type === "monthly" || formData.pay_type === "salary") &&
+        formData.monthly_salary
+          ? parseFloat(formData.monthly_salary)
+          : null,
       currency: formData.currency,
       color: formData.color,
       description: formData.description || null,
@@ -83,7 +93,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
 
     if (result.error) {
       toast.error(t("failedToCreateJob"), {
-        description: result.error
+        description: result.error,
       });
     } else {
       setOpen(false);
@@ -108,17 +118,16 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <Plus /> {t("addJob")}
+          <Plus />
+          <div className="hidden md:block">{t("addJob")}</div>
         </Button>
       </DialogTrigger>
 
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{t("addNewJob")}</DialogTitle>
-            <DialogDescription>
-              {t("createNewJobToTrack")}
-            </DialogDescription>
+            <DialogDescription>{t("createNewJobToTrack")}</DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
@@ -192,10 +201,14 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
               </div>
             )}
 
-            {(formData.pay_type === "monthly" || formData.pay_type === "salary") && (
+            {(formData.pay_type === "monthly" ||
+              formData.pay_type === "salary") && (
               <div className="grid gap-2">
                 <Label htmlFor="monthly_salary">
-                  {formData.pay_type === "salary" ? t("annualSalary") : t("monthlySalary")} *
+                  {formData.pay_type === "salary"
+                    ? t("annualSalary")
+                    : t("monthlySalary")}{" "}
+                  *
                 </Label>
                 <Input
                   id="monthly_salary"
@@ -205,7 +218,9 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
                   onChange={(e) =>
                     setFormData({ ...formData, monthly_salary: e.target.value })
                   }
-                  placeholder={formData.pay_type === "salary" ? "45000.00" : "3000.00"}
+                  placeholder={
+                    formData.pay_type === "salary" ? "45000.00" : "3000.00"
+                  }
                   required
                 />
               </div>
@@ -283,7 +298,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-4">
             <Button
               type="button"
               variant="outline"

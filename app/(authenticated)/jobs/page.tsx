@@ -234,7 +234,7 @@ function JobsList() {
         <div className="block md:hidden space-y-4">
           {jobsList.map((job) => (
             <JobDetailsDrawer key={job.id} job={job} variant="ghost" size="sm" onTemplateChange={handleJobUpdate}>
-              <div className="border rounded-lg p-4 space-y-3 cursor-pointer hover:bg-muted/50">
+              <div className="border rounded-lg p-4 pb-2 space-y-3 cursor-pointer hover:bg-muted/50">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                     <h3 className="font-semibold">{job.name}</h3>

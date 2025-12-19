@@ -139,7 +139,7 @@ export default function CountdownPage() {
 
   // Normal layout
   return (
-    <div className="min-h-screen p-4 md:p-6 lg:p-8" suppressHydrationWarning>
+    <div className="min-h-full p-4 md:p-6 lg:p-8" suppressHydrationWarning>
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl md:text-3xl font-bold">{t("countdown")}</h1>

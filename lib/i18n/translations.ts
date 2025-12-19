@@ -430,7 +430,7 @@ export const translations = {
     entry: "запис",
     entries: "записи",
     noEntriesForThisDay: "Немає записів на цей день",
-    addEntry: "Додати запис",
+    addEntry: "Додати запис111111111111111",
     hours: "годин",
     hoursCompleted: "Години (Виконано)",
     expected: "Очікується",

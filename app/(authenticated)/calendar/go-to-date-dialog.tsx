@@ -56,8 +56,8 @@ export function GoToDateDialog({ currentDate, onDateChange }: GoToDateDialogProp
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <CalendarDays className="h-4 w-4 mr-2" />
-          Go to Date
+          <CalendarDays className="h-4 w-4 mr-0" />
+          {/* Go to Date */}
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-sm">

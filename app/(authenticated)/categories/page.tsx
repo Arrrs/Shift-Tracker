@@ -231,7 +231,7 @@ function CategoriesList() {
           {categoriesList.map((category) => {
             const isMandatory = category.name === "Other Income" || category.name === "Other Expense";
             return (
-              <div key={category.id} className="border rounded-lg p-4 space-y-3">
+              <div key={category.id} className="border rounded-lg p-4 pb-2 space-y-3">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">

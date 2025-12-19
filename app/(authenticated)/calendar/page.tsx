@@ -308,7 +308,7 @@ export default function CalendarPage() {
       />
 
       {/* Stats Cards - Mobile Only */}
-      <div className="lg:hidden mb-3 flex-shrink-0">
+      <div className="lg:hidden mb-0 flex-shrink-0">
         <div className="grid grid-cols-3 gap-2">
           <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-lg p-2">
             <p className="text-[10px] text-muted-foreground mb-0.5">{t("earnings")}</p>
