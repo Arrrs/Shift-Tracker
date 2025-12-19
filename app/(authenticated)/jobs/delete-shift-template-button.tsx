@@ -55,7 +55,7 @@ export function DeleteShiftTemplateButton({
         </Button>
       </AlertDialogTrigger>
 
-      <AlertDialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <AlertDialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Shift Template</AlertDialogTitle>
           <AlertDialogDescription>

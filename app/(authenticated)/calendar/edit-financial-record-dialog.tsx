@@ -173,7 +173,7 @@ export function EditFinancialRecordDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto ">
+      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto ">
         <DialogHeader>
           <DialogTitle>{t("editFinancialRecord")}</DialogTitle>
           <DialogDescription>{t("updateIncomeOrExpense")}</DialogDescription>
@@ -388,7 +388,7 @@ export function EditFinancialRecordDialog({
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <AlertDialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>{t("deleteRecord")} {type === "income" ? t("income") : t("expense")}?</AlertDialogTitle>
             <AlertDialogDescription>

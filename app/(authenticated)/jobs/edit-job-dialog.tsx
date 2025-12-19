@@ -106,7 +106,7 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[80vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{t("editJob")}</DialogTitle>

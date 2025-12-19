@@ -382,7 +382,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("addEntry")}</DialogTitle>
           <DialogDescription>{t("workShift")} / {t("dayOff")}</DialogDescription>

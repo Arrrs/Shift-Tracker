@@ -204,7 +204,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Time Entry</DialogTitle>
           <DialogDescription>Update shift or day-off details</DialogDescription>
