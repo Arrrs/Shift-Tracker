@@ -516,7 +516,7 @@ export default function CalendarPage() {
 
       {/* Detailed Stats Drawer - Mobile Only */}
       <Drawer open={showDetailedStats} onOpenChange={setShowDetailedStats}>
-        <DrawerContent className="max-h-[85vh]">
+        <DrawerContent className="max-h-[80vh]">
           <DrawerHeader>
             <DrawerTitle>{t("monthlyStatsDetails")}</DrawerTitle>
           </DrawerHeader>

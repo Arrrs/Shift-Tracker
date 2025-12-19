@@ -856,7 +856,7 @@ export function DayShiftsDrawer({
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[85vh]">
+        <DrawerContent className="max-h-[80vh]">
           <DrawerHeader>
             <DrawerTitle>{formattedDate}</DrawerTitle>
             <DrawerDescription>
@@ -871,7 +871,7 @@ export function DayShiftsDrawer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{formattedDate}</DialogTitle>
           <DialogDescription>

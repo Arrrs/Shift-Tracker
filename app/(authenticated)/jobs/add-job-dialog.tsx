@@ -123,7 +123,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[80vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{t("addNewJob")}</DialogTitle>

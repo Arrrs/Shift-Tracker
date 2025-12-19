@@ -162,7 +162,7 @@ export function JobDetailsDrawer({
           )}
         </DialogTrigger>
 
-        <DialogContent className="max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-h-[80vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>{job.name}</DialogTitle>
             <DialogDescription>Job details and information</DialogDescription>
@@ -192,7 +192,7 @@ export function JobDetailsDrawer({
         )}
       </DrawerTrigger>
 
-      <DrawerContent className="max-h-[90vh] overflow-hidden flex flex-col">
+      <DrawerContent className="max-h-[80vh] overflow-hidden flex flex-col">
         <DrawerHeader>
           <DrawerTitle>{job.name}</DrawerTitle>
           <DrawerDescription>Job details and information</DrawerDescription>

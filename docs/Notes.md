@@ -313,6 +313,3 @@ Maybe we will add Manual Counter default value in shifts templates later (option
 You have a lot of recomendations, please continue with them i feel like you know what to do and what will be helpfull for users
 
 Please proceed
-
-
-We dont need these two modes for counter because it works manually. Also change "Break counter" to be just "Counter" without "break" in view

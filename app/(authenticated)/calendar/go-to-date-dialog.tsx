@@ -60,7 +60,7 @@ export function GoToDateDialog({ currentDate, onDateChange }: GoToDateDialogProp
           {/* Go to Date */}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Go to Date</DialogTitle>
           <DialogDescription>

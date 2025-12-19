@@ -79,7 +79,7 @@ export function DeleteCategoryButton({
         </Button>
       </AlertDialogTrigger>
 
-      <AlertDialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <AlertDialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
         <AlertDialogHeader>
           <AlertDialogTitle>
             Archive or Delete Category
