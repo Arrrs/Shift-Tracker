@@ -107,7 +107,7 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>{t("editCategory")} - {category.type === "income" ? t("income") : t("expense")}</DialogTitle>
@@ -244,7 +244,7 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-4">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
               {t("cancel")}
             </Button>

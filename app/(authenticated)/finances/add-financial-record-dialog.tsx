@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,7 +153,7 @@ export function AddFinancialRecordDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("addFinancialRecord")}</DialogTitle>
         </DialogHeader>
@@ -318,7 +318,7 @@ export function AddFinancialRecordDialog({
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-2 pt-4">
+          <DialogFooter className="pt-4">
             <Button
               type="button"
               variant="outline"
@@ -331,7 +331,7 @@ export function AddFinancialRecordDialog({
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t("save")}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>

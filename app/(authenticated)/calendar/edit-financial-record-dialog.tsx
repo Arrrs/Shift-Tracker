@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -173,7 +173,7 @@ export function EditFinancialRecordDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto ">
         <DialogHeader>
           <DialogTitle>{t("editFinancialRecord")}</DialogTitle>
           <DialogDescription>{t("updateIncomeOrExpense")}</DialogDescription>
@@ -352,7 +352,7 @@ export function EditFinancialRecordDialog({
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 pt-4">
+          <DialogFooter className="pt-4">
             <Button
               type="button"
               variant="destructive"
@@ -382,13 +382,13 @@ export function EditFinancialRecordDialog({
                 t("saveChanges")
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>{t("deleteRecord")} {type === "income" ? t("income") : t("expense")}?</AlertDialogTitle>
             <AlertDialogDescription>

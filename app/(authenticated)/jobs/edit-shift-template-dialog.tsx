@@ -101,7 +101,7 @@ export function EditShiftTemplateDialog({
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Shift Template</DialogTitle>
           <DialogDescription>
@@ -207,7 +207,7 @@ export function EditShiftTemplateDialog({
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-4">
             <Button
               type="button"
               variant="outline"

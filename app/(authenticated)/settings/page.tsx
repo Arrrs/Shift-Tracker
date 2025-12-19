@@ -1,6 +1,12 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -13,6 +19,9 @@ import { useState, useEffect } from "react";
 import { useTheme } from "next-themes";
 import { useLanguage } from "@/lib/i18n/language-context";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { ScrollText, History } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
@@ -25,7 +34,7 @@ export default function SettingsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen p-4 sm:p-8">
+    <div className="min-h-full p-4 sm:p-8">
       <h1 className="text-3xl font-bold mb-4">{t("settings")}</h1>
       <p className="text-muted-foreground mb-8">
         {t("customizeYourPreferences")}
@@ -59,12 +68,17 @@ export default function SettingsPage() {
         <Card>
           <CardHeader>
             <CardTitle>{t("language")}</CardTitle>
-            <CardDescription>{t("selectYourPreferredLanguage")}</CardDescription>
+            <CardDescription>
+              {t("selectYourPreferredLanguage")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <Label htmlFor="language">{t("language")}</Label>
-              <Select value={language} onValueChange={(value) => setLanguage(value as "en" | "uk")}>
+              <Select
+                value={language}
+                onValueChange={(value) => setLanguage(value as "en" | "uk")}
+              >
                 <SelectTrigger id="language">
                   <SelectValue placeholder="Select language" />
                 </SelectTrigger>
@@ -77,6 +91,12 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+      <Link href="/changes" className="flex mt-6">
+        <Button variant="ghost" className="w-full justify-start">
+          <History className="mr-2 h-4 w-4" />
+          Version 1.0.0
+        </Button>
+      </Link>
     </div>
   );
 }

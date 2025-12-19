@@ -99,7 +99,7 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add Shift Template</DialogTitle>
           <DialogDescription>
@@ -205,7 +205,7 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="pt-4">
             <Button
               type="button"
               variant="outline"

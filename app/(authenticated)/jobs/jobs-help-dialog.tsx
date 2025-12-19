@@ -18,13 +18,13 @@ export function JobsHelpDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
-          <HelpCircle className="h-4 w-4 mr-2" />
-          Help
+        <Button variant="outline">
+          <HelpCircle className="h-4 w-4 md:mr-2" />
+          <div className="hidden md:block">Help</div>
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>How Jobs & Shift Templates Work</DialogTitle>
           <DialogDescription>
@@ -32,7 +32,7 @@ export function JobsHelpDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-6 py-4 overflow-y-auto">
           {/* Jobs Section */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -40,8 +40,9 @@ export function JobsHelpDialog() {
               <h3 className="font-semibold">1. Jobs</h3>
             </div>
             <p className="text-sm text-muted-foreground pl-7">
-              Jobs represent different positions or roles you work (e.g., "Barista at Cafe A", "Server at Restaurant B").
-              Each job has its own hourly rate and can be marked as active or inactive.
+              Jobs represent different positions or roles you work (e.g.,
+              "Barista at Cafe A", "Server at Restaurant B"). Each job has its
+              own hourly rate and can be marked as active or inactive.
             </p>
           </div>
 
@@ -52,8 +53,10 @@ export function JobsHelpDialog() {
               <h3 className="font-semibold">2. Shift Templates</h3>
             </div>
             <p className="text-sm text-muted-foreground pl-7">
-              Templates are reusable shift patterns for each job (e.g., "Morning Shift 9-5", "Night Shift 10-6").
-              Click on a job's eye icon to view details and add templates. Templates save time when logging shifts.
+              Templates are reusable shift patterns for each job (e.g., "Morning
+              Shift 9-5", "Night Shift 10-6"). Click on a job's eye icon to view
+              details and add templates. Templates save time when logging
+              shifts.
             </p>
           </div>
 
@@ -64,8 +67,9 @@ export function JobsHelpDialog() {
               <h3 className="font-semibold">3. Logging Shifts (Coming Soon)</h3>
             </div>
             <p className="text-sm text-muted-foreground pl-7">
-              Once you have templates set up, you'll be able to quickly log shifts in your calendar by selecting
-              a template instead of manually entering times each time.
+              Once you have templates set up, you'll be able to quickly log
+              shifts in your calendar by selecting a template instead of
+              manually entering times each time.
             </p>
           </div>
 

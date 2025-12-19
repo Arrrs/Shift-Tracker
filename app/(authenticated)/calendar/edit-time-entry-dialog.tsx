@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n/use-translation";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -440,7 +440,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t("editShift")}</DialogTitle>
           <DialogDescription>{t("workShift")} / {t("dayOff")}</DialogDescription>
@@ -829,7 +829,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 pt-4">
+          <DialogFooter className="pt-4">
             <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting} className="flex-shrink-0">
               {deleting ? (
                 <>
@@ -856,7 +856,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
                 t("saveChanges")
               )}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
