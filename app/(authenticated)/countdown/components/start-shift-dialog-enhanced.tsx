@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { useActiveJobs } from "@/lib/hooks/use-jobs";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, DollarSign, Clock } from "lucide-react";
 import { toast } from "sonner";
@@ -60,9 +61,10 @@ export function StartShiftDialogEnhanced({
 }: StartShiftDialogEnhancedProps) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
+  const { data: activeJobs = [], isLoading: isLoadingJobs } = useActiveJobs();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
+  const loadingData = isLoadingJobs;
 
   // Basic shift info
   const [selectedJobId, setSelectedJobId] = useState<string>("");
@@ -100,12 +102,16 @@ export function StartShiftDialogEnhanced({
     }
   }, [open, selectedTemplateId]);
 
-  // Load jobs when dialog opens
+  // Update local jobs state when React Query data changes
   useEffect(() => {
-    if (open) {
-      loadJobs();
+    if (activeJobs.length > 0) {
+      setJobs(activeJobs);
+      // Auto-select first job if only one exists
+      if (activeJobs.length === 1) {
+        setSelectedJobId(activeJobs[0].id);
+      }
     }
-  }, [open]);
+  }, [activeJobs]);
 
   // Load templates when job is selected
   useEffect(() => {
@@ -144,37 +150,6 @@ export function StartShiftDialogEnhanced({
       }
     }
   }, [selectedTemplateId, templates]);
-
-  const loadJobs = async () => {
-    setLoadingData(true);
-    try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("jobs")
-        .select("id, name, pay_type, hourly_rate, daily_rate, currency, currency_symbol")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .order("name");
-
-      if (error) throw error;
-      setJobs(data || []);
-
-      if (data && data.length === 1) {
-        setSelectedJobId(data[0].id);
-      }
-    } catch (error) {
-      console.error("Error loading jobs:", error);
-      toast.error("Failed to load jobs");
-    } finally {
-      setLoadingData(false);
-    }
-  };
 
   const loadTemplates = async (jobId: string) => {
     try {

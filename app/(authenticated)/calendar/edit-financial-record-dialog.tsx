@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2, Trash2 } from "lucide-react";
 import { updateFinancialRecord, deleteFinancialRecord, getCategories } from "../finances/actions";
-import { getJobs } from "../jobs/actions";
+import { useActiveJobs } from "@/lib/hooks/use-jobs";
 import { toast } from "sonner";
 import { Database } from "@/lib/database.types";
 import { useTranslation } from "@/lib/i18n/use-translation";
@@ -48,6 +48,7 @@ export function EditFinancialRecordDialog({
   const [deleting, setDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [categories, setCategories] = useState<any[]>([]);
+  const { data: activeJobs = [] } = useActiveJobs();
   const [jobs, setJobs] = useState<any[]>([]);
   const [type, setType] = useState<"income" | "expense">("income");
 
@@ -92,18 +93,10 @@ export function EditFinancialRecordDialog({
     }
   }, [type, open]);
 
-  // Load jobs once
+  // Update local jobs state from React Query
   useEffect(() => {
-    async function loadJobs() {
-      const { jobs: jobsList, error } = await getJobs();
-      if (!error && jobsList) {
-        setJobs(jobsList.filter(job => job.is_active));
-      }
-    }
-    if (open) {
-      loadJobs();
-    }
-  }, [open]);
+    setJobs(activeJobs);
+  }, [activeJobs]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
