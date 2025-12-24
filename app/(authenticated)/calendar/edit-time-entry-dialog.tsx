@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { updateTimeEntry, deleteTimeEntry } from "../time-entries/actions";
-import { getJobs, getShiftTemplates } from "../jobs/actions";
+import { getShiftTemplates } from "../jobs/actions";
 import { Database } from "@/lib/database.types";
 import { DeleteTimeEntryButton } from "./delete-time-entry-button";
+import { useActiveJobs } from "@/lib/hooks/use-jobs";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
@@ -122,17 +123,13 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
     }
   }, [entry, open]);
 
-  // Load jobs
+  // Load jobs with React Query (automatic caching & deduplication)
+  const { data: activeJobs = [] } = useActiveJobs();
+
+  // Sync jobs to local state (for compatibility with existing code)
   useEffect(() => {
-    const loadJobs = async () => {
-      const result = await getJobs();
-      if (result.jobs) {
-        const activeJobs = result.jobs.filter((job) => job.is_active);
-        setJobs(activeJobs);
-      }
-    };
-    loadJobs();
-  }, []);
+    setJobs(activeJobs);
+  }, [activeJobs]);
 
   // Load templates when job changes
   useEffect(() => {
