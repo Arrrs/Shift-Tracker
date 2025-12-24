@@ -4,9 +4,26 @@
  */
 
 import Decimal from 'decimal.js';
+import {
+  getCurrency,
+  getCurrencySymbol,
+  getCurrencyOptions,
+  getSupportedCurrencies,
+  formatCurrencyAmount as formatWithConfig,
+  isSupportedCurrency,
+} from '@/lib/config/currencies';
 
 // Configure Decimal for currency (20 digits precision, round half up)
 Decimal.config({ precision: 20, rounding: Decimal.ROUND_HALF_UP });
+
+// Re-export currency configuration utilities
+export {
+  getCurrency,
+  getCurrencySymbol,
+  getCurrencyOptions,
+  getSupportedCurrencies,
+  isSupportedCurrency,
+};
 
 /**
  * Safely add currency amounts
@@ -48,21 +65,17 @@ export function round(amount: number, decimals: number = 2): number {
 }
 
 /**
- * Format currency with symbol
- * @example formatCurrency(1234.56, '$') // Returns "$1,234.56"
+ * Format currency with proper symbol and formatting rules
+ * @example formatCurrency(1234.56, 'USD') // Returns "$1,234.56"
+ * @example formatCurrency(1234.56, 'EUR') // Returns "1 234,56 €"
+ * @example formatCurrency(1234, 'JPY') // Returns "¥1,234" (no decimals)
  */
 export function formatCurrency(
   amount: number,
-  symbol: string = '$',
-  locale: string = 'en-US'
+  currencyCode: string | null | undefined = 'USD'
 ): string {
   const roundedAmount = round(amount);
-  const formatted = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(roundedAmount);
-
-  return `${symbol}${formatted}`;
+  return formatWithConfig(roundedAmount, currencyCode);
 }
 
 /**

@@ -25,22 +25,9 @@ import { createJob } from "./actions";
 import { Plus } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { getCurrencyOptions } from "@/lib/utils/currency";
 
-const CURRENCIES = [
-  { value: "USD", label: "USD - US Dollar" },
-  { value: "EUR", label: "EUR - Euro" },
-  { value: "UAH", label: "UAH - Ukrainian Hryvnia" },
-  { value: "CZK", label: "CZK - Czech Koruna" },
-  { value: "PLN", label: "PLN - Polish Złoty" },
-  { value: "CAD", label: "CAD - Canadian Dollar" },
-  { value: "CHF", label: "CHF - Swiss Franc" },
-  { value: "DKK", label: "DKK - Danish Krone" },
-  { value: "GBP", label: "GBP - British Pound" },
-  { value: "HUF", label: "HUF - Hungarian Forint" },
-  { value: "NOK", label: "NOK - Norwegian Krone" },
-  { value: "RON", label: "RON - Romanian Leu" },
-  { value: "SEK", label: "SEK - Swedish Krona" },
-];
+const CURRENCIES = getCurrencyOptions();
 
 interface AddJobDialogProps {
   onSuccess?: () => void;

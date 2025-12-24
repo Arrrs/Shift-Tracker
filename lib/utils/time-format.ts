@@ -32,25 +32,12 @@ export function formatTimeFromTimestamp(timestamp: string | null | undefined): s
  * Get currency symbol from currency code
  * @param currency - Currency code (USD, EUR, UAH, etc.)
  * @returns Currency symbol ($, €, ₴, etc.)
+ * @deprecated Use getCurrencySymbol from @/lib/utils/currency instead
  */
 export function getCurrencySymbol(currency: string | null | undefined): string {
-  if (!currency) return "$";
-
-  const symbols: Record<string, string> = {
-    USD: "$",
-    EUR: "€",
-    GBP: "£",
-    UAH: "₴",
-    PLN: "zł",
-    CZK: "Kč",
-    JPY: "¥",
-    CNY: "¥",
-    RUB: "₽",
-    CAD: "CA$",
-    AUD: "A$",
-  };
-
-  return symbols[currency.toUpperCase()] || currency;
+  // Import inline to avoid circular dependency during transition
+  const { getCurrencySymbol: getSymbol } = require('@/lib/utils/currency');
+  return getSymbol(currency);
 }
 
 /**
