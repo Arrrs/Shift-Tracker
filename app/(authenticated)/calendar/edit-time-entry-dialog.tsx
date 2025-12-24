@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n/use-translation";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/responsive-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { updateTimeEntry, deleteTimeEntry } from "../time-entries/actions";
 import { getJobs, getShiftTemplates } from "../jobs/actions";
 import { Database } from "@/lib/database.types";
+import { DeleteTimeEntryButton } from "./delete-time-entry-button";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
@@ -415,26 +416,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
     }
   };
 
-  const handleDelete = async () => {
-    if (!entry) return;
-
-    const confirmed = confirm(t("deleteShift"));
-    if (!confirmed) return;
-
-    setDeleting(true);
-
-    const result = await deleteTimeEntry(entry.id);
-
-    setDeleting(false);
-
-    if (result.error) {
-      toast.error(t("error"), { description: result.error });
-    } else {
-      toast.success(t("deletedSuccessfully"));
-      onOpenChange(false);
-      onSuccess?.();
-    }
-  };
+ 
 
   if (!entry) return null;
 
@@ -830,7 +812,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
 
           {/* Actions */}
           <DialogFooter className="pt-4">
-            <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting} className="flex-shrink-0">
+            {/* <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting} className="flex-shrink-0">
               {deleting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -842,7 +824,18 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
                   {t("delete")}
                 </>
               )}
-            </Button>
+            </Button> */}
+            <DeleteTimeEntryButton 
+              entryId={entry.id} 
+              onSuccess={() => {
+                toast.success(t("deletedSuccessfully"));
+                onOpenChange(false);
+                onSuccess?.();
+              }}
+              onError={(error) => {
+                toast.error(t("error"), { description: error });
+              }}
+            />
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
               {t("cancel")}
             </Button>

@@ -227,7 +227,10 @@ export async function getMonthlyFinancialSummary(year: number, month: number) {
   const { user, supabase } = await getAuthenticatedUser()
 
   // Calculate start and end dates for the month
+  // month is 1-indexed (1=Jan, 12=Dec), but Date constructor uses 0-indexed months
   const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0]
+  // Get last day: Date(year, month, 0) where month is 1-indexed gives last day of that month
+  // e.g., month=5 (May) → Date(year, 5, 0) → last day of month index 4 (May) ✓
   const endDate = new Date(year, month, 0).toISOString().split('T')[0]
 
   const { data: records, error } = await supabase

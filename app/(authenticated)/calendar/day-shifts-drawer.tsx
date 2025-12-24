@@ -27,6 +27,7 @@ import { getFinancialRecords } from "@/app/(authenticated)/finances/actions";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { add as addCurrency } from "@/lib/utils/currency";
 
 // Helper to format date in local timezone without UTC conversion
 const formatLocalDate = (date: Date): string => {
@@ -179,7 +180,7 @@ export function DayShiftsDrawer({
       date: record.date,
     });
     const currency = record.currency || 'USD';
-    shiftIncomeByCurrency[currency] = (shiftIncomeByCurrency[currency] || 0) + record.amount;
+    shiftIncomeByCurrency[currency] = addCurrency(shiftIncomeByCurrency[currency] || 0, record.amount);
   });
   console.log('DEBUG - Shift income by currency:', shiftIncomeByCurrency);
 
@@ -196,13 +197,13 @@ export function DayShiftsDrawer({
 
     // Only include completed and planned records in totals (exclude cancelled)
     if (record.type === 'income' && isCompleted) {
-      financialIncomeByCurrency[currency] = (financialIncomeByCurrency[currency] || 0) + Number(record.amount);
+      financialIncomeByCurrency[currency] = addCurrency(financialIncomeByCurrency[currency] || 0, Number(record.amount));
     } else if (record.type === 'expense' && isCompleted) {
-      financialExpenseByCurrency[currency] = (financialExpenseByCurrency[currency] || 0) + Number(record.amount);
+      financialExpenseByCurrency[currency] = addCurrency(financialExpenseByCurrency[currency] || 0, Number(record.amount));
     } else if (record.type === 'income' && isPlanned) {
-      plannedFinancialIncomeByCurrency[currency] = (plannedFinancialIncomeByCurrency[currency] || 0) + Number(record.amount);
+      plannedFinancialIncomeByCurrency[currency] = addCurrency(plannedFinancialIncomeByCurrency[currency] || 0, Number(record.amount));
     } else if (record.type === 'expense' && isPlanned) {
-      plannedFinancialExpenseByCurrency[currency] = (plannedFinancialExpenseByCurrency[currency] || 0) + Number(record.amount);
+      plannedFinancialExpenseByCurrency[currency] = addCurrency(plannedFinancialExpenseByCurrency[currency] || 0, Number(record.amount));
     }
   });
 
@@ -214,7 +215,7 @@ export function DayShiftsDrawer({
   // First, add all completed shift income from income records
   incomeRecords.forEach((record) => {
     const currency = record.currency || 'USD';
-    expectedIncomeByCurrency[currency] = (expectedIncomeByCurrency[currency] || 0) + record.amount;
+    expectedIncomeByCurrency[currency] = addCurrency(expectedIncomeByCurrency[currency] || 0, record.amount);
   });
 
   // Backwards compatibility - keep incomeByCurrency for existing code
@@ -285,7 +286,7 @@ export function DayShiftsDrawer({
 
       // Add estimated income for planned shifts
       if (estimatedAmount > 0) {
-        expectedIncomeByCurrency[currency] = (expectedIncomeByCurrency[currency] || 0) + estimatedAmount;
+        expectedIncomeByCurrency[currency] = addCurrency(expectedIncomeByCurrency[currency] || 0, estimatedAmount);
         console.log('  → Added to expected total:', { currency, amount: estimatedAmount, newTotal: expectedIncomeByCurrency[currency] });
       }
     }

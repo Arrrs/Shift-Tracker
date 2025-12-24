@@ -1,0 +1,88 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Loader2, Trash, Trash2 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/use-translation";
+import { deleteTimeEntry } from "../time-entries/actions";
+
+interface DeleteTimeEntryButtonProps {
+  entryId: string;
+  variant?: "link" | "ghost" | "destructive";
+  size?: "sm";
+  onSuccess?: () => void;
+  onError?: (error: string) => void;
+}
+
+export function DeleteTimeEntryButton({
+  entryId,
+  variant = "destructive",
+  size,
+  onSuccess,
+  onError,
+}: DeleteTimeEntryButtonProps) {
+  const { t } = useTranslation();  
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleDelete = async () => {
+    setLoading(true);
+    const result = await deleteTimeEntry(entryId);
+    setLoading(false);
+
+    if (result.error) {
+    //   alert("Error: " + result.error);
+      onError?.(result.error);
+    } else {
+      setOpen(false);
+      onSuccess?.();
+    }
+  };
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant={variant} size={size} disabled={loading}>
+          {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  {t("deleting")}
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {t("delete")}
+                </>
+              )}
+        </Button>
+      </AlertDialogTrigger>
+
+      <AlertDialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{t("deleteTimeEntry")}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("deleteTimeEntryConfirmation")}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={loading}>{t("cancel")}</AlertDialogCancel>
+          <AlertDialogAction onClick={handleDelete} disabled={loading}>
+            {loading ? t("deleting") : t("delete")}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}

@@ -19,23 +19,29 @@ export function isTimeInShiftRange(
   startTime: string,
   endTime: string
 ): boolean {
-  const start = parseTimeToDate(startTime, now);
-  let end = parseTimeToDate(endTime, now);
+  const [startHour, startMin] = startTime.split(':').map(Number);
+  const [endHour, endMin] = endTime.split(':').map(Number);
 
-  // Handle overnight shifts
-  const isOvernightShift = end <= start;
-  if (isOvernightShift) {
-    end.setDate(end.getDate() + 1);
-  }
+  const nowHour = now.getHours();
+  const nowMin = now.getMinutes();
 
-  // Check if now is in range
+  // Convert to minutes since midnight for easier comparison
+  const nowMins = nowHour * 60 + nowMin;
+  const startMins = startHour * 60 + startMin;
+  const endMins = endHour * 60 + endMin;
+
+  // Detect overnight shift (end time is earlier than start time)
+  const isOvernightShift = endMins <= startMins;
+
   if (isOvernightShift) {
-    // For overnight shifts, we're in range if:
-    // - After start time today OR before end time tomorrow
-    return now >= start || now <= end;
+    // For overnight shifts (e.g., 23:00-07:00), we're in range if:
+    // - Current time >= start time (e.g., >= 23:00), OR
+    // - Current time <= end time (e.g., <= 07:00)
+    return nowMins >= startMins || nowMins <= endMins;
   } else {
-    // For regular shifts
-    return now >= start && now <= end;
+    // For regular shifts (e.g., 09:00-17:00), we're in range if:
+    // - Current time >= start time AND current time <= end time
+    return nowMins >= startMins && nowMins <= endMins;
   }
 }
 

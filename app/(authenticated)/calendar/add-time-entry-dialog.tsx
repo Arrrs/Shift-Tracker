@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n/use-translation";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/responsive-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -638,7 +638,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                         </Label>
                       </div>
                       {applyMultiplier && (
-                        <div className="flex items-center gap-2 ml-6">
+                        <div className="flex flex-col items-start gap-2 ml-6">
                           <Select value={holidayMultiplier} onValueChange={setHolidayMultiplier}>
                             <SelectTrigger className="w-40">
                               <SelectValue />

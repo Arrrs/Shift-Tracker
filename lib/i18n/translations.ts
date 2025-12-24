@@ -1,3 +1,5 @@
+import { deleteTimeEntry } from "@/app/(authenticated)/time-entries/actions";
+
 export const translations = {
   en: {
     // Common
@@ -131,6 +133,8 @@ export const translations = {
     financialRecords: "Financial Records",
     cancelled: "Cancelled",
     cancelledLower: "cancelled",
+    deleteTimeEntry: "Delete Time Entry",
+    deleteTimeEntryConfirmation: "Are you sure you want to delete this time entry? This action cannot be undone.",
 
     // Shift/Entry types
     workShift: "Work Shift",
@@ -430,7 +434,7 @@ export const translations = {
     entry: "запис",
     entries: "записи",
     noEntriesForThisDay: "Немає записів на цей день",
-    addEntry: "Додати запис111111111111111",
+    addEntry: "Додати запис",
     hours: "годин",
     hoursCompleted: "Години (Виконано)",
     expected: "Очікується",
@@ -451,6 +455,9 @@ export const translations = {
     financialRecords: "Фінансові записи",
     cancelled: "Скасовано",
     cancelledLower: "скасовано",
+    deleteTimeEntry: "Видалити запис часу",
+    deleteTimeEntryConfirmation: "Ви впевнені, що хочете видалити цей запис часу? Цю дію неможливо скасувати.",
+    
 
     // Shift/Entry types
     workShift: "Робоча зміна",

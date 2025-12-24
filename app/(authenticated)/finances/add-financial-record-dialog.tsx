@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/responsive-modal";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

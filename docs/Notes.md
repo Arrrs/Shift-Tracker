@@ -121,6 +121,14 @@ Quick Reference Card
 
 
 
+git add .
+git commit -m "Interface fixes"
+git push origin dev
+git checkout main
+git merge dev
+git push origin main
+git checkout dev
+
 
 ### SQL Migration example:
 

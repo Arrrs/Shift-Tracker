@@ -31,13 +31,13 @@ export default function SettingsPage() {
   }, []);
 
   return (
-    <div className="min-h-full p-4 sm:p-8">
+    <div className="min-h-full p-4 sm:p-8 flex flex-col">
       <h1 className="text-3xl font-bold mb-4">Changes</h1>
       <p className="text-muted-foreground mb-8">
         Last changes and updates made to the application.
       </p>
 
-      <div className="max-w-2xl space-y-6">
+      <div className="max-w-2xl space-y-6 mx-auto">
         <Card>
           <CardHeader>
             <CardTitle>Version 1.0.0 - Initial Release</CardTitle>
