@@ -19,6 +19,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "latest",
+    "@tanstack/react-query": "^5.90.12",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "decimal.js": "^10.6.0",
@@ -34,6 +35,8 @@
   "devDependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
     "@eslint/eslintrc": "^3",
+    "@tanstack/eslint-plugin-query": "^5.91.2",
+    "@tanstack/react-query-devtools": "^5.91.1",
     "@types/decimal.js": "^0.0.32",
     "@types/node": "^20",
     "@types/react": "^19",
