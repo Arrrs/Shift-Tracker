@@ -13,8 +13,7 @@ import {
 } from "@/components/ui/responsive-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createFinancialCategory } from "./actions";
-import { toast } from "sonner";
+import { useCreateCategory } from "@/lib/hooks/use-categories";
 import { Loader2 } from "lucide-react";
 
 // Common emoji suggestions
@@ -52,7 +51,7 @@ interface AddCategoryDialogProps {
 
 export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCategoryDialogProps) {
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
+  const createCategory = useCreateCategory();
   const [formData, setFormData] = useState({
     name: "",
     icon: type === "income" ? "💰" : "💸",
@@ -64,9 +63,8 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
-    const result = await createFinancialCategory({
+    const result = await createCategory.mutateAsync({
       name: formData.name,
       type,
       icon: formData.icon,
@@ -76,14 +74,8 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
       default_description: formData.default_description || undefined,
     });
 
-    setLoading(false);
-
-    if (result.error) {
-      toast.error(t("error"), {
-        description: result.error,
-      });
-    } else {
-      toast.success(`${t("category")} "${formData.name}" ${t("savedSuccessfully").toLowerCase()}`);
+    // Mutation hook handles toasts, we just handle success/error flow
+    if (result.category && !result.error) {
       setFormData({
         name: "",
         icon: type === "income" ? "💰" : "💸",
@@ -233,11 +225,11 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
           </div>
 
           <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={createCategory.isPending}>
               {t("cancel")}
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={createCategory.isPending}>
+              {createCategory.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t("addCategory")}
             </Button>
           </DialogFooter>

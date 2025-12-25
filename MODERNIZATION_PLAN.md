@@ -23,16 +23,18 @@
 - ✅ `use-categories.ts` - Complete CRUD for categories
 - ⏳ `use-shift-templates.ts` - Pending
 
-### Components Migrated to React Query (9/15+)
+### Components Migrated to React Query (11/15+)
 - ✅ `start-shift-dialog.tsx` - Uses useActiveJobs()
 - ✅ `start-shift-dialog-enhanced.tsx` - Uses useActiveJobs()
 - ✅ `edit-financial-record-dialog.tsx` - Uses useActiveJobs() + useCategories()
 - ✅ `add-financial-record-dialog.tsx` - Uses useActiveJobs() + useCategories()
+- ✅ `add-category-dialog.tsx` - Uses useCreateCategory() mutation
+- ✅ `edit-category-dialog.tsx` - Uses useUpdateCategory() mutation
 - ✅ `jobs/page.tsx` - Uses useJobs()
 - ✅ `dashboard/page.tsx` - Uses 5 React Query hooks
 - ✅ `calendar/page.tsx` - Uses 3 React Query hooks + useMemo for stats
 - ✅ `day-shifts-drawer.tsx` - Uses useIncomeRecords() + useFinancialRecords()
-- ⏳ Remaining: 6+ dialogs
+- ⏳ Remaining: 4+ dialogs (job dialogs, time entry dialogs)
 
 ### Code Quality Improvements
 - 🗑️ **~350 lines** of boilerplate eliminated
@@ -262,8 +264,8 @@ npm install -D @tanstack/eslint-plugin-query
 - [ ] `app/(authenticated)/jobs/edit-shift-template-dialog.tsx`
 - [x] `app/(authenticated)/countdown/components/start-shift-dialog.tsx` ✅ COMPLETED
 - [x] `app/(authenticated)/countdown/components/start-shift-dialog-enhanced.tsx` ✅ COMPLETED
-- [ ] `app/(authenticated)/categories/add-category-dialog.tsx`
-- [ ] `app/(authenticated)/categories/edit-category-dialog.tsx`
+- [x] `app/(authenticated)/categories/add-category-dialog.tsx` ✅ COMPLETED
+- [x] `app/(authenticated)/categories/edit-category-dialog.tsx` ✅ COMPLETED
 
 **Pattern to Replace**:
 ```typescript

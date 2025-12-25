@@ -13,9 +13,8 @@ import {
 } from "@/components/ui/responsive-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { updateFinancialCategory } from "./actions";
+import { useUpdateCategory } from "@/lib/hooks/use-categories";
 import type { FinancialCategory } from "./actions";
-import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
 // Common emoji suggestions
@@ -53,7 +52,7 @@ interface EditCategoryDialogProps {
 
 export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: EditCategoryDialogProps) {
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
+  const updateCategory = useUpdateCategory();
   const [formData, setFormData] = useState({
     name: category.name,
     icon: category.icon || "",
@@ -77,26 +76,22 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
-    const result = await updateFinancialCategory(category.id, {
-      name: formData.name,
-      type: category.type,
-      icon: formData.icon,
-      color: formData.color,
-      default_amount: formData.default_amount ? parseFloat(formData.default_amount) : undefined,
-      default_currency: formData.default_amount ? formData.default_currency : undefined,
-      default_description: formData.default_description || undefined,
+    const result = await updateCategory.mutateAsync({
+      categoryId: category.id,
+      data: {
+        name: formData.name,
+        type: category.type,
+        icon: formData.icon,
+        color: formData.color,
+        default_amount: formData.default_amount ? parseFloat(formData.default_amount) : undefined,
+        default_currency: formData.default_amount ? formData.default_currency : undefined,
+        default_description: formData.default_description || undefined,
+      },
     });
 
-    setLoading(false);
-
-    if (result.error) {
-      toast.error(t("error"), {
-        description: result.error,
-      });
-    } else {
-      toast.success(`${t("category")} "${formData.name}" ${t("savedSuccessfully").toLowerCase()}`);
+    // Mutation hook handles toasts
+    if (result.category && !result.error) {
       onSuccess();
       onOpenChange(false);
     }
@@ -245,11 +240,11 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
           </div>
 
           <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={updateCategory.isPending}>
               {t("cancel")}
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={updateCategory.isPending}>
+              {updateCategory.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t("saveChanges")}
             </Button>
           </DialogFooter>
