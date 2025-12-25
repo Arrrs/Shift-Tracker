@@ -42,7 +42,7 @@ export function AddFinancialRecordDialog({
   const [formData, setFormData] = useState({
     amount: "",
     currency: "USD",
-    date: selectedDate?.toISOString().split("T")[0] || "",
+    date: selectedDate ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}` : "",
     category_id: "",
     description: "",
     notes: "",
@@ -122,7 +122,7 @@ export function AddFinancialRecordDialog({
         setFormData({
           amount: "",
           currency: "USD",
-          date: selectedDate?.toISOString().split("T")[0] || "",
+          date: selectedDate ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}` : "",
           category_id: "",
           description: "",
           notes: "",

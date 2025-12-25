@@ -295,7 +295,8 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
         // Determine pay_override_type based on multiplier + base rate combination
         if (applyMultiplier) {
           payData.pay_override_type = "holiday_multiplier";
-          payData.holiday_multiplier = getMultiplierValue();
+          const multiplier = getMultiplierValue();
+          payData.holiday_multiplier = (multiplier > 0) ? multiplier : null;
         } else {
           payData.pay_override_type = payType;
         }
@@ -303,14 +304,17 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
         // Set base rate fields
         switch (payType) {
           case "custom_hourly":
-            payData.custom_hourly_rate = parseFloat(customHourlyRate);
+            const hourlyRate = parseFloat(customHourlyRate);
+            payData.custom_hourly_rate = isNaN(hourlyRate) ? null : hourlyRate;
             break;
           case "custom_daily":
-            payData.custom_daily_rate = parseFloat(customDailyRate);
+            const dailyRate = parseFloat(customDailyRate);
+            payData.custom_daily_rate = isNaN(dailyRate) ? null : dailyRate;
             break;
           case "fixed_amount":
             payData.pay_override_type = "fixed_amount";
-            payData.holiday_fixed_amount = parseFloat(fixedAmount);
+            const fixedAmt = parseFloat(fixedAmount);
+            payData.holiday_fixed_amount = isNaN(fixedAmt) ? null : fixedAmt;
             break;
           case "default":
             // Use job default, but if multiplier is applied, still set override type
