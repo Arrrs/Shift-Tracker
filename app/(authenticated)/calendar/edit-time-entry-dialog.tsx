@@ -405,7 +405,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
       toast.error(t("error"), { description: result.error });
     } else {
       // Invalidate time entries cache to show updated entry
-      queryClient.invalidateQueries({ queryKey: timeEntriesKeys.lists() });
+      await queryClient.invalidateQueries({ queryKey: timeEntriesKeys.lists() });
       toast.success(t("savedSuccessfully"));
       onOpenChange(false);
       onSuccess?.();

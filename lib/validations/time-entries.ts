@@ -28,7 +28,7 @@ export const entryStatusSchema = z.enum(['planned', 'in_progress', 'completed', 
 /**
  * Pay override types
  */
-export const payOverrideTypeSchema = z.enum(['none', 'hourly', 'daily', 'fixed'])
+export const payOverrideTypeSchema = z.enum(['none', 'default', 'hourly', 'daily', 'fixed', 'custom_hourly', 'custom_daily', 'fixed_amount', 'holiday_multiplier'])
 
 /**
  * Time validation (HH:MM format)

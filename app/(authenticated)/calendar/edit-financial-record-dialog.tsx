@@ -114,7 +114,7 @@ export function EditFinancialRecordDialog({
         toast.error(result.error);
       } else {
         // Invalidate financial records cache to show updated record
-        queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
+        await queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
         toast.success(type === "income" ? t("incomeUpdated") : t("expenseUpdated"));
         onOpenChange(false);
         onSuccess?.();
@@ -143,7 +143,7 @@ export function EditFinancialRecordDialog({
       toast.error(t("failedToDeleteRecord"), { description: result.error });
     } else {
       // Invalidate financial records cache to remove deleted record
-      queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
+      await queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
       toast.success(t("recordDeleted"));
       setDeleteDialogOpen(false);
       onOpenChange(false);

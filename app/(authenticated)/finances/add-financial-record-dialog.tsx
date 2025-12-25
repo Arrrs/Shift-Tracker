@@ -114,7 +114,7 @@ export function AddFinancialRecordDialog({
         toast.error(result.error);
       } else {
         // Invalidate financial records cache to show new record
-        queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
+        await queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
         toast.success(`${type === "income" ? t("income") : t("expense")} ${t("savedSuccessfully").toLowerCase()}`);
         onOpenChange(false);
         onSuccess?.();

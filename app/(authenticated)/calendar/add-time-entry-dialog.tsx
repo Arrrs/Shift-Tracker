@@ -348,7 +348,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
       toast.error(t("error"), { description: result.error });
     } else {
       // Invalidate time entries cache to show new entry
-      queryClient.invalidateQueries({ queryKey: timeEntriesKeys.lists() });
+      await queryClient.invalidateQueries({ queryKey: timeEntriesKeys.lists() });
       toast.success(t("savedSuccessfully"));
       onOpenChange(false);
       onSuccess?.();
