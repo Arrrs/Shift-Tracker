@@ -4,6 +4,14 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { Database } from '@/lib/database.types'
 import { redirect } from 'next/navigation'
+import { ZodError } from 'zod'
+import {
+  createFinancialRecordSchema,
+  updateFinancialRecordSchema,
+  createCategorySchema,
+  updateCategorySchema,
+} from '@/lib/validations'
+import { formatZodError } from '@/lib/utils/validation-errors'
 
 type FinancialRecordInsert = Database['public']['Tables']['financial_records']['Insert']
 type FinancialCategoryInsert = Database['public']['Tables']['financial_categories']['Insert']
@@ -65,51 +73,71 @@ export async function getFinancialRecords(startDate: string, endDate: string, ty
 }
 
 // Create a new financial record
-export async function createFinancialRecord(data: Omit<FinancialRecordInsert, 'user_id'>) {
-  const { user, supabase } = await getAuthenticatedUser()
+export async function createFinancialRecord(data: unknown) {
+  try {
+    // Validate input data
+    const validated = createFinancialRecordSchema.parse(data)
 
-  const { data: record, error } = await supabase
-    .from('financial_records')
-    .insert({
-      ...data,
-      user_id: user.id,
-    })
-    .select()
-    .single()
+    const { user, supabase } = await getAuthenticatedUser()
 
-  if (error) {
-    return { error: error.message }
+    const { data: record, error } = await supabase
+      .from('financial_records')
+      .insert({
+        ...validated,
+        user_id: user.id,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    revalidatePath('/calendar')
+    revalidatePath('/finances')
+
+    return { success: true, record }
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { error: formatZodError(error) }
+    }
+    return { error: 'Invalid input data' }
   }
-
-  revalidatePath('/calendar')
-  revalidatePath('/finances')
-
-  return { success: true, record }
 }
 
 // Update a financial record
 export async function updateFinancialRecord(
   recordId: string,
-  data: Partial<Omit<FinancialRecordInsert, 'user_id'>>
+  data: unknown
 ) {
-  const { user, supabase } = await getAuthenticatedUser()
+  try {
+    // Validate input data
+    const validated = updateFinancialRecordSchema.parse(data)
 
-  const { data: record, error } = await supabase
-    .from('financial_records')
-    .update(data)
-    .eq('id', recordId)
-    .eq('user_id', user.id)
-    .select()
-    .single()
+    const { user, supabase } = await getAuthenticatedUser()
 
-  if (error) {
-    return { error: error.message }
+    const { data: record, error } = await supabase
+      .from('financial_records')
+      .update(validated)
+      .eq('id', recordId)
+      .eq('user_id', user.id)
+      .select()
+      .single()
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    revalidatePath('/calendar')
+    revalidatePath('/finances')
+
+    return { success: true, record }
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { error: formatZodError(error) }
+    }
+    return { error: 'Invalid input data' }
   }
-
-  revalidatePath('/calendar')
-  revalidatePath('/finances')
-
-  return { success: true, record }
 }
 
 // Delete a financial record
@@ -160,45 +188,65 @@ export async function getCategories(type?: 'income' | 'expense') {
 }
 
 // Create a new category
-export async function createCategory(data: Omit<FinancialCategoryInsert, 'user_id'>) {
-  const { user, supabase } = await getAuthenticatedUser()
+export async function createCategory(data: unknown) {
+  try {
+    // Validate input data
+    const validated = createCategorySchema.parse(data)
 
-  const { data: category, error } = await supabase
-    .from('financial_categories')
-    .insert({
-      ...data,
-      user_id: user.id,
-    })
-    .select()
-    .single()
+    const { user, supabase } = await getAuthenticatedUser()
 
-  if (error) {
-    return { error: error.message }
+    const { data: category, error } = await supabase
+      .from('financial_categories')
+      .insert({
+        ...validated,
+        user_id: user.id,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    return { success: true, category }
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { error: formatZodError(error) }
+    }
+    return { error: 'Invalid input data' }
   }
-
-  return { success: true, category }
 }
 
 // Update a category
 export async function updateCategory(
   categoryId: string,
-  data: Partial<Omit<FinancialCategoryInsert, 'user_id'>>
+  data: unknown
 ) {
-  const { user, supabase } = await getAuthenticatedUser()
+  try {
+    // Validate input data
+    const validated = updateCategorySchema.parse(data)
 
-  const { data: category, error } = await supabase
-    .from('financial_categories')
-    .update(data)
-    .eq('id', categoryId)
-    .eq('user_id', user.id)
-    .select()
-    .single()
+    const { user, supabase } = await getAuthenticatedUser()
 
-  if (error) {
-    return { error: error.message }
+    const { data: category, error } = await supabase
+      .from('financial_categories')
+      .update(validated)
+      .eq('id', categoryId)
+      .eq('user_id', user.id)
+      .select()
+      .single()
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    return { success: true, category }
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { error: formatZodError(error) }
+    }
+    return { error: 'Invalid input data' }
   }
-
-  return { success: true, category }
 }
 
 // Delete a category

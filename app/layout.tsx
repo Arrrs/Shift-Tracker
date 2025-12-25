@@ -4,6 +4,7 @@ import { ThemeProvider } from "next-themes";
 import { Toaster } from "@/components/ui/sonner";
 import { LanguageProvider } from "@/lib/i18n/language-context";
 import { QueryProvider } from "@/lib/providers/query-provider";
+import { ErrorBoundary } from "@/components/error-boundary";
 import "./globals.css";
 
 const defaultUrl = process.env.VERCEL_URL
@@ -50,19 +51,21 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.className} antialiased`}>
-        <QueryProvider>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <LanguageProvider>
-              {children}
-              <Toaster />
-            </LanguageProvider>
-          </ThemeProvider>
-        </QueryProvider>
+        <ErrorBoundary>
+          <QueryProvider>
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="system"
+              enableSystem
+              disableTransitionOnChange
+            >
+              <LanguageProvider>
+                {children}
+                <Toaster />
+              </LanguageProvider>
+            </ThemeProvider>
+          </QueryProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );

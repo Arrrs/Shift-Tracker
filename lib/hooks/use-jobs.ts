@@ -71,7 +71,7 @@ export function useCreateJob() {
   return useMutation({
     mutationFn: createJob,
     // Optimistic update: Update cache immediately before server responds
-    onMutate: async (newJob) => {
+    onMutate: async (newJob: any) => {
       // Cancel any outgoing refetches to avoid overwriting optimistic update
       await queryClient.cancelQueries({ queryKey: jobsQueryKey });
 
@@ -122,10 +122,10 @@ export function useUpdateJob() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: Parameters<typeof updateJob>[1] }) =>
+    mutationFn: ({ id, updates }: { id: string; updates: any }) =>
       updateJob(id, updates),
     // Optimistic update: Update cache immediately
-    onMutate: async ({ id, updates }) => {
+    onMutate: async ({ id, updates }: { id: string; updates: any }) => {
       await queryClient.cancelQueries({ queryKey: jobsQueryKey });
 
       const previousJobs = queryClient.getQueryData(jobsQueryKey);

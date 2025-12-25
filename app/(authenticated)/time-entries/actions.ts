@@ -2,6 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { ZodError } from "zod";
+import { createTimeEntrySchema, updateTimeEntrySchema } from "@/lib/validations";
+import { formatZodError } from "@/lib/utils/validation-errors";
 
 async function getAuthenticatedUser() {
   const supabase = await createClient();
@@ -63,81 +66,69 @@ export async function getTimeEntries(startDate: string, endDate: string) {
 // CREATE TIME ENTRY
 // ============================================
 
-type CreateTimeEntryData =
-  | {
-      entry_type: "work_shift";
-      job_id: string | null;
-      template_id?: string | null;
-      date: string;
-      start_time: string;
-      end_time: string;
-      scheduled_hours: number;
-      actual_hours: number;
-      is_overnight?: boolean;
-      // Pay customization fields
-      pay_override_type?: string | null;
-      custom_hourly_rate?: number | null;
-      custom_daily_rate?: number | null;
-      is_holiday?: boolean;
-      holiday_multiplier?: number | null;
-      holiday_fixed_amount?: number | null;
-      status?: string;
-      notes?: string;
+export async function createTimeEntry(data: unknown) {
+  try {
+    // Validate input data
+    const validated = createTimeEntrySchema.parse(data);
+
+    const { user, supabase } = await getAuthenticatedUser();
+
+    const { data: entry, error } = await supabase
+      .from("time_entries")
+      .insert({
+        ...validated,
+        user_id: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return { error: error.message, entry: null };
     }
-  | {
-      entry_type: "day_off";
-      job_id?: string | null;
-      date: string;
-      day_off_type: string;
-      actual_hours: number;
-      is_full_day: boolean;
-      status?: string;
-      notes?: string;
-    };
 
-export async function createTimeEntry(data: CreateTimeEntryData) {
-  const { user, supabase } = await getAuthenticatedUser();
-
-  const { data: entry, error } = await supabase
-    .from("time_entries")
-    .insert({
-      ...data,
-      user_id: user.id,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    return { error: error.message, entry: null };
+    revalidatePath("/calendar");
+    revalidatePath("/countdown");
+    return { entry, error: null };
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { error: formatZodError(error), entry: null };
+    }
+    return { error: "Invalid input data", entry: null };
   }
-
-  revalidatePath("/calendar");
-  revalidatePath("/countdown");
-  return { entry, error: null };
 }
 
 // ============================================
 // UPDATE TIME ENTRY
 // ============================================
 
-export async function updateTimeEntry(id: string, data: Partial<CreateTimeEntryData>) {
-  const { user, supabase } = await getAuthenticatedUser();
+export async function updateTimeEntry(id: string, data: unknown) {
+  try {
+    // Validate input data
+    const validated = updateTimeEntrySchema.parse(data);
 
-  const { data: entry, error } = await supabase
-    .from("time_entries")
-    .update(data)
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .select()
-    .single();
+    const { user, supabase } = await getAuthenticatedUser();
 
-  if (error) {
-    return { error: error.message, entry: null };
+    const { data: entry, error } = await supabase
+      .from("time_entries")
+      .update(validated)
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+
+    if (error) {
+      return { error: error.message, entry: null };
+    }
+
+    revalidatePath("/calendar");
+    revalidatePath("/countdown");
+    return { entry, error: null };
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { error: formatZodError(error), entry: null };
+    }
+    return { error: "Invalid input data", entry: null };
   }
-
-  revalidatePath("/calendar");
-  revalidatePath("/countdown");
-  return { entry, error: null };
 }
 
 // ============================================

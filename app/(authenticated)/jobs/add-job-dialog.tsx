@@ -25,6 +25,7 @@ import { useCreateJob } from "@/lib/hooks/use-jobs";
 import { Plus } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { getCurrencyOptions } from "@/lib/utils/currency";
+import { DialogErrorBoundary } from "@/components/error-boundary";
 
 const CURRENCIES = getCurrencyOptions();
 
@@ -103,11 +104,12 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
       </DialogTrigger>
 
       <DialogContent className="max-h-[80vh] overflow-y-auto">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>{t("addNewJob")}</DialogTitle>
-            <DialogDescription>{t("createNewJobToTrack")}</DialogDescription>
-          </DialogHeader>
+        <DialogErrorBoundary>
+          <form onSubmit={handleSubmit}>
+            <DialogHeader>
+              <DialogTitle>{t("addNewJob")}</DialogTitle>
+              <DialogDescription>{t("createNewJobToTrack")}</DialogDescription>
+            </DialogHeader>
 
           <div className="grid gap-4 py-4">
             {/* Job Name */}
@@ -289,7 +291,8 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
               {createJob.isPending ? t("creating") : t("createJob")}
             </Button>
           </DialogFooter>
-        </form>
+          </form>
+        </DialogErrorBoundary>
       </DialogContent>
     </Dialog>
   );

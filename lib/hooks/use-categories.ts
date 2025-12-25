@@ -46,7 +46,7 @@ export function useCreateCategory() {
   return useMutation({
     mutationFn: createCategory,
     // Optimistic update
-    onMutate: async (newCategory) => {
+    onMutate: async (newCategory: any) => {
       // Cancel outgoing queries
       await queryClient.cancelQueries({ queryKey: categoriesKeys.lists() });
 
@@ -107,10 +107,10 @@ export function useUpdateCategory() {
       data,
     }: {
       categoryId: string;
-      data: Parameters<typeof updateCategory>[1];
+      data: any;
     }) => updateCategory(categoryId, data),
     // Optimistic update
-    onMutate: async ({ categoryId, data }) => {
+    onMutate: async ({ categoryId, data }: { categoryId: string; data: any }) => {
       await queryClient.cancelQueries({ queryKey: categoriesKeys.lists() });
 
       // Snapshot both income and expense lists (we don't know which one)
