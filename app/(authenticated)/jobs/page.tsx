@@ -4,6 +4,7 @@ import { Suspense, useState, lazy } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useJobs } from "@/lib/hooks/use-jobs";
+import { usePrefetch, createPrefetchHandlers } from "@/lib/hooks/use-prefetch";
 import { Briefcase, Clock, Info, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";

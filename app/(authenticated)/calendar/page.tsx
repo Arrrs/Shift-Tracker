@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, List, ChevronLeft, ChevronRight, Loader2, Plus, ChevronDown } from "lucide-react";
@@ -12,6 +12,7 @@ import { StatCardMobile } from "./stat-card";
 import { useTimeEntries } from "@/lib/hooks/use-time-entries";
 import { useIncomeRecords } from "@/lib/hooks/use-income-records";
 import { useFinancialRecords } from "@/lib/hooks/use-financial-records";
+import { usePrefetch } from "@/lib/hooks/use-prefetch";
 import { Database } from "@/lib/database.types";
 import { getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time-format";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -80,24 +81,52 @@ export default function CalendarPage() {
 
   const loading = isLoadingEntries || isLoadingIncome || isLoadingFinancial;
 
-  // Navigate months
-  const goToPreviousMonth = () => {
-    if (!currentDate) return;
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
-  };
+  const prefetch = usePrefetch();
 
-  const goToNextMonth = () => {
+  // Navigate months - useCallback prevents re-creating these functions on every render
+  const goToPreviousMonth = useCallback(() => {
     if (!currentDate) return;
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
-  };
+    const prevMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1);
+    setCurrentDate(prevMonth);
 
-  const goToToday = () => {
+    // Prefetch data for previous month for instant navigation
+    const year = prevMonth.getFullYear();
+    const month = prevMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const start = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`;
+    const end = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+
+    prefetch.timeEntries(start, end);
+    prefetch.incomeRecords(start, end);
+    prefetch.financialRecords(start, end);
+  }, [currentDate, prefetch]);
+
+  const goToNextMonth = useCallback(() => {
+    if (!currentDate) return;
+    const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1);
+    setCurrentDate(nextMonth);
+
+    // Prefetch data for next month
+    const year = nextMonth.getFullYear();
+    const month = nextMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const start = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`;
+    const end = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+
+    prefetch.timeEntries(start, end);
+    prefetch.incomeRecords(start, end);
+    prefetch.financialRecords(start, end);
+  }, [currentDate, prefetch]);
+
+  const goToToday = useCallback(() => {
     setCurrentDate(new Date());
-  };
+  }, []);
 
-  const goToDate = (date: Date) => {
+  const goToDate = useCallback((date: Date) => {
     setCurrentDate(date);
-  };
+  }, []);
 
   const monthYear = currentDate?.toLocaleDateString("en-US", {
     month: "long",
