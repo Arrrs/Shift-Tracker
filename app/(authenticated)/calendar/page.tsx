@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, List, ChevronLeft, ChevronRight, Loader2, Plus, ChevronDown } from "lucide-react";
@@ -12,8 +12,9 @@ import { GoToDateDialog } from "./go-to-date-dialog";
 import { DayShiftsDrawer } from "./day-shifts-drawer";
 import { IncomeStatsCards } from "./income-stats-cards";
 import { StatCardMobile } from "./stat-card";
-import { getTimeEntries, getIncomeRecords } from "../time-entries/actions";
-import { getFinancialRecords } from "../finances/actions";
+import { useTimeEntries } from "@/lib/hooks/use-time-entries";
+import { useIncomeRecords } from "@/lib/hooks/use-income-records";
+import { useFinancialRecords } from "@/lib/hooks/use-financial-records";
 import { Database } from "@/lib/database.types";
 import { getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time-format";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -36,25 +37,6 @@ export default function CalendarPage() {
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
-  const [entries, setEntries] = useState<TimeEntry[]>([]);
-  const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>([]);
-  const [stats, setStats] = useState({
-    totalEarnings: 0,
-    totalHours: 0,
-    shiftCount: 0,
-    totalActualHours: 0,
-    totalScheduledHours: 0,
-    completedShifts: 0,
-    plannedShifts: 0,
-    inProgressShifts: 0,
-    earningsByCurrency: {} as Record<string, number>,
-    shiftIncomeByCurrency: {} as Record<string, number>,
-    shiftIncomeByJob: [] as Array<{jobId: string; jobName: string; amount: number; hours: number; shifts: number}>,
-    fixedIncomeJobIds: [] as string[],
-    fixedIncomeShiftCounts: {} as Record<string, number>,
-  });
-  const [loading, setLoading] = useState(true);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayDrawerOpen, setDayDrawerOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -66,6 +48,28 @@ export default function CalendarPage() {
   useEffect(() => {
     setCurrentDate(new Date());
   }, []);
+
+  // Calculate date range for current month
+  const { startDate, endDate } = useMemo(() => {
+    if (!currentDate) return { startDate: "", endDate: "" };
+
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    return {
+      startDate: `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`,
+      endDate: `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`,
+    };
+  }, [currentDate]);
+
+  // Use React Query hooks for data fetching
+  const { data: entries = [], isLoading: isLoadingEntries } = useTimeEntries(startDate, endDate);
+  const { data: incomeRecords = [], isLoading: isLoadingIncome } = useIncomeRecords(startDate, endDate);
+  const { data: financialRecords = [], isLoading: isLoadingFinancial } = useFinancialRecords(startDate, endDate);
+
+  const loading = isLoadingEntries || isLoadingIncome || isLoadingFinancial;
 
   // Navigate months
   const goToPreviousMonth = () => {
@@ -91,146 +95,84 @@ export default function CalendarPage() {
     year: "numeric",
   }) || "";
 
-  // Load shifts and stats for current month
-  useEffect(() => {
-    if (!currentDate) return;
+  // Calculate stats from loaded data using useMemo for performance
+  const stats = useMemo(() => {
+    const timeEntries = entries as TimeEntry[];
 
-    // Create AbortController to cancel previous requests
-    const abortController = new AbortController();
-    let isCancelled = false;
+    // Calculate hours
+    const completedEntries = timeEntries.filter(e => e.status === 'completed');
+    const totalActualHours = completedEntries.reduce((sum, e) => sum + (e.actual_hours || 0), 0);
+    const totalScheduledHours = timeEntries.filter(e => e.status !== 'cancelled').reduce((sum, e) => sum + (e.scheduled_hours || 0), 0);
+    const completedShifts = completedEntries.length;
+    const plannedShifts = timeEntries.filter(e => e.status === 'planned').length;
+    const inProgressShifts = timeEntries.filter(e => e.status === 'in_progress').length;
 
-    const loadData = async () => {
-      setLoading(true);
+    // Calculate shift income by currency from income_records
+    const shiftIncomeByCurrency: Record<string, number> = {};
+    incomeRecords.forEach(record => {
+      const currency = record.currency || 'USD';
+      shiftIncomeByCurrency[currency] = (shiftIncomeByCurrency[currency] || 0) + record.amount;
+    });
 
-      try {
-        // Get first and last day of current month
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
-
-        // Format dates in local timezone to avoid UTC conversion issues
-        const startDate = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`;
-        const endDate = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
-
-        // Load all data in parallel for better performance
-        const [entriesResult, financialResult, incomeResult] = await Promise.all([
-          getTimeEntries(startDate, endDate),
-          getFinancialRecords(startDate, endDate),
-          getIncomeRecords(startDate, endDate),
-        ]);
-
-        // Check if request was cancelled before updating state
-        if (isCancelled) return;
-
-        if (entriesResult.entries) {
-          setEntries(entriesResult.entries as TimeEntry[]);
-        }
-
-        if (financialResult.records) {
-          setFinancialRecords(financialResult.records as FinancialRecord[]);
-        }
-
-        // Calculate stats from loaded data
-        if (entriesResult.entries && incomeResult.records) {
-          const timeEntries = entriesResult.entries as TimeEntry[];
-          const incomeRecords = incomeResult.records;
-          const financials = (financialResult.records || []) as FinancialRecord[];
-
-          // Calculate hours
-          const completedEntries = timeEntries.filter(e => e.status === 'completed');
-          const totalActualHours = completedEntries.reduce((sum, e) => sum + (e.actual_hours || 0), 0);
-          const totalScheduledHours = timeEntries.filter(e => e.status !== 'cancelled').reduce((sum, e) => sum + (e.scheduled_hours || 0), 0);
-          const completedShifts = completedEntries.length;
-          const plannedShifts = timeEntries.filter(e => e.status === 'planned').length;
-          const inProgressShifts = timeEntries.filter(e => e.status === 'in_progress').length;
-
-          // Calculate shift income by currency from income_records
-          const shiftIncomeByCurrency: Record<string, number> = {};
-          incomeRecords.forEach(record => {
-            const currency = record.currency || 'USD';
-            shiftIncomeByCurrency[currency] = (shiftIncomeByCurrency[currency] || 0) + record.amount;
-          });
-
-          // Calculate financial records income/expense by currency (completed only)
-          const financialIncomeByCurrency: Record<string, number> = {};
-          const financialExpenseByCurrency: Record<string, number> = {};
-          financials.forEach(record => {
-            if (record.status === 'completed') {
-              const currency = record.currency || 'USD';
-              if (record.type === 'income') {
-                financialIncomeByCurrency[currency] = (financialIncomeByCurrency[currency] || 0) + Number(record.amount);
-              } else if (record.type === 'expense') {
-                financialExpenseByCurrency[currency] = (financialExpenseByCurrency[currency] || 0) + Number(record.amount);
-              }
-            }
-          });
-
-          // Combine all earnings by currency (shifts + financial income - financial expenses)
-          const earningsByCurrency: Record<string, number> = {};
-
-          // Add shift income
-          Object.entries(shiftIncomeByCurrency).forEach(([currency, amount]) => {
-            earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) + amount;
-          });
-
-          // Add financial income
-          Object.entries(financialIncomeByCurrency).forEach(([currency, amount]) => {
-            earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) + amount;
-          });
-
-          // Subtract expenses
-          Object.entries(financialExpenseByCurrency).forEach(([currency, amount]) => {
-            earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) - amount;
-          });
-
-          // Calculate total earnings (sum all currencies - for legacy single value)
-          const totalEarnings = Object.values(earningsByCurrency).reduce((sum, amount) => sum + amount, 0);
-
-          setStats({
-            totalEarnings,
-            totalHours: totalActualHours,
-            shiftCount: timeEntries.length,
-            totalActualHours,
-            totalScheduledHours,
-            completedShifts,
-            plannedShifts,
-            inProgressShifts,
-            earningsByCurrency,
-            shiftIncomeByCurrency,
-            shiftIncomeByJob: [], // TODO: Calculate if needed
-            fixedIncomeJobIds: [],
-            fixedIncomeShiftCounts: {},
-          });
-        }
-      } catch (error) {
-        // Only log error if not cancelled
-        if (!isCancelled) {
-          console.error('Error loading calendar data:', error);
-        }
-      } finally {
-        // Only update loading state if not cancelled
-        if (!isCancelled) {
-          setLoading(false);
+    // Calculate financial records income/expense by currency (completed only)
+    const financialIncomeByCurrency: Record<string, number> = {};
+    const financialExpenseByCurrency: Record<string, number> = {};
+    financialRecords.forEach(record => {
+      if (record.status === 'completed') {
+        const currency = record.currency || 'USD';
+        if (record.type === 'income') {
+          financialIncomeByCurrency[currency] = (financialIncomeByCurrency[currency] || 0) + Number(record.amount);
+        } else if (record.type === 'expense') {
+          financialExpenseByCurrency[currency] = (financialExpenseByCurrency[currency] || 0) + Number(record.amount);
         }
       }
+    });
+
+    // Combine all earnings by currency (shifts + financial income - financial expenses)
+    const earningsByCurrency: Record<string, number> = {};
+
+    // Add shift income
+    Object.entries(shiftIncomeByCurrency).forEach(([currency, amount]) => {
+      earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) + amount;
+    });
+
+    // Add financial income
+    Object.entries(financialIncomeByCurrency).forEach(([currency, amount]) => {
+      earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) + amount;
+    });
+
+    // Subtract expenses
+    Object.entries(financialExpenseByCurrency).forEach(([currency, amount]) => {
+      earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) - amount;
+    });
+
+    // Calculate total earnings (sum all currencies - for legacy single value)
+    const totalEarnings = Object.values(earningsByCurrency).reduce((sum, amount) => sum + amount, 0);
+
+    return {
+      totalEarnings,
+      totalHours: totalActualHours,
+      shiftCount: timeEntries.length,
+      totalActualHours,
+      totalScheduledHours,
+      completedShifts,
+      plannedShifts,
+      inProgressShifts,
+      earningsByCurrency,
+      shiftIncomeByCurrency,
+      shiftIncomeByJob: [], // TODO: Calculate if needed
+      fixedIncomeJobIds: [],
+      fixedIncomeShiftCounts: {},
     };
+  }, [entries, incomeRecords, financialRecords]);
 
-    loadData();
-
-    // Cleanup function to cancel ongoing requests when month changes
-    return () => {
-      isCancelled = true;
-      abortController.abort();
-    };
-  }, [currentDate, refreshTrigger]);
-
+  // React Query automatically handles data refetching via cache invalidation
   const handleEntryChange = () => {
-    setRefreshTrigger((prev) => prev + 1);
+    // No manual refresh needed - mutations handle cache invalidation
   };
 
   const handleFinancialSuccess = () => {
-    setRefreshTrigger((prev) => prev + 1);
+    // No manual refresh needed - mutations handle cache invalidation
   };
 
   const handleDayClick = (date: Date) => {

@@ -22,8 +22,8 @@ import { EditFinancialRecordDialog } from "./edit-financial-record-dialog";
 import { AddFinancialRecordDialog } from "../finances/add-financial-record-dialog";
 import { Clock, Coins, TrendingUp, TrendingDown, Plus, ChevronDown } from "lucide-react";
 import { formatTimeFromTimestamp, getStatusInfo, getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time-format";
-import { getIncomeRecords } from "@/app/(authenticated)/time-entries/actions";
-import { getFinancialRecords } from "@/app/(authenticated)/finances/actions";
+import { useIncomeRecords } from "@/lib/hooks/use-income-records";
+import { useFinancialRecords } from "@/lib/hooks/use-financial-records";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n/use-translation";
@@ -69,16 +69,17 @@ export function DayShiftsDrawer({
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [incomeRecords, setIncomeRecords] = useState<IncomeRecord[]>([]);
-  const [loadingIncome, setLoadingIncome] = useState(false);
-
-  // Financial records state
-  const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>([]);
-  const [loadingFinancial, setLoadingFinancial] = useState(false);
   const [selectedFinancialRecord, setSelectedFinancialRecord] = useState<FinancialRecord | null>(null);
   const [editFinancialDialogOpen, setEditFinancialDialogOpen] = useState(false);
   const [addFinancialDialogOpen, setAddFinancialDialogOpen] = useState(false);
   const [addFinancialType, setAddFinancialType] = useState<"income" | "expense">("income");
+
+  // Format date for React Query hooks (empty string will disable query via built-in enabled check)
+  const dateStr = (date && open) ? formatLocalDate(date) : "";
+
+  // Use React Query hooks for data fetching
+  const { data: incomeRecords = [], isLoading: loadingIncome } = useIncomeRecords(dateStr, dateStr);
+  const { data: financialRecords = [], isLoading: loadingFinancial } = useFinancialRecords(dateStr, dateStr);
 
   // Detect mobile on mount (client-side only to avoid hydration mismatch)
   useEffect(() => {
@@ -88,61 +89,7 @@ export function DayShiftsDrawer({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Reset state when drawer closes or date changes
-  useEffect(() => {
-    if (!open) {
-      setIncomeRecords([]);
-      setFinancialRecords([]);
-      setLoadingIncome(false);
-      setLoadingFinancial(false);
-    }
-  }, [open]);
-
-  // Reset state immediately when date changes (before fetching new data)
-  useEffect(() => {
-    if (date && open) {
-      setIncomeRecords([]);
-      setFinancialRecords([]);
-    }
-  }, [date, open]);
-
-  // Fetch income records for the selected day
-  useEffect(() => {
-    if (!date || !open) return;
-
-    const fetchIncome = async () => {
-      setLoadingIncome(true);
-      const dateStr = formatLocalDate(date);
-      const result = await getIncomeRecords(dateStr, dateStr);
-      if (result.records) {
-        setIncomeRecords(result.records);
-      }
-      setLoadingIncome(false);
-    };
-
-    fetchIncome();
-  }, [date, open, entries]);
-
-  // Fetch financial records for the selected day
-  useEffect(() => {
-    if (!date || !open) return;
-
-    const fetchFinancial = async () => {
-      setLoadingFinancial(true);
-      const dateStr = formatLocalDate(date);
-      const result = await getFinancialRecords(dateStr, dateStr);
-      if (result.records) {
-        setFinancialRecords(result.records);
-      }
-      setLoadingFinancial(false);
-    };
-
-    fetchFinancial();
-  }, [date, open]);
-
   if (!date) return null;
-
-  const dateStr = formatLocalDate(date);
   const dayEntries = entries.filter((entry) => entry.date === dateStr);
 
   const formattedDate = date.toLocaleDateString("en-US", {
@@ -297,27 +244,13 @@ export function DayShiftsDrawer({
     setEditDialogOpen(true);
   };
 
-  const handleEditSuccess = async () => {
-    // Refetch income records after edit/delete
-    if (date) {
-      const dateStr = formatLocalDate(date);
-      const result = await getIncomeRecords(dateStr, dateStr);
-      if (result.records) {
-        setIncomeRecords(result.records);
-      }
-    }
+  const handleEditSuccess = () => {
+    // React Query automatically refetches after mutations via cache invalidation
     onEntryChange?.();
   };
 
-  const handleFinancialSuccess = async () => {
-    // Refetch financial records after edit/delete/add
-    if (date) {
-      const dateStr = formatLocalDate(date);
-      const result = await getFinancialRecords(dateStr, dateStr);
-      if (result.records) {
-        setFinancialRecords(result.records);
-      }
-    }
+  const handleFinancialSuccess = () => {
+    // React Query automatically refetches after mutations via cache invalidation
     onEntryChange?.();
   };
 
