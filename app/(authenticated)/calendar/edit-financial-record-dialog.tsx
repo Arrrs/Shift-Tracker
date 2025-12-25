@@ -19,8 +19,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2, Trash2 } from "lucide-react";
-import { updateFinancialRecord, deleteFinancialRecord, getCategories } from "../finances/actions";
+import { updateFinancialRecord, deleteFinancialRecord } from "../finances/actions";
 import { useActiveJobs } from "@/lib/hooks/use-jobs";
+import { useCategories } from "@/lib/hooks/use-categories";
 import { toast } from "sonner";
 import { Database } from "@/lib/database.types";
 import { useTranslation } from "@/lib/i18n/use-translation";
@@ -47,10 +48,10 @@ export function EditFinancialRecordDialog({
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [type, setType] = useState<"income" | "expense">("income");
+  const { data: categories = [] } = useCategories(type);
   const { data: activeJobs = [] } = useActiveJobs();
   const [jobs, setJobs] = useState<any[]>([]);
-  const [type, setType] = useState<"income" | "expense">("income");
 
   const [formData, setFormData] = useState({
     amount: "",
@@ -79,19 +80,6 @@ export function EditFinancialRecordDialog({
       });
     }
   }, [record, open]);
-
-  // Load categories when type changes
-  useEffect(() => {
-    async function loadCategories() {
-      const { categories: cats, error } = await getCategories(type);
-      if (!error && cats) {
-        setCategories(cats);
-      }
-    }
-    if (open) {
-      loadCategories();
-    }
-  }, [type, open]);
 
   // Update local jobs state from React Query
   useEffect(() => {

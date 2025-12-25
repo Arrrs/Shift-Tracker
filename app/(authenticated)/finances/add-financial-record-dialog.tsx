@@ -10,8 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2 } from "lucide-react";
-import { createFinancialRecord, getCategories } from "./actions";
-import { getJobs } from "../jobs/actions";
+import { createFinancialRecord } from "./actions";
+import { useActiveJobs } from "@/lib/hooks/use-jobs";
+import { useCategories } from "@/lib/hooks/use-categories";
 import { toast } from "sonner";
 
 interface AddFinancialRecordDialogProps {
@@ -31,9 +32,9 @@ export function AddFinancialRecordDialog({
 }: AddFinancialRecordDialogProps) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [jobs, setJobs] = useState<any[]>([]);
   const [type, setType] = useState<"income" | "expense">(defaultType);
+  const { data: categories = [] } = useCategories(type);
+  const { data: activeJobs = [] } = useActiveJobs();
 
   const [formData, setFormData] = useState({
     amount: "",
@@ -51,17 +52,9 @@ export function AddFinancialRecordDialog({
     setType(defaultType);
   }, [defaultType, open]);
 
-  // Load categories when type changes
+  // Clear category selection when type changes so user picks appropriate category
   useEffect(() => {
-    async function loadCategories() {
-      const { categories: cats, error } = await getCategories(type);
-      if (!error && cats) {
-        setCategories(cats);
-        // Clear category selection when type changes so user picks appropriate category
-        setFormData((prev) => ({ ...prev, category_id: "", amount: "", currency: prev.currency }));
-      }
-    }
-    loadCategories();
+    setFormData((prev) => ({ ...prev, category_id: "", amount: "", currency: prev.currency }));
   }, [type]);
 
   // Auto-fill amount, currency, and description when category with defaults is selected
@@ -77,18 +70,6 @@ export function AddFinancialRecordDialog({
       description: selectedCategory?.default_description || prev.description,
     }));
   };
-
-  // Load jobs once
-  useEffect(() => {
-    async function loadJobs() {
-      const { jobs: jobsList, error } = await getJobs();
-      if (!error && jobsList) {
-        // Filter to only show active jobs
-        setJobs(jobsList.filter(job => job.is_active));
-      }
-    }
-    loadJobs();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -308,7 +289,7 @@ export function AddFinancialRecordDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">{t("none")}</SelectItem>
-                {jobs.map((job) => (
+                {activeJobs.map((job) => (
                   <SelectItem key={job.id} value={job.id}>
                     {job.name}
                   </SelectItem>
