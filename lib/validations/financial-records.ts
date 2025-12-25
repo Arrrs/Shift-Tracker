@@ -46,9 +46,9 @@ export const createFinancialRecordSchema = z.object({
 
   notes: z.string().max(1000, 'Notes must be less than 1000 characters').optional().nullable(),
 
-  category_id: z.string().uuid('Invalid category ID').optional().nullable(),
+  category_id: z.string().uuid('Invalid category ID').nullish(),
 
-  job_id: z.string().uuid('Invalid job ID').optional().nullable(),
+  job_id: z.string().uuid('Invalid job ID').nullish(),
 
   status: financialRecordStatusSchema.default('completed'),
 });

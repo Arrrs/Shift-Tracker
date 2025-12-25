@@ -60,9 +60,9 @@ const baseTimeEntrySchema = z.object({
 export const workShiftSchema = baseTimeEntrySchema.extend({
   entry_type: z.literal('work_shift'),
 
-  job_id: z.string().uuid('Invalid job ID').nullable(),
+  job_id: z.string().uuid('Invalid job ID').nullish(),
 
-  template_id: z.string().uuid('Invalid template ID').optional().nullable(),
+  template_id: z.string().uuid('Invalid template ID').nullish(),
 
   start_time: timeSchema,
 
@@ -75,19 +75,19 @@ export const workShiftSchema = baseTimeEntrySchema.extend({
   is_overnight: z.boolean().default(false),
 
   // Pay customization fields
-  pay_override_type: payOverrideTypeSchema.optional().nullable(),
+  pay_override_type: payOverrideTypeSchema.nullish(),
 
-  custom_hourly_rate: z.number().positive().finite().optional().nullable(),
+  custom_hourly_rate: z.number().positive().finite().nullish(),
 
-  custom_daily_rate: z.number().positive().finite().optional().nullable(),
+  custom_daily_rate: z.number().positive().finite().nullish(),
 
-  custom_currency: currencySchema.optional().nullable(),
+  custom_currency: currencySchema.nullish(),
 
   is_holiday: z.boolean().default(false),
 
-  holiday_multiplier: z.number().positive().finite().optional().nullable(),
+  holiday_multiplier: z.number().positive().finite().nullish(),
 
-  holiday_fixed_amount: z.number().positive().finite().optional().nullable(),
+  holiday_fixed_amount: z.number().positive().finite().nullish(),
 }).refine(
   (data) => {
     // Validate time logic for non-overnight shifts
@@ -107,7 +107,7 @@ export const workShiftSchema = baseTimeEntrySchema.extend({
 export const dayOffSchema = baseTimeEntrySchema.extend({
   entry_type: z.literal('day_off'),
 
-  job_id: z.string().uuid('Invalid job ID').optional().nullable(),
+  job_id: z.string().uuid('Invalid job ID').nullish(),
 
   day_off_type: dayOffTypeSchema,
 
