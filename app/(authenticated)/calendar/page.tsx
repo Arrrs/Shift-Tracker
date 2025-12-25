@@ -1,15 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, List, ChevronLeft, ChevronRight, Loader2, Plus, ChevronDown } from "lucide-react";
 import { MonthCalendar } from "./month-calendar";
 import { ListView } from "./list-view";
-import { AddTimeEntryDialog } from "./add-time-entry-dialog";
-import { AddFinancialRecordDialog } from "../finances/add-financial-record-dialog";
 import { GoToDateDialog } from "./go-to-date-dialog";
-import { DayShiftsDrawer } from "./day-shifts-drawer";
 import { IncomeStatsCards } from "./income-stats-cards";
 import { StatCardMobile } from "./stat-card";
 import { useTimeEntries } from "@/lib/hooks/use-time-entries";
@@ -21,6 +18,18 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/use-translation";
+
+// Code splitting: Lazy load heavy dialogs (~800 lines each)
+// These only load when user actually opens them, reducing initial bundle size
+const AddTimeEntryDialog = lazy(() =>
+  import("./add-time-entry-dialog").then((mod) => ({ default: mod.AddTimeEntryDialog }))
+);
+const AddFinancialRecordDialog = lazy(() =>
+  import("../finances/add-financial-record-dialog").then((mod) => ({ default: mod.AddFinancialRecordDialog }))
+);
+const DayShiftsDrawer = lazy(() =>
+  import("./day-shifts-drawer").then((mod) => ({ default: mod.DayShiftsDrawer }))
+);
 
 type ViewMode = "calendar" | "list";
 type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
@@ -233,21 +242,25 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Add Time Entry Dialog */}
-      <AddTimeEntryDialog
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        onSuccess={handleEntryChange}
-      />
+      {/* Add Time Entry Dialog - Lazy loaded */}
+      <Suspense fallback={null}>
+        <AddTimeEntryDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          onSuccess={handleEntryChange}
+        />
+      </Suspense>
 
-      {/* Add Financial Record Dialog */}
-      <AddFinancialRecordDialog
-        open={addFinancialDialogOpen}
-        onOpenChange={setAddFinancialDialogOpen}
-        selectedDate={currentDate || undefined}
-        defaultType={addFinancialType}
-        onSuccess={handleFinancialSuccess}
-      />
+      {/* Add Financial Record Dialog - Lazy loaded */}
+      <Suspense fallback={null}>
+        <AddFinancialRecordDialog
+          open={addFinancialDialogOpen}
+          onOpenChange={setAddFinancialDialogOpen}
+          selectedDate={currentDate || undefined}
+          defaultType={addFinancialType}
+          onSuccess={handleFinancialSuccess}
+        />
+      </Suspense>
 
       {/* Stats Cards - Mobile Only */}
       <div className="lg:hidden mb-0 flex-shrink-0">
@@ -447,14 +460,16 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Day Shifts Drawer */}
-      <DayShiftsDrawer
-        date={selectedDate}
-        entries={entries}
-        open={dayDrawerOpen}
-        onOpenChange={setDayDrawerOpen}
-        onEntryChange={handleEntryChange}
-      />
+      {/* Day Shifts Drawer - Lazy loaded */}
+      <Suspense fallback={null}>
+        <DayShiftsDrawer
+          date={selectedDate}
+          entries={entries}
+          open={dayDrawerOpen}
+          onOpenChange={setDayDrawerOpen}
+          onEntryChange={handleEntryChange}
+        />
+      </Suspense>
 
       {/* Detailed Stats Drawer - Mobile Only */}
       <Drawer open={showDetailedStats} onOpenChange={setShowDetailedStats}>

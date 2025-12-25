@@ -1,21 +1,23 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, lazy } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AddJobDialog } from "./add-job-dialog";
-import { DeleteJobButton } from "./delete-job-button";
-import { EditJobDialog } from "./edit-job-dialog";
-import { JobDetailsDrawer } from "./job-details-drawer";
-import { JobsHelpDialog } from "./jobs-help-dialog";
-import { ArchiveJobButton } from "./archive-job-button";
-import { UnarchiveJobButton } from "./unarchive-job-button";
 import { useJobs } from "@/lib/hooks/use-jobs";
 import { Briefcase, Clock, Info, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { getCurrencySymbol } from "@/lib/utils/time-format";
 import { useTranslation } from "@/lib/i18n/use-translation";
+
+// Code splitting: Lazy load dialogs and drawers
+const AddJobDialog = lazy(() => import("./add-job-dialog").then((mod) => ({ default: mod.AddJobDialog })));
+const EditJobDialog = lazy(() => import("./edit-job-dialog").then((mod) => ({ default: mod.EditJobDialog })));
+const JobDetailsDrawer = lazy(() => import("./job-details-drawer").then((mod) => ({ default: mod.JobDetailsDrawer })));
+const JobsHelpDialog = lazy(() => import("./jobs-help-dialog").then((mod) => ({ default: mod.JobsHelpDialog })));
+const DeleteJobButton = lazy(() => import("./delete-job-button").then((mod) => ({ default: mod.DeleteJobButton })));
+const ArchiveJobButton = lazy(() => import("./archive-job-button").then((mod) => ({ default: mod.ArchiveJobButton })));
+const UnarchiveJobButton = lazy(() => import("./unarchive-job-button").then((mod) => ({ default: mod.UnarchiveJobButton })));
 
 // Helper function to format job rate display
 function formatJobRate(job: any): string {
@@ -305,8 +307,12 @@ export default function JobsPage() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">{t("jobs")}</h1>
         <div className="flex gap-2">
-          <JobsHelpDialog />
-          <AddJobDialog />
+          <Suspense fallback={null}>
+            <JobsHelpDialog />
+          </Suspense>
+          <Suspense fallback={null}>
+            <AddJobDialog />
+          </Suspense>
         </div>
       </div>
 

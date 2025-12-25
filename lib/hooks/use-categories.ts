@@ -35,13 +35,42 @@ export function useCategories(type: "income" | "expense") {
 }
 
 /**
- * Hook to create a new category
+ * Hook to create a new category with optimistic updates
+ *
+ * Immediately adds the category to the cache for instant UI feedback.
+ * Rolls back if the server request fails.
  */
 export function useCreateCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: createCategory,
+    // Optimistic update
+    onMutate: async (newCategory) => {
+      // Cancel outgoing queries
+      await queryClient.cancelQueries({ queryKey: categoriesKeys.lists() });
+
+      // Snapshot previous state
+      const previousCategories = queryClient.getQueryData(
+        categoriesKeys.list(newCategory.type as "income" | "expense")
+      );
+
+      // Optimistically add new category
+      queryClient.setQueryData(
+        categoriesKeys.list(newCategory.type as "income" | "expense"),
+        (old: any) => {
+          const optimisticCategory = {
+            ...newCategory,
+            id: `temp-${Date.now()}`,
+            created_at: new Date().toISOString(),
+            user_id: 'current-user',
+          };
+          return [...(old || []), optimisticCategory];
+        }
+      );
+
+      return { previousCategories, categoryType: newCategory.type };
+    },
     onSuccess: (result) => {
       if (result.category && !result.error) {
         queryClient.invalidateQueries({ queryKey: categoriesKeys.lists() });
@@ -50,14 +79,24 @@ export function useCreateCategory() {
         toast.error(result.error);
       }
     },
-    onError: (error: Error) => {
+    onError: (error: Error, newCategory, context) => {
+      // Rollback on error
+      if (context?.previousCategories && context?.categoryType) {
+        queryClient.setQueryData(
+          categoriesKeys.list(context.categoryType as "income" | "expense"),
+          context.previousCategories
+        );
+      }
       toast.error(error.message || "Failed to create category");
     },
   });
 }
 
 /**
- * Hook to update an existing category
+ * Hook to update an existing category with optimistic updates
+ *
+ * Updates the category in the cache immediately for instant UI feedback.
+ * Rolls back if the server request fails.
  */
 export function useUpdateCategory() {
   const queryClient = useQueryClient();
@@ -70,6 +109,25 @@ export function useUpdateCategory() {
       categoryId: string;
       data: Parameters<typeof updateCategory>[1];
     }) => updateCategory(categoryId, data),
+    // Optimistic update
+    onMutate: async ({ categoryId, data }) => {
+      await queryClient.cancelQueries({ queryKey: categoriesKeys.lists() });
+
+      // Snapshot both income and expense lists (we don't know which one)
+      const previousIncome = queryClient.getQueryData(categoriesKeys.list("income"));
+      const previousExpense = queryClient.getQueryData(categoriesKeys.list("expense"));
+
+      // Update both lists (category might be in either)
+      const updateList = (old: any) =>
+        old?.map((cat: any) =>
+          cat.id === categoryId ? { ...cat, ...data } : cat
+        ) || [];
+
+      queryClient.setQueryData(categoriesKeys.list("income"), updateList);
+      queryClient.setQueryData(categoriesKeys.list("expense"), updateList);
+
+      return { previousIncome, previousExpense };
+    },
     onSuccess: (result) => {
       if (result.category && !result.error) {
         queryClient.invalidateQueries({ queryKey: categoriesKeys.lists() });
@@ -78,20 +136,47 @@ export function useUpdateCategory() {
         toast.error(result.error);
       }
     },
-    onError: (error: Error) => {
+    onError: (error: Error, variables, context) => {
+      // Rollback both lists
+      if (context?.previousIncome) {
+        queryClient.setQueryData(categoriesKeys.list("income"), context.previousIncome);
+      }
+      if (context?.previousExpense) {
+        queryClient.setQueryData(categoriesKeys.list("expense"), context.previousExpense);
+      }
       toast.error(error.message || "Failed to update category");
     },
   });
 }
 
 /**
- * Hook to delete a category
+ * Hook to delete a category with optimistic updates
+ *
+ * Removes the category from the cache immediately for instant UI feedback.
+ * Rolls back if the server request fails.
  */
 export function useDeleteCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: deleteCategory,
+    // Optimistic update
+    onMutate: async (categoryId) => {
+      await queryClient.cancelQueries({ queryKey: categoriesKeys.lists() });
+
+      // Snapshot both lists
+      const previousIncome = queryClient.getQueryData(categoriesKeys.list("income"));
+      const previousExpense = queryClient.getQueryData(categoriesKeys.list("expense"));
+
+      // Remove from both lists (category is in one of them)
+      const removeFromList = (old: any) =>
+        old?.filter((cat: any) => cat.id !== categoryId) || [];
+
+      queryClient.setQueryData(categoriesKeys.list("income"), removeFromList);
+      queryClient.setQueryData(categoriesKeys.list("expense"), removeFromList);
+
+      return { previousIncome, previousExpense };
+    },
     onSuccess: (result) => {
       if (!result.error) {
         queryClient.invalidateQueries({ queryKey: categoriesKeys.lists() });
@@ -100,7 +185,14 @@ export function useDeleteCategory() {
         toast.error(result.error);
       }
     },
-    onError: (error: Error) => {
+    onError: (error: Error, categoryId, context) => {
+      // Rollback both lists
+      if (context?.previousIncome) {
+        queryClient.setQueryData(categoriesKeys.list("income"), context.previousIncome);
+      }
+      if (context?.previousExpense) {
+        queryClient.setQueryData(categoriesKeys.list("expense"), context.previousExpense);
+      }
       toast.error(error.message || "Failed to delete category");
     },
   });
