@@ -51,7 +51,6 @@ export function EditFinancialRecordDialog({
   const [type, setType] = useState<"income" | "expense">("income");
   const { data: categories = [] } = useCategories(type);
   const { data: activeJobs = [] } = useActiveJobs();
-  const [jobs, setJobs] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
     amount: "",
@@ -80,11 +79,6 @@ export function EditFinancialRecordDialog({
       });
     }
   }, [record, open]);
-
-  // Update local jobs state from React Query
-  useEffect(() => {
-    setJobs(activeJobs);
-  }, [activeJobs]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -320,7 +314,7 @@ export function EditFinancialRecordDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">{t("none")}</SelectItem>
-                {jobs.map((job) => (
+                {activeJobs.map((job) => (
                   <SelectItem key={job.id} value={job.id}>
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded" style={{ backgroundColor: job.color || "#3B82F6" }} />

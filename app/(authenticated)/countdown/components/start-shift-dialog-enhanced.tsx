@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -62,9 +62,9 @@ export function StartShiftDialogEnhanced({
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const { data: activeJobs = [], isLoading: isLoadingJobs } = useActiveJobs();
-  const [jobs, setJobs] = useState<Job[]>([]);
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
   const loadingData = isLoadingJobs;
+  const hasAutoSelectedRef = useRef(false);
 
   // Basic shift info
   const [selectedJobId, setSelectedJobId] = useState<string>("");
@@ -102,16 +102,16 @@ export function StartShiftDialogEnhanced({
     }
   }, [open, selectedTemplateId]);
 
-  // Update local jobs state when React Query data changes
+  // Auto-select first job if only one exists (only once)
   useEffect(() => {
-    if (activeJobs.length > 0) {
-      setJobs(activeJobs);
-      // Auto-select first job if only one exists
-      if (activeJobs.length === 1) {
-        setSelectedJobId(activeJobs[0].id);
-      }
+    if (open && activeJobs.length === 1 && !hasAutoSelectedRef.current && !selectedJobId) {
+      setSelectedJobId(activeJobs[0].id);
+      hasAutoSelectedRef.current = true;
     }
-  }, [activeJobs]);
+    if (!open) {
+      hasAutoSelectedRef.current = false;
+    }
+  }, [open, activeJobs, selectedJobId]);
 
   // Load templates when job is selected
   useEffect(() => {
@@ -177,7 +177,7 @@ export function StartShiftDialogEnhanced({
   const calculateExpectedIncome = () => {
     if (!customizePay) return null;
 
-    const selectedJob = jobs.find(j => j.id === selectedJobId);
+    const selectedJob = activeJobs.find(j => j.id === selectedJobId);
     const currencySymbol = payType === "default" && selectedJob
       ? selectedJob.currency_symbol
       : "$";
@@ -310,7 +310,7 @@ export function StartShiftDialogEnhanced({
                     <SelectValue placeholder="Select a job" />
                   </SelectTrigger>
                   <SelectContent>
-                    {jobs.map((job) => (
+                    {activeJobs.map((job) => (
                       <SelectItem key={job.id} value={job.id}>
                         {job.name}
                       </SelectItem>

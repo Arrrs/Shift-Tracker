@@ -30,7 +30,6 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [jobs, setJobs] = useState<Job[]>([]);
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
 
@@ -126,11 +125,6 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
   // Load jobs with React Query (automatic caching & deduplication)
   const { data: activeJobs = [] } = useActiveJobs();
 
-  // Sync jobs to local state (for compatibility with existing code)
-  useEffect(() => {
-    setJobs(activeJobs);
-  }, [activeJobs]);
-
   // Load templates when job changes
   useEffect(() => {
     const loadTemplates = async () => {
@@ -188,7 +182,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
   // Calculate expected income for live preview
   const getCurrencySymbolForPreview = () => {
     if (payType === "default" && selectedJobId && selectedJobId !== "none") {
-      const selectedJob = jobs.find(j => j.id === selectedJobId);
+      const selectedJob = activeJobs.find(j => j.id === selectedJobId);
       return selectedJob?.currency_symbol || "$";
     }
     // Map common currencies to symbols
@@ -203,7 +197,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
   const calculateExpectedIncome = (): { amount: number; formula: string; currency: string; symbol: string } | null => {
     if (!customizePay || entryType !== "work_shift") return null;
 
-    const selectedJob = jobs.find(j => j.id === selectedJobId);
+    const selectedJob = activeJobs.find(j => j.id === selectedJobId);
     const currencySymbol = getCurrencySymbolForPreview();
     const currencyCode = (payType === "default" && selectedJob ? selectedJob.currency : customCurrency) || "USD";
     let baseRate = 0;
@@ -455,7 +449,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">{t("none")}</SelectItem>
-                {jobs.map((job) => (
+                {activeJobs.map((job) => (
                   <SelectItem key={job.id} value={job.id}>
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded" style={{ backgroundColor: job.color || "#3B82F6" }} />
@@ -582,10 +576,10 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
                             className="h-4 w-4"
                           />
                           <Label htmlFor="pay-default" className="cursor-pointer font-normal">
-                            Use job default ({jobs.find(j => j.id === selectedJobId)?.pay_type === "hourly"
-                              ? `$${jobs.find(j => j.id === selectedJobId)?.hourly_rate}/hr`
-                              : jobs.find(j => j.id === selectedJobId)?.pay_type === "daily"
-                              ? `$${jobs.find(j => j.id === selectedJobId)?.daily_rate}/day`
+                            Use job default ({activeJobs.find(j => j.id === selectedJobId)?.pay_type === "hourly"
+                              ? `$${activeJobs.find(j => j.id === selectedJobId)?.hourly_rate}/hr`
+                              : activeJobs.find(j => j.id === selectedJobId)?.pay_type === "daily"
+                              ? `$${activeJobs.find(j => j.id === selectedJobId)?.daily_rate}/day`
                               : "N/A"})
                           </Label>
                         </div>
