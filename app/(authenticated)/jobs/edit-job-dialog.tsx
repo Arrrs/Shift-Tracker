@@ -21,11 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { updateJob } from "./actions";
+import { useUpdateJob } from "@/lib/hooks/use-jobs";
 import { Pencil } from "lucide-react";
 import { Database } from "@/lib/database.types";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
 import { getCurrencyOptions } from "@/lib/utils/currency";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
@@ -42,7 +41,7 @@ interface EditJobDialogProps {
 export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJobDialogProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const updateJob = useUpdateJob();
 
   const [formData, setFormData] = useState({
     name: job.name,
@@ -58,29 +57,25 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
-    const result = await updateJob(job.id, {
-      name: formData.name,
-      pay_type: formData.pay_type,
-      hourly_rate: formData.pay_type === "hourly" && formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
-      daily_rate: formData.pay_type === "daily" && formData.daily_rate ? parseFloat(formData.daily_rate) : null,
-      monthly_salary: (formData.pay_type === "monthly" || formData.pay_type === "salary") && formData.monthly_salary ? parseFloat(formData.monthly_salary) : null,
-      currency: formData.currency,
-      description: formData.description || null,
-      color: formData.color,
-      is_active: formData.is_active,
+    const result = await updateJob.mutateAsync({
+      id: job.id,
+      updates: {
+        name: formData.name,
+        pay_type: formData.pay_type,
+        hourly_rate: formData.pay_type === "hourly" && formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
+        daily_rate: formData.pay_type === "daily" && formData.daily_rate ? parseFloat(formData.daily_rate) : null,
+        monthly_salary: (formData.pay_type === "monthly" || formData.pay_type === "salary") && formData.monthly_salary ? parseFloat(formData.monthly_salary) : null,
+        currency: formData.currency,
+        description: formData.description || null,
+        color: formData.color,
+        is_active: formData.is_active,
+      },
     });
 
-    setLoading(false);
-
-    if (result.error) {
-      toast.error(t("failedToUpdateJob"), {
-        description: result.error
-      });
-    } else {
+    // Mutation hook handles toasts, we just handle success/error flow
+    if (result.success && !result.error) {
       setOpen(false);
-      toast.success(t("jobUpdatedSuccessfully"));
       onSuccess?.();
     }
   };
@@ -272,8 +267,8 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
             >
               {t("cancel")}
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? t("updating") : t("updateJob")}
+            <Button type="submit" disabled={updateJob.isPending}>
+              {updateJob.isPending ? t("updating") : t("updateJob")}
             </Button>
           </DialogFooter>
         </form>

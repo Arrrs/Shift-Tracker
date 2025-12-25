@@ -21,10 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createJob } from "./actions";
+import { useCreateJob } from "@/lib/hooks/use-jobs";
 import { Plus } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
 import { getCurrencyOptions } from "@/lib/utils/currency";
 
 const CURRENCIES = getCurrencyOptions();
@@ -36,7 +35,7 @@ interface AddJobDialogProps {
 export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const createJob = useCreateJob();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -52,9 +51,8 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
-    const result = await createJob({
+    const result = await createJob.mutateAsync({
       name: formData.name,
       pay_type: formData.pay_type,
       hourly_rate:
@@ -76,15 +74,9 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
       is_active: formData.is_active,
     });
 
-    setLoading(false);
-
-    if (result.error) {
-      toast.error(t("failedToCreateJob"), {
-        description: result.error,
-      });
-    } else {
+    // Mutation hook handles toasts, we just handle success/error flow
+    if (result.success && !result.error) {
       setOpen(false);
-      toast.success(t("jobCreatedSuccessfully"));
       // Reset form
       setFormData({
         name: "",
@@ -293,8 +285,8 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
             >
               {t("cancel")}
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? t("creating") : t("createJob")}
+            <Button type="submit" disabled={createJob.isPending}>
+              {createJob.isPending ? t("creating") : t("createJob")}
             </Button>
           </DialogFooter>
         </form>

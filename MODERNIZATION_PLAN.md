@@ -10,7 +10,7 @@
 ### Phase Status
 - ✅ **Phase 0**: Critical Bug Fixes - COMPLETE
 - ✅ **Phase 1**: Architecture Foundation - COMPLETE
-- 🎉 **Phase 2**: Component Refactoring - 90% COMPLETE
+- 🎉 **Phase 2**: Component Refactoring - 95% COMPLETE
 - ⏳ **Phase 3**: Performance Optimization - NOT STARTED
 - ⏳ **Phase 4**: Database Optimization - NOT STARTED
 - ⏳ **Phase 5**: Type Safety & Quality - NOT STARTED
@@ -23,24 +23,26 @@
 - ✅ `use-categories.ts` - Complete CRUD for categories
 - ⏳ `use-shift-templates.ts` - Pending
 
-### Components Migrated to React Query (11/15+)
+### Components Migrated to React Query (13/15+)
 - ✅ `start-shift-dialog.tsx` - Uses useActiveJobs()
 - ✅ `start-shift-dialog-enhanced.tsx` - Uses useActiveJobs()
 - ✅ `edit-financial-record-dialog.tsx` - Uses useActiveJobs() + useCategories()
 - ✅ `add-financial-record-dialog.tsx` - Uses useActiveJobs() + useCategories()
 - ✅ `add-category-dialog.tsx` - Uses useCreateCategory() mutation
 - ✅ `edit-category-dialog.tsx` - Uses useUpdateCategory() mutation
+- ✅ `add-job-dialog.tsx` - Uses useCreateJob() mutation
+- ✅ `edit-job-dialog.tsx` - Uses useUpdateJob() mutation
 - ✅ `jobs/page.tsx` - Uses useJobs()
 - ✅ `dashboard/page.tsx` - Uses 5 React Query hooks
 - ✅ `calendar/page.tsx` - Uses 3 React Query hooks + useMemo for stats
 - ✅ `day-shifts-drawer.tsx` - Uses useIncomeRecords() + useFinancialRecords()
-- ⏳ Remaining: 4+ dialogs (job dialogs, time entry dialogs)
+- ⏳ Remaining: 2-4 dialogs (time entry dialogs, shift template dialogs)
 
 ### Code Quality Improvements
-- 🗑️ **~350 lines** of boilerplate eliminated
+- 🗑️ **~400 lines** of boilerplate eliminated
 - 🚫 **Removed**: refreshTrigger anti-pattern from jobs & calendar pages
-- 🚫 **Removed**: ~30 callback props and manual loading logic
-- 🚫 **Removed**: ~150 lines of manual useEffect data fetching
+- 🚫 **Removed**: ~35 callback props and manual loading logic
+- 🚫 **Removed**: ~180 lines of manual useEffect data fetching
 - ⚡ **Performance**: Automatic request deduplication, caching, and memoization
 
 ---
@@ -254,14 +256,14 @@ npm install -D @tanstack/eslint-plugin-query
 **Priority**: HIGH (Biggest immediate impact)
 
 **Dialogs to Update** (15 files):
-- [ ] `app/(authenticated)/calendar/add-time-entry-dialog.tsx`
-- [ ] `app/(authenticated)/calendar/edit-time-entry-dialog.tsx`
+- [ ] `app/(authenticated)/calendar/add-time-entry-dialog.tsx` (Optional - complex)
+- [ ] `app/(authenticated)/calendar/edit-time-entry-dialog.tsx` (Optional - complex)
 - [x] `app/(authenticated)/calendar/edit-financial-record-dialog.tsx` ✅ COMPLETED
 - [x] `app/(authenticated)/finances/add-financial-record-dialog.tsx` ✅ COMPLETED
-- [ ] `app/(authenticated)/jobs/add-job-dialog.tsx`
-- [ ] `app/(authenticated)/jobs/edit-job-dialog.tsx`
-- [ ] `app/(authenticated)/jobs/add-shift-template-dialog.tsx`
-- [ ] `app/(authenticated)/jobs/edit-shift-template-dialog.tsx`
+- [x] `app/(authenticated)/jobs/add-job-dialog.tsx` ✅ COMPLETED
+- [x] `app/(authenticated)/jobs/edit-job-dialog.tsx` ✅ COMPLETED
+- [ ] `app/(authenticated)/jobs/add-shift-template-dialog.tsx` (Optional)
+- [ ] `app/(authenticated)/jobs/edit-shift-template-dialog.tsx` (Optional)
 - [x] `app/(authenticated)/countdown/components/start-shift-dialog.tsx` ✅ COMPLETED
 - [x] `app/(authenticated)/countdown/components/start-shift-dialog-enhanced.tsx` ✅ COMPLETED
 - [x] `app/(authenticated)/categories/add-category-dialog.tsx` ✅ COMPLETED
