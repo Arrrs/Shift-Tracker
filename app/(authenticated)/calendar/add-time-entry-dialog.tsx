@@ -13,6 +13,8 @@ import { createTimeEntry } from "../time-entries/actions";
 import { getShiftTemplates } from "../jobs/actions";
 import { Database } from "@/lib/database.types";
 import { useActiveJobs } from "@/lib/hooks/use-jobs";
+import { useQueryClient } from "@tanstack/react-query";
+import { timeEntriesKeys } from "@/lib/hooks/use-time-entries";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
@@ -26,6 +28,7 @@ interface AddTimeEntryDialogProps {
 
 export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess }: AddTimeEntryDialogProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
@@ -344,6 +347,8 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
     if (result.error) {
       toast.error(t("error"), { description: result.error });
     } else {
+      // Invalidate time entries cache to show new entry
+      queryClient.invalidateQueries({ queryKey: timeEntriesKeys.lists() });
       toast.success(t("savedSuccessfully"));
       onOpenChange(false);
       onSuccess?.();

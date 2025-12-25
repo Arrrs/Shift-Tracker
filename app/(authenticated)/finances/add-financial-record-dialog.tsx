@@ -14,6 +14,8 @@ import { createFinancialRecord } from "./actions";
 import { useActiveJobs } from "@/lib/hooks/use-jobs";
 import { useCategories } from "@/lib/hooks/use-categories";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { financialRecordsKeys } from "@/lib/hooks/use-financial-records";
 
 interface AddFinancialRecordDialogProps {
   open: boolean;
@@ -31,6 +33,7 @@ export function AddFinancialRecordDialog({
   onSuccess,
 }: AddFinancialRecordDialogProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [type, setType] = useState<"income" | "expense">(defaultType);
   const { data: categories = [] } = useCategories(type);
@@ -110,6 +113,8 @@ export function AddFinancialRecordDialog({
       if (result.error) {
         toast.error(result.error);
       } else {
+        // Invalidate financial records cache to show new record
+        queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
         toast.success(`${type === "income" ? t("income") : t("expense")} ${t("savedSuccessfully").toLowerCase()}`);
         onOpenChange(false);
         onSuccess?.();

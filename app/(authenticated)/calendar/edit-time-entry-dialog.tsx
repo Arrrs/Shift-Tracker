@@ -14,6 +14,8 @@ import { getShiftTemplates } from "../jobs/actions";
 import { Database } from "@/lib/database.types";
 import { DeleteTimeEntryButton } from "./delete-time-entry-button";
 import { useActiveJobs } from "@/lib/hooks/use-jobs";
+import { useQueryClient } from "@tanstack/react-query";
+import { timeEntriesKeys } from "@/lib/hooks/use-time-entries";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
@@ -28,6 +30,7 @@ interface EditTimeEntryDialogProps {
 
 export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: EditTimeEntryDialogProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
@@ -401,6 +404,8 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
     if (result.error) {
       toast.error(t("error"), { description: result.error });
     } else {
+      // Invalidate time entries cache to show updated entry
+      queryClient.invalidateQueries({ queryKey: timeEntriesKeys.lists() });
       toast.success(t("savedSuccessfully"));
       onOpenChange(false);
       onSuccess?.();

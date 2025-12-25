@@ -25,6 +25,8 @@ import { useCategories } from "@/lib/hooks/use-categories";
 import { toast } from "sonner";
 import { Database } from "@/lib/database.types";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { useQueryClient } from "@tanstack/react-query";
+import { financialRecordsKeys } from "@/lib/hooks/use-financial-records";
 
 type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] & {
   financial_categories?: Database["public"]["Tables"]["financial_categories"]["Row"] | null;
@@ -45,6 +47,7 @@ export function EditFinancialRecordDialog({
   onSuccess,
 }: EditFinancialRecordDialogProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -110,6 +113,8 @@ export function EditFinancialRecordDialog({
       if (result.error) {
         toast.error(result.error);
       } else {
+        // Invalidate financial records cache to show updated record
+        queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
         toast.success(type === "income" ? t("incomeUpdated") : t("expenseUpdated"));
         onOpenChange(false);
         onSuccess?.();
@@ -137,6 +142,8 @@ export function EditFinancialRecordDialog({
     if (result.error) {
       toast.error(t("failedToDeleteRecord"), { description: result.error });
     } else {
+      // Invalidate financial records cache to remove deleted record
+      queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
       toast.success(t("recordDeleted"));
       setDeleteDialogOpen(false);
       onOpenChange(false);
