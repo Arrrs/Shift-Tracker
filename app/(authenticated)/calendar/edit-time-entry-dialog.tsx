@@ -41,8 +41,8 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
   const [selectedJobId, setSelectedJobId] = useState<string>(entry?.job_id || "");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(entry?.template_id || "");
   const [date, setDate] = useState(entry?.date || "");
-  const [startTime, setStartTime] = useState(entry?.start_time || "09:00");
-  const [endTime, setEndTime] = useState(entry?.end_time || "17:00");
+  const [startTime, setStartTime] = useState((entry?.start_time || "09:00").substring(0, 5));
+  const [endTime, setEndTime] = useState((entry?.end_time || "17:00").substring(0, 5));
   const [actualHours, setActualHours] = useState<number>(entry?.actual_hours || 8);
   const [status, setStatus] = useState(entry?.status || "planned");
   const [notes, setNotes] = useState(entry?.notes || "");
@@ -71,8 +71,8 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
       setSelectedJobId(entry.job_id || "none");
       setSelectedTemplateId(entry.template_id || "none");
       setDate(entry.date);
-      setStartTime(entry.start_time || "09:00");
-      setEndTime(entry.end_time || "17:00");
+      setStartTime((entry.start_time || "09:00").substring(0, 5));
+      setEndTime((entry.end_time || "17:00").substring(0, 5));
       setActualHours(entry.actual_hours || 8);
       setStatus(entry.status || "planned");
       setNotes(entry.notes || "");
@@ -167,8 +167,9 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
   const applyTemplate = (templateId: string) => {
     const template = templates.find((t) => t.id === templateId);
     if (template) {
-      setStartTime(template.start_time);
-      setEndTime(template.end_time);
+      // Strip seconds from times (database returns HH:MM:SS)
+      setStartTime(template.start_time.substring(0, 5));
+      setEndTime(template.end_time.substring(0, 5));
       setActualHours(template.expected_hours);
       setSelectedTemplateId(templateId);
     }
@@ -397,16 +398,20 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
         payData.pay_override_type = "default";
       }
 
+      // Strip seconds from times if present (database may return HH:MM:SS)
+      const cleanStartTime = startTime.substring(0, 5);
+      const cleanEndTime = endTime.substring(0, 5);
+
       result = await updateTimeEntry(entry.id, {
         ...baseData,
         entry_type: "work_shift",
         job_id: selectedJobId && selectedJobId !== "none" ? selectedJobId : null,
         template_id: selectedTemplateId && selectedTemplateId !== "none" ? selectedTemplateId : null,
-        start_time: startTime,
-        end_time: endTime,
+        start_time: cleanStartTime,
+        end_time: cleanEndTime,
         scheduled_hours: scheduledHours,
         actual_hours: actualHours,
-        is_overnight: endTime <= startTime,
+        is_overnight: cleanEndTime <= cleanStartTime,
         ...payData,
       });
     }

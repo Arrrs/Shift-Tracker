@@ -110,9 +110,9 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
   const applyTemplate = (templateId: string) => {
     const template = templates.find((t) => t.id === templateId);
     if (template) {
-      // Ensure times are valid before applying
-      if (template.start_time) setStartTime(template.start_time);
-      if (template.end_time) setEndTime(template.end_time);
+      // Strip seconds from times (database returns HH:MM:SS, we need HH:MM)
+      if (template.start_time) setStartTime(template.start_time.substring(0, 5));
+      if (template.end_time) setEndTime(template.end_time.substring(0, 5));
       setActualHours(template.expected_hours);
       setSelectedTemplateId(templateId);
     }
@@ -351,16 +351,20 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
         payData.pay_override_type = "default";
       }
 
+      // Strip seconds from times if present (database may return HH:MM:SS)
+      const cleanStartTime = (startTime || "09:00").substring(0, 5);
+      const cleanEndTime = (endTime || "17:00").substring(0, 5);
+
       const entryData = {
         ...baseData,
         entry_type: "work_shift" as const,
         job_id: selectedJobId && selectedJobId !== "none" ? selectedJobId : null,
         template_id: selectedTemplateId && selectedTemplateId !== "none" ? selectedTemplateId : null,
-        start_time: startTime || "09:00",
-        end_time: endTime || "17:00",
+        start_time: cleanStartTime,
+        end_time: cleanEndTime,
         scheduled_hours: scheduledHours,
         actual_hours: actualHours,
-        is_overnight: endTime <= startTime,
+        is_overnight: cleanEndTime <= cleanStartTime,
         ...payData,
       };
 
