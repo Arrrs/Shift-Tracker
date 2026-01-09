@@ -110,8 +110,9 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
   const applyTemplate = (templateId: string) => {
     const template = templates.find((t) => t.id === templateId);
     if (template) {
-      setStartTime(template.start_time);
-      setEndTime(template.end_time);
+      // Ensure times are valid before applying
+      if (template.start_time) setStartTime(template.start_time);
+      if (template.end_time) setEndTime(template.end_time);
       setActualHours(template.expected_hours);
       setSelectedTemplateId(templateId);
     }
@@ -286,7 +287,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
     } else {
       const scheduledHours = actualHours; // For now, same as actual
 
-      // Prepare pay customization fields
+      // Prepare pay customization fields - only include fields with valid values
       const payData: any = {
         is_holiday: isHoliday,
       };
@@ -296,25 +297,33 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
         if (applyMultiplier) {
           payData.pay_override_type = "holiday_multiplier";
           const multiplier = getMultiplierValue();
-          payData.holiday_multiplier = (multiplier > 0) ? multiplier : null;
+          if (multiplier > 0) {
+            payData.holiday_multiplier = multiplier;
+          }
         } else {
           payData.pay_override_type = payType;
         }
 
-        // Set base rate fields
+        // Set base rate fields - only add if they have valid values
         switch (payType) {
           case "custom_hourly":
             const hourlyRate = parseFloat(customHourlyRate);
-            payData.custom_hourly_rate = isNaN(hourlyRate) ? null : hourlyRate;
+            if (!isNaN(hourlyRate) && hourlyRate > 0) {
+              payData.custom_hourly_rate = hourlyRate;
+            }
             break;
           case "custom_daily":
             const dailyRate = parseFloat(customDailyRate);
-            payData.custom_daily_rate = isNaN(dailyRate) ? null : dailyRate;
+            if (!isNaN(dailyRate) && dailyRate > 0) {
+              payData.custom_daily_rate = dailyRate;
+            }
             break;
           case "fixed_amount":
             payData.pay_override_type = "fixed_amount";
             const fixedAmt = parseFloat(fixedAmount);
-            payData.holiday_fixed_amount = isNaN(fixedAmt) ? null : fixedAmt;
+            if (!isNaN(fixedAmt) && fixedAmt > 0) {
+              payData.holiday_fixed_amount = fixedAmt;
+            }
             break;
           case "default":
             // Use job default, but if multiplier is applied, still set override type
@@ -326,7 +335,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
 
         // Always set custom currency when customizing pay
         if (customCurrency) {
-          (payData as any).custom_currency = customCurrency;
+          payData.custom_currency = customCurrency;
         }
       } else {
         payData.pay_override_type = "default";
@@ -337,8 +346,8 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
         entry_type: "work_shift",
         job_id: selectedJobId && selectedJobId !== "none" ? selectedJobId : null,
         template_id: selectedTemplateId && selectedTemplateId !== "none" ? selectedTemplateId : null,
-        start_time: startTime,
-        end_time: endTime,
+        start_time: startTime || "09:00",
+        end_time: endTime || "17:00",
         scheduled_hours: scheduledHours,
         actual_hours: actualHours,
         is_overnight: endTime <= startTime,

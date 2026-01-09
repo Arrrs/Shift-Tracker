@@ -343,7 +343,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
     } else {
       const scheduledHours = actualHours; // For now, same as actual
 
-      // Prepare pay customization fields
+      // Prepare pay customization fields - only include fields with valid values
       const payData: any = {
         is_holiday: isHoliday,
       };
@@ -353,25 +353,33 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
         if (applyMultiplier) {
           payData.pay_override_type = "holiday_multiplier";
           const multiplier = getMultiplierValue();
-          payData.holiday_multiplier = (multiplier > 0) ? multiplier : null;
+          if (multiplier > 0) {
+            payData.holiday_multiplier = multiplier;
+          }
         } else {
           payData.pay_override_type = payType;
         }
 
-        // Set base rate fields
+        // Set base rate fields - only add if they have valid values
         switch (payType) {
           case "custom_hourly":
             const hourlyRate = parseFloat(customHourlyRate);
-            payData.custom_hourly_rate = isNaN(hourlyRate) ? null : hourlyRate;
+            if (!isNaN(hourlyRate) && hourlyRate > 0) {
+              payData.custom_hourly_rate = hourlyRate;
+            }
             break;
           case "custom_daily":
             const dailyRate = parseFloat(customDailyRate);
-            payData.custom_daily_rate = isNaN(dailyRate) ? null : dailyRate;
+            if (!isNaN(dailyRate) && dailyRate > 0) {
+              payData.custom_daily_rate = dailyRate;
+            }
             break;
           case "fixed_amount":
             payData.pay_override_type = "fixed_amount";
             const fixedAmt = parseFloat(fixedAmount);
-            payData.holiday_fixed_amount = isNaN(fixedAmt) ? null : fixedAmt;
+            if (!isNaN(fixedAmt) && fixedAmt > 0) {
+              payData.holiday_fixed_amount = fixedAmt;
+            }
             break;
           case "default":
             // Use job default, but if multiplier is applied, still set override type
@@ -383,7 +391,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
 
         // Always set custom currency when customizing pay
         if (customCurrency) {
-          (payData as any).custom_currency = customCurrency;
+          payData.custom_currency = customCurrency;
         }
       } else {
         payData.pay_override_type = "default";
