@@ -213,9 +213,19 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (entryType === "work_shift" && (!startTime || !endTime)) {
-      toast.error(`${t("startTime")} / ${t("endTime")}`);
-      return;
+    if (entryType === "work_shift") {
+      if (!startTime || !endTime) {
+        toast.error(`${t("startTime")} / ${t("endTime")}`);
+        return;
+      }
+
+      // Validate time format (HH:MM)
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
+        console.error('Invalid time format:', { startTime, endTime });
+        toast.error('Invalid time format. Please check start and end times.');
+        return;
+      }
     }
 
     // Validate pay customization
@@ -341,9 +351,9 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
         payData.pay_override_type = "default";
       }
 
-      result = await createTimeEntry({
+      const entryData = {
         ...baseData,
-        entry_type: "work_shift",
+        entry_type: "work_shift" as const,
         job_id: selectedJobId && selectedJobId !== "none" ? selectedJobId : null,
         template_id: selectedTemplateId && selectedTemplateId !== "none" ? selectedTemplateId : null,
         start_time: startTime || "09:00",
@@ -352,7 +362,10 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
         actual_hours: actualHours,
         is_overnight: endTime <= startTime,
         ...payData,
-      });
+      };
+
+      console.log('Sending time entry data:', JSON.stringify(entryData, null, 2));
+      result = await createTimeEntry(entryData);
     }
 
     setLoading(false);
