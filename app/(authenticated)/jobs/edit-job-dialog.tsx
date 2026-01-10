@@ -88,16 +88,16 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-h-[80vh] overflow-y-auto p-0">
         <form onSubmit={handleSubmit}>
-          <DialogHeader>
+          <DialogHeader className="p-6 pb-0">
             <DialogTitle>{t("editJob")}</DialogTitle>
             <DialogDescription>
               {t("updateJobDetails")}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 p-6 pt-4">
             {/* Job Name */}
             <div className="grid gap-2">
               <Label htmlFor="edit-name">{t("jobName")} *</Label>
@@ -259,7 +259,7 @@ export function EditJobDialog({ job, variant = "link", size, onSuccess }: EditJo
             </div>
           </div>
 
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-4 -mx-6 -mb-6 px-6 pb-6 mt-6 border-t">
             <Button
               type="button"
               variant="outline"

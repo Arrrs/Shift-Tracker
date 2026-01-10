@@ -102,16 +102,16 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto p-0">
         <form onSubmit={handleSubmit}>
-          <DialogHeader>
+          <DialogHeader className="p-6 pb-0">
             <DialogTitle>{t("editCategory")} - {category.type === "income" ? t("income") : t("expense")}</DialogTitle>
             <DialogDescription>
               {category.name}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 p-6 pt-4">
             {/* Category Name */}
             <div className="space-y-2">
               <Label htmlFor="name">
@@ -239,7 +239,7 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
             </div>
           </div>
 
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-4 -mx-6 -mb-6 px-6 pb-6 mt-6 border-t">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={updateCategory.isPending}>
               {t("cancel")}
             </Button>
