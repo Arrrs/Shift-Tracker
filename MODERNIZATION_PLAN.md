@@ -2,8 +2,8 @@
 
 **Branch**: `refactor/modernize-architecture`
 **Started**: 2024-12-24
-**Last Updated**: 2025-12-25
-**Status**: Phase 5 Complete - Ready for Phase 6
+**Last Updated**: 2026-01-10
+**Status**: Phase 5 Complete + Critical Bug Fixes - Ready for Phase 6
 
 ## 📊 Progress Summary
 
@@ -14,6 +14,7 @@
 - ✅ **Phase 3**: Performance Optimization - COMPLETE (85% core features)
 - ✅ **Phase 4**: Database Optimization - COMPLETE
 - ✅ **Phase 5**: Type Safety & Quality - COMPLETE
+- ✅ **Phase 5.5**: Critical Bug Fixes - COMPLETE (2026-01-10)
 - ⏳ **Phase 6**: Testing & Polish - NOT STARTED
 
 ### React Query Hooks Created (4/5)
@@ -850,6 +851,135 @@ Code Quality:
 
 **Package Updates**:
 - Added `zod@4.2.1`
+
+---
+
+## Phase 5.5: Critical Bug Fixes ✅
+
+**Status**: COMPLETE
+**Duration**: 1 session
+**Completed**: 2026-01-10
+
+### 🐛 Issues Discovered During Testing
+
+After Phase 5 completion, users tested locally and discovered critical validation bugs that prevented record creation:
+
+#### Issue 1: Infinite Re-render Loops
+**Symptom**: "Maximum update depth exceeded" errors in dialogs
+**Root Cause**: React Query returns new array references on every render, causing infinite useEffect loops
+```typescript
+// ❌ BROKEN
+const { data: activeJobs = [] } = useActiveJobs();
+const [jobs, setJobs] = useState([]);
+useEffect(() => {
+  setJobs(activeJobs); // Infinite loop!
+}, [activeJobs]);
+```
+
+**Solution**: Remove local state synchronization, use React Query data directly
+**Files Fixed**: 5 dialogs (add-time-entry, edit-time-entry, edit-financial-record, start-shift-dialog-enhanced)
+
+#### Issue 2: Cache Invalidation Not Working
+**Symptom**: New records created successfully but don't appear in UI, even after page refresh
+**Root Cause**: Dialog closed before `queryClient.invalidateQueries()` completed
+**Solution**: Added `await` to all cache invalidation calls
+**Files Fixed**: 4 dialogs (add/edit time entry, add/edit financial record)
+
+#### Issue 3: UUID Validation Bug
+**Symptom**: "Invalid job ID" errors when creating records without a job
+**Root Cause**: Zod schema validation order incorrect
+```typescript
+// ❌ WRONG - validates UUID first, then checks if nullable
+z.string().uuid().optional().nullable()
+
+// ✅ CORRECT - allows null/undefined to bypass validation
+z.string().uuid().nullish()
+```
+
+**Solution**: Changed all nullable UUID fields to use `.nullish()`
+**Files Fixed**: time-entries.ts, financial-records.ts
+
+#### Issue 4: NaN Validation Bug
+**Symptom**: Misleading "Time must be in HH:MM format" errors
+**Root Cause**: `parseFloat("")` returns `NaN`, which Zod tries to validate as a number
+```typescript
+// ❌ WRONG - NaN is technically a number, fails .positive()
+payData.custom_hourly_rate = parseFloat(customHourlyRate); // NaN
+
+// ✅ CORRECT - Only add field if value is valid
+const rate = parseFloat(customHourlyRate);
+if (!isNaN(rate) && rate > 0) {
+  payData.custom_hourly_rate = rate;
+}
+```
+
+**Solution**: Only add pay fields to object if they have valid positive values
+**Files Fixed**: add-time-entry-dialog.tsx, edit-time-entry-dialog.tsx
+
+#### Issue 5: Timezone Date Conversion Bug
+**Symptom**: Financial records appear on wrong day (previous day)
+**Root Cause**: `toISOString()` converts to UTC, shifting dates in non-UTC timezones
+```typescript
+// ❌ WRONG - Converts to UTC (can shift to previous day)
+date: selectedDate?.toISOString().split("T")[0]
+
+// ✅ CORRECT - Uses local date components
+date: `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
+```
+
+**Solution**: Extract date components locally instead of using UTC conversion
+**Files Fixed**: add-financial-record-dialog.tsx
+
+#### Issue 6: PostgreSQL TIME Format Mismatch 🔴 CRITICAL
+**Symptom**: Persistent "Time must be in HH:MM format" validation errors
+**Root Cause**: PostgreSQL `TIME` type returns `HH:MM:SS`, but Zod expects `HH:MM`
+**Investigation**:
+- Checked main branch - no Zod validation there (only TypeScript types)
+- Found migration `20251206155000_change_shift_times_to_time.sql` that changed to TIME type
+- Database returns `"08:00:00"` but regex expects `"08:00"`
+
+**Solution**: Strip seconds using `.substring(0, 5)` in 6 locations:
+1. Template application (add/edit dialogs)
+2. Entry loading from database (edit dialog)
+3. Submission safety nets (add/edit dialogs)
+
+**Files Fixed**: add-time-entry-dialog.tsx, edit-time-entry-dialog.tsx
+
+### 📊 Bug Fix Summary
+
+**Total Bugs Fixed**: 6 critical validation issues
+**Files Modified**: 9 files
+**Commits**: 5 commits with detailed root cause analysis
+
+**Impact**:
+- ✅ Time entries with templates now work
+- ✅ Time entries without jobs now work
+- ✅ Financial records appear on correct date
+- ✅ Financial records appear immediately after creation
+- ✅ Day-off entries work correctly
+- ✅ No more misleading error messages
+- ✅ All validation errors are field-specific and accurate
+
+### 🎓 Lessons Learned
+
+1. **Database Type Formats Matter**: PostgreSQL TIME type returns HH:MM:SS, not HH:MM
+2. **Zod Validation Order**: `.nullish()` is not the same as `.optional().nullable()`
+3. **JavaScript Quirks**: `parseFloat("")` returns `NaN` (a number!), not `null`
+4. **React Query Arrays**: New reference on every render, avoid syncing to local state
+5. **Async Pitfalls**: Always `await` cache invalidation before closing dialogs
+6. **Timezone Handling**: `toISOString()` converts to UTC, use local date components
+
+### 🔍 Debugging Approach
+
+**Key Strategy**: Compare with main branch to identify what changed
+- Main branch had no Zod validation (only TypeScript types)
+- Phase 5 added runtime validation but had ordering bugs
+- Migration to TIME type in December wasn't accounted for
+
+**Tools Used**:
+- Client-side validation with console.error() for debugging
+- Server-side payload logging to see actual data sent
+- Git diff to compare with main branch implementations
 
 ---
 
