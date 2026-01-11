@@ -19,14 +19,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2, Trash2 } from "lucide-react";
-import { updateFinancialRecord, deleteFinancialRecord } from "../finances/actions";
+import { useUpdateFinancialRecord, useDeleteFinancialRecord } from "@/lib/hooks/use-financial-records";
 import { useActiveJobs } from "@/lib/hooks/use-jobs";
 import { useCategories } from "@/lib/hooks/use-categories";
 import { toast } from "sonner";
 import { Database } from "@/lib/database.types";
 import { useTranslation } from "@/lib/i18n/use-translation";
-import { useQueryClient } from "@tanstack/react-query";
-import { financialRecordsKeys } from "@/lib/hooks/use-financial-records";
 
 type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] & {
   financial_categories?: Database["public"]["Tables"]["financial_categories"]["Row"] | null;
@@ -47,9 +45,8 @@ export function EditFinancialRecordDialog({
   onSuccess,
 }: EditFinancialRecordDialogProps) {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const updateMutation = useUpdateFinancialRecord();
+  const deleteMutation = useDeleteFinancialRecord();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [type, setType] = useState<"income" | "expense">("income");
   const { data: categories = [] } = useCategories(type);
@@ -88,17 +85,15 @@ export function EditFinancialRecordDialog({
 
     if (!record) return;
 
-    setLoading(true);
+    const amount = parseFloat(formData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error(t("pleaseEnterValidAmount"));
+      return;
+    }
 
-    try {
-      const amount = parseFloat(formData.amount);
-      if (isNaN(amount) || amount <= 0) {
-        toast.error(t("pleaseEnterValidAmount"));
-        setLoading(false);
-        return;
-      }
-
-      const result = await updateFinancialRecord(record.id, {
+    const result = await updateMutation.mutateAsync({
+      id: record.id,
+      data: {
         type,
         amount,
         currency: formData.currency,
@@ -108,21 +103,12 @@ export function EditFinancialRecordDialog({
         notes: formData.notes || null,
         job_id: formData.job_id || null,
         status: formData.status,
-      });
+      },
+    });
 
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        // Invalidate financial records cache to show updated record
-        await queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
-        toast.success(type === "income" ? t("incomeUpdated") : t("expenseUpdated"));
-        onOpenChange(false);
-        onSuccess?.();
-      }
-    } catch (error) {
-      toast.error(t("failedToUpdateRecord"));
-    } finally {
-      setLoading(false);
+    if (!result.error) {
+      onOpenChange(false);
+      onSuccess?.();
     }
   };
 
@@ -133,18 +119,20 @@ export function EditFinancialRecordDialog({
   const handleDeleteConfirm = async () => {
     if (!record) return;
 
-    setDeleting(true);
+    const result = await deleteMutation.mutateAsync(record.id);
 
-    const result = await deleteFinancialRecord(record.id);
+    if (!result.error) {
+      setDeleteDialogOpen(false);
+      onOpenChange(false);
+      onSuccess?.();
+    }
+  };
 
-    setDeleting(false);
+  const loading = updateMutation.isPending;
+  const deleting = deleteMutation.isPending;
 
-    if (result.error) {
-      toast.error(t("failedToDeleteRecord"), { description: result.error });
-    } else {
-      // Invalidate financial records cache to remove deleted record
-      await queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
-      toast.success(t("recordDeleted"));
+  const handleDeleteComplete = () => {
+    if (!deleting) {
       setDeleteDialogOpen(false);
       onOpenChange(false);
       onSuccess?.();

@@ -9,12 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { createTimeEntry } from "../time-entries/actions";
+import { useCreateTimeEntry } from "@/lib/hooks/use-time-entries";
 import { getShiftTemplates } from "../jobs/actions";
 import { Database } from "@/lib/database.types";
 import { useActiveJobs } from "@/lib/hooks/use-jobs";
-import { useQueryClient } from "@tanstack/react-query";
-import { timeEntriesKeys } from "@/lib/hooks/use-time-entries";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
@@ -28,8 +26,7 @@ interface AddTimeEntryDialogProps {
 
 export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess }: AddTimeEntryDialogProps) {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const [loading, setLoading] = useState(false);
+  const createMutation = useCreateTimeEntry();
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
 
@@ -275,8 +272,6 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
       }
     }
 
-    setLoading(true);
-
     const baseData = {
       date,
       status,
@@ -286,7 +281,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
     let result;
 
     if (entryType === "day_off") {
-      result = await createTimeEntry({
+      result = await createMutation.mutateAsync({
         ...baseData,
         entry_type: "day_off",
         day_off_type: dayOffType,
@@ -369,22 +364,17 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
       };
 
       console.log('Sending time entry data:', JSON.stringify(entryData, null, 2));
-      result = await createTimeEntry(entryData);
+      result = await createMutation.mutateAsync(entryData);
     }
 
-    setLoading(false);
-
-    if (result.error) {
-      toast.error(t("error"), { description: result.error });
-    } else {
-      // Invalidate time entries cache to show new entry
-      await queryClient.invalidateQueries({ queryKey: timeEntriesKeys.lists() });
-      toast.success(t("savedSuccessfully"));
+    if (!result.error) {
       onOpenChange(false);
       onSuccess?.();
       resetForm();
     }
   };
+
+  const loading = createMutation.isPending;
 
   const resetForm = () => {
     setSelectedJobId("");

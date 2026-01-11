@@ -10,12 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2 } from "lucide-react";
-import { createFinancialRecord } from "./actions";
+import { useCreateFinancialRecord } from "@/lib/hooks/use-financial-records";
 import { useActiveJobs } from "@/lib/hooks/use-jobs";
 import { useCategories } from "@/lib/hooks/use-categories";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
-import { financialRecordsKeys } from "@/lib/hooks/use-financial-records";
 
 interface AddFinancialRecordDialogProps {
   open: boolean;
@@ -33,8 +31,7 @@ export function AddFinancialRecordDialog({
   onSuccess,
 }: AddFinancialRecordDialogProps) {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const [loading, setLoading] = useState(false);
+  const createMutation = useCreateFinancialRecord();
   const [type, setType] = useState<"income" | "expense">(defaultType);
   const { data: categories = [] } = useCategories(type);
   const { data: activeJobs = [] } = useActiveJobs();
@@ -76,29 +73,26 @@ export function AddFinancialRecordDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+
+    const amount = parseFloat(formData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error(t("pleaseEnterValidAmount"));
+      return;
+    }
+
+    if (!formData.category_id) {
+      toast.error(t("selectCategory"));
+      return;
+    }
+
+    if (!formData.description) {
+      toast.error(t("description"));
+      return;
+    }
 
     try {
-      const amount = parseFloat(formData.amount);
-      if (isNaN(amount) || amount <= 0) {
-        toast.error(t("pleaseEnterValidAmount"));
-        setLoading(false);
-        return;
-      }
 
-      if (!formData.category_id) {
-        toast.error(t("selectCategory"));
-        setLoading(false);
-        return;
-      }
-
-      if (!formData.description) {
-        toast.error(t("description"));
-        setLoading(false);
-        return;
-      }
-
-      const result = await createFinancialRecord({
+      const result = await createMutation.mutateAsync({
         type,
         amount,
         currency: formData.currency,
@@ -110,12 +104,7 @@ export function AddFinancialRecordDialog({
         status: formData.status,
       });
 
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        // Invalidate financial records cache to show new record
-        await queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
-        toast.success(`${type === "income" ? t("income") : t("expense")} ${t("savedSuccessfully").toLowerCase()}`);
+      if (!result.error) {
         onOpenChange(false);
         onSuccess?.();
         // Reset form
@@ -131,11 +120,11 @@ export function AddFinancialRecordDialog({
         });
       }
     } catch (error) {
-      toast.error(t("error"));
-    } finally {
-      setLoading(false);
+      // Error already handled by mutation hook
     }
   };
+
+  const loading = createMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -14,8 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Trash, Archive } from "lucide-react";
-import { deleteFinancialCategory, archiveCategory } from "./actions";
-import { toast } from "sonner";
+import { useDeleteFinancialCategory, useArchiveCategory } from "@/lib/hooks/use-financial-categories";
 
 interface DeleteCategoryButtonProps {
   categoryId: string;
@@ -33,43 +32,28 @@ export function DeleteCategoryButton({
   onSuccess,
 }: DeleteCategoryButtonProps) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const archiveMutation = useArchiveCategory();
+  const deleteMutation = useDeleteFinancialCategory();
 
   const handleArchive = async () => {
-    setLoading(true);
-    const result = await archiveCategory(categoryId);
-    setLoading(false);
+    const result = await archiveMutation.mutateAsync(categoryId);
 
-    if (result.error) {
-      toast.error("Failed to archive category", {
-        description: result.error
-      });
-    } else {
+    if (!result.error) {
       setOpen(false);
-      toast.success("Category archived successfully", {
-        description: "You can restore it from the Archived tab"
-      });
       onSuccess?.();
     }
   };
 
   const handleDelete = async () => {
-    setLoading(true);
-    const result = await deleteFinancialCategory(categoryId);
-    setLoading(false);
+    const result = await deleteMutation.mutateAsync(categoryId);
 
-    if (result.error) {
-      toast.error("Failed to delete category", {
-        description: result.error
-      });
-    } else {
+    if (!result.error) {
       setOpen(false);
-      toast.success("Category deleted", {
-        description: "Financial records have been preserved in your history"
-      });
       onSuccess?.();
     }
   };
+
+  const loading = archiveMutation.isPending || deleteMutation.isPending;
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>

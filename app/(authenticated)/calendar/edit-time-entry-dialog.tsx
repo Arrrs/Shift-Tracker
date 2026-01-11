@@ -9,13 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { updateTimeEntry, deleteTimeEntry } from "../time-entries/actions";
+import { useUpdateTimeEntry } from "@/lib/hooks/use-time-entries";
 import { getShiftTemplates } from "../jobs/actions";
 import { Database } from "@/lib/database.types";
 import { DeleteTimeEntryButton } from "./delete-time-entry-button";
 import { useActiveJobs } from "@/lib/hooks/use-jobs";
-import { useQueryClient } from "@tanstack/react-query";
-import { timeEntriesKeys } from "@/lib/hooks/use-time-entries";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
@@ -30,9 +28,7 @@ interface EditTimeEntryDialogProps {
 
 export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: EditTimeEntryDialogProps) {
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
-  const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const updateMutation = useUpdateTimeEntry();
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
 
@@ -322,8 +318,6 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
       }
     }
 
-    setLoading(true);
-
     const baseData = {
       date,
       status,
@@ -333,13 +327,16 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
     let result;
 
     if (entryType === "day_off") {
-      result = await updateTimeEntry(entry.id, {
-        ...baseData,
-        entry_type: "day_off",
-        day_off_type: dayOffType,
-        actual_hours: isFullDay ? dayOffHours : dayOffHours,
-        is_full_day: isFullDay,
-        job_id: selectedJobId && selectedJobId !== "none" ? selectedJobId : null,
+      result = await updateMutation.mutateAsync({
+        id: entry.id,
+        data: {
+          ...baseData,
+          entry_type: "day_off",
+          day_off_type: dayOffType,
+          actual_hours: isFullDay ? dayOffHours : dayOffHours,
+          is_full_day: isFullDay,
+          job_id: selectedJobId && selectedJobId !== "none" ? selectedJobId : null,
+        },
       });
     } else {
       const scheduledHours = actualHours; // For now, same as actual
@@ -402,32 +399,30 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
       const cleanStartTime = startTime.substring(0, 5);
       const cleanEndTime = endTime.substring(0, 5);
 
-      result = await updateTimeEntry(entry.id, {
-        ...baseData,
-        entry_type: "work_shift",
-        job_id: selectedJobId && selectedJobId !== "none" ? selectedJobId : null,
-        template_id: selectedTemplateId && selectedTemplateId !== "none" ? selectedTemplateId : null,
-        start_time: cleanStartTime,
-        end_time: cleanEndTime,
-        scheduled_hours: scheduledHours,
-        actual_hours: actualHours,
-        is_overnight: cleanEndTime <= cleanStartTime,
-        ...payData,
+      result = await updateMutation.mutateAsync({
+        id: entry.id,
+        data: {
+          ...baseData,
+          entry_type: "work_shift",
+          job_id: selectedJobId && selectedJobId !== "none" ? selectedJobId : null,
+          template_id: selectedTemplateId && selectedTemplateId !== "none" ? selectedTemplateId : null,
+          start_time: cleanStartTime,
+          end_time: cleanEndTime,
+          scheduled_hours: scheduledHours,
+          actual_hours: actualHours,
+          is_overnight: cleanEndTime <= cleanStartTime,
+          ...payData,
+        },
       });
     }
 
-    setLoading(false);
-
-    if (result.error) {
-      toast.error(t("error"), { description: result.error });
-    } else {
-      // Invalidate time entries cache to show updated entry
-      await queryClient.invalidateQueries({ queryKey: timeEntriesKeys.lists() });
-      toast.success(t("savedSuccessfully"));
+    if (!result.error) {
       onOpenChange(false);
       onSuccess?.();
     }
   };
+
+  const loading = updateMutation.isPending;
 
  
 

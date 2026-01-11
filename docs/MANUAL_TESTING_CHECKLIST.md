@@ -43,10 +43,10 @@
 ## ⏰ Time Entries - Work Shifts
 
 ### Create Work Shift - With Job
-- [ ] Create 9-5 shift with hourly rate job
-- [ ] Create shift with daily rate job
-- [ ] Create shift with custom start/end times (e.g., 7:30 AM - 4:15 PM)
-- [ ] Create overnight shift (23:00 - 07:00)
+- [x] Create 9-5 shift with hourly rate job
+- [x] Create shift with daily rate job
+- [x] Create shift with custom start/end times (e.g., 7:30 AM - 4:15 PM)
+- [x] Create overnight shift (23:00 - 07:00)
 - [ ] Entry appears immediately in calendar after creation
 
 ### Create Work Shift - Without Job

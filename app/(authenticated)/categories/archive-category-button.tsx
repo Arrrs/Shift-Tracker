@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Archive } from "lucide-react";
-import { archiveCategory } from "./actions";
-import { toast } from "sonner";
+import { useArchiveCategory } from "@/lib/hooks/use-financial-categories";
 
 interface ArchiveCategoryButtonProps {
   categoryId: string;
@@ -19,24 +17,17 @@ export function ArchiveCategoryButton({
   size = "sm",
   onSuccess,
 }: ArchiveCategoryButtonProps) {
-  const [loading, setLoading] = useState(false);
+  const archiveMutation = useArchiveCategory();
 
   const handleArchive = async () => {
-    setLoading(true);
-    const result = await archiveCategory(categoryId);
-    setLoading(false);
+    const result = await archiveMutation.mutateAsync(categoryId);
 
-    if (result.error) {
-      toast.error("Failed to archive category", {
-        description: result.error
-      });
-    } else {
-      toast.success("Category archived", {
-        description: "Moved to archived categories"
-      });
+    if (!result.error) {
       onSuccess?.();
     }
   };
+
+  const loading = archiveMutation.isPending;
 
   return (
     <Button

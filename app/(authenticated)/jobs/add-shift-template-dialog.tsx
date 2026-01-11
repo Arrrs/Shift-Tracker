@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
-import { createShiftTemplate } from "./actions";
+import { useCreateShiftTemplate } from "@/lib/hooks/use-shift-templates";
 
 interface AddShiftTemplateDialogProps {
   jobId: string;
@@ -23,7 +23,7 @@ interface AddShiftTemplateDialogProps {
 
 export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDialogProps) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const createMutation = useCreateShiftTemplate();
   const [formData, setFormData] = useState({
     name: "",
     short_code: "",
@@ -67,14 +67,10 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
-    const result = await createShiftTemplate(jobId, formData);
-    setLoading(false);
+    const result = await createMutation.mutateAsync({ jobId, data: formData });
 
-    if (result.error) {
-      alert("Error: " + result.error);
-    } else {
+    if (!result.error) {
       setOpen(false);
       // Reset form
       setFormData({
@@ -85,10 +81,11 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
         expected_hours: 8,
         color: "#3B82F6",
       });
-      // Trigger reload
       onSuccess?.();
     }
   };
+
+  const loading = createMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

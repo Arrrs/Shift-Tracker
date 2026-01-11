@@ -93,11 +93,11 @@ export function useUpdateFinancialRecord() {
   return useMutation({
     mutationFn: ({
       id,
-      updates,
+      data,
     }: {
       id: string;
-      updates: Parameters<typeof updateFinancialRecord>[1];
-    }) => updateFinancialRecord(id, updates),
+      data: Parameters<typeof updateFinancialRecord>[1];
+    }) => updateFinancialRecord(id, data),
     onSuccess: (result) => {
       if (result.record && !result.error) {
         queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });

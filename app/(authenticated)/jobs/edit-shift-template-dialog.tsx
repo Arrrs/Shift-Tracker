@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Pencil } from "lucide-react";
-import { updateShiftTemplate } from "./actions";
+import { useUpdateShiftTemplate } from "@/lib/hooks/use-shift-templates";
 import { Database } from "@/lib/database.types";
 
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
@@ -33,7 +33,7 @@ export function EditShiftTemplateDialog({
   onSuccess,
 }: EditShiftTemplateDialogProps) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const updateMutation = useUpdateShiftTemplate();
   const [formData, setFormData] = useState({
     name: template.name,
     short_code: template.short_code || "",
@@ -77,21 +77,22 @@ export function EditShiftTemplateDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
-    const result = await updateShiftTemplate(template.id, {
-      ...formData,
-      expected_hours: formData.expected_hours,
+    const result = await updateMutation.mutateAsync({
+      templateId: template.id,
+      data: {
+        ...formData,
+        expected_hours: formData.expected_hours,
+      },
     });
-    setLoading(false);
 
-    if (result.error) {
-      alert("Error: " + result.error);
-    } else {
+    if (!result.error) {
       setOpen(false);
       onSuccess?.();
     }
   };
+
+  const loading = updateMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

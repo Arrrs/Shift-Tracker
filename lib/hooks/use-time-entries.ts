@@ -13,6 +13,8 @@ import {
   deleteTimeEntry,
 } from '@/app/(authenticated)/time-entries/actions';
 import { toast } from 'sonner';
+import { incomeRecordsKeys } from './use-income-records';
+import { financialRecordsKeys } from './use-financial-records';
 
 /**
  * Query key factory for time entries
@@ -69,8 +71,12 @@ export function useCreateTimeEntry() {
     mutationFn: createTimeEntry,
     onSuccess: (result) => {
       if (result.entry && !result.error) {
-        // Invalidate all time entries queries to refetch
+        // Invalidate time entries queries
         queryClient.invalidateQueries({ queryKey: timeEntriesKeys.lists() });
+        // Invalidate income records (completed shifts generate income via trigger)
+        queryClient.invalidateQueries({ queryKey: incomeRecordsKeys.lists() });
+        // Invalidate financial records (affects totals in calendar)
+        queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
         toast.success('Time entry created successfully');
       } else if (result.error) {
         toast.error(result.error);
@@ -103,8 +109,12 @@ export function useUpdateTimeEntry() {
     }) => updateTimeEntry(id, updates),
     onSuccess: (result) => {
       if (result.entry && !result.error) {
-        // Invalidate all time entries queries
+        // Invalidate time entries queries
         queryClient.invalidateQueries({ queryKey: timeEntriesKeys.lists() });
+        // Invalidate income records (status/pay changes affect income via trigger)
+        queryClient.invalidateQueries({ queryKey: incomeRecordsKeys.lists() });
+        // Invalidate financial records (affects totals in calendar)
+        queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
         toast.success('Time entry updated successfully');
       } else if (result.error) {
         toast.error(result.error);
@@ -131,8 +141,12 @@ export function useDeleteTimeEntry() {
     mutationFn: (id: string) => deleteTimeEntry(id),
     onSuccess: (result) => {
       if (!result.error) {
-        // Invalidate all time entries queries
+        // Invalidate time entries queries
         queryClient.invalidateQueries({ queryKey: timeEntriesKeys.lists() });
+        // Invalidate income records (CASCADE deletes associated income)
+        queryClient.invalidateQueries({ queryKey: incomeRecordsKeys.lists() });
+        // Invalidate financial records (affects totals in calendar)
+        queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
         toast.success('Time entry deleted successfully');
       } else if (result.error) {
         toast.error(result.error);

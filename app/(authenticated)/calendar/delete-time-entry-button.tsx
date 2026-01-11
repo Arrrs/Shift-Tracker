@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Loader2, Trash, Trash2 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/use-translation";
-import { deleteTimeEntry } from "../time-entries/actions";
+import { useDeleteTimeEntry } from "@/lib/hooks/use-time-entries";
 
 interface DeleteTimeEntryButtonProps {
   entryId: string;
@@ -32,23 +32,22 @@ export function DeleteTimeEntryButton({
   onSuccess,
   onError,
 }: DeleteTimeEntryButtonProps) {
-  const { t } = useTranslation();  
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const deleteMutation = useDeleteTimeEntry();
 
   const handleDelete = async () => {
-    setLoading(true);
-    const result = await deleteTimeEntry(entryId);
-    setLoading(false);
+    const result = await deleteMutation.mutateAsync(entryId);
 
     if (result.error) {
-    //   alert("Error: " + result.error);
       onError?.(result.error);
     } else {
       setOpen(false);
       onSuccess?.();
     }
   };
+
+  const loading = deleteMutation.isPending;
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
