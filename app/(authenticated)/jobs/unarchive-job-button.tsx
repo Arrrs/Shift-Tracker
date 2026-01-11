@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArchiveRestore } from "lucide-react";
-import { unarchiveJob } from "./actions";
-import { toast } from "sonner";
+import { useUnarchiveJob } from "@/lib/hooks/use-jobs";
 
 interface UnarchiveJobButtonProps {
   jobId: string;
@@ -19,23 +17,11 @@ export function UnarchiveJobButton({
   size = "sm",
   onSuccess,
 }: UnarchiveJobButtonProps) {
-  const [loading, setLoading] = useState(false);
+  const unarchiveMutation = useUnarchiveJob();
 
   const handleUnarchive = async () => {
-    setLoading(true);
-    const result = await unarchiveJob(jobId);
-    setLoading(false);
-
-    if (result.error) {
-      toast.error("Failed to restore job", {
-        description: result.error
-      });
-    } else {
-      toast.success("Job restored", {
-        description: "Moved to active jobs"
-      });
-      onSuccess?.();
-    }
+    await unarchiveMutation.mutateAsync(jobId);
+    onSuccess?.();
   };
 
   return (
@@ -43,7 +29,7 @@ export function UnarchiveJobButton({
       variant={variant}
       size={size}
       onClick={handleUnarchive}
-      disabled={loading}
+      disabled={unarchiveMutation.isPending}
       title="Restore this job (unarchive)"
       className="text-green-600 hover:text-green-600 dark:text-green-500 dark:hover:text-green-500"
     >

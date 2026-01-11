@@ -47,6 +47,9 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
     currency: "USD",
     color: "#3b82f6",
     description: "",
+    pto_days_per_year: "",
+    sick_days_per_year: "",
+    personal_days_per_year: "",
     is_active: true,
   });
 
@@ -72,6 +75,9 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
       currency: formData.currency,
       color: formData.color,
       description: formData.description || null,
+      pto_days_per_year: formData.pto_days_per_year ? parseInt(formData.pto_days_per_year) : null,
+      sick_days_per_year: formData.sick_days_per_year ? parseInt(formData.sick_days_per_year) : null,
+      personal_days_per_year: formData.personal_days_per_year ? parseInt(formData.personal_days_per_year) : null,
       is_active: formData.is_active,
     });
 
@@ -88,6 +94,9 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
         currency: "USD",
         color: "#3b82f6",
         description: "",
+        pto_days_per_year: "",
+        sick_days_per_year: "",
+        personal_days_per_year: "",
         is_active: true,
       });
       onSuccess?.();
@@ -103,15 +112,15 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-h-[80vh] overflow-y-auto p-0">
+      <DialogContent className="p-0 flex flex-col max-h-[90vh]">
         <DialogErrorBoundary>
-          <form onSubmit={handleSubmit}>
-            <DialogHeader className="p-6 pb-0">
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+            <DialogHeader className="p-6 pb-0 flex-shrink-0">
               <DialogTitle>{t("addNewJob")}</DialogTitle>
               <DialogDescription>{t("createNewJobToTrack")}</DialogDescription>
             </DialogHeader>
 
-          <div className="grid gap-4 p-6 pt-4">
+          <div className="grid gap-4 p-6 pt-4 overflow-y-auto flex-1">
             {/* Job Name */}
             <div className="grid gap-2">
               <Label htmlFor="name">{t("jobName")} *</Label>
@@ -155,6 +164,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
                   id="hourly_rate"
                   type="number"
                   step="0.01"
+                  min="0.01"
                   value={formData.hourly_rate}
                   onChange={(e) =>
                     setFormData({ ...formData, hourly_rate: e.target.value })
@@ -172,6 +182,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
                   id="daily_rate"
                   type="number"
                   step="0.01"
+                  min="0.01"
                   value={formData.daily_rate}
                   onChange={(e) =>
                     setFormData({ ...formData, daily_rate: e.target.value })
@@ -195,6 +206,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
                   id="monthly_salary"
                   type="number"
                   step="0.01"
+                  min="0.01"
                   value={formData.monthly_salary}
                   onChange={(e) =>
                     setFormData({ ...formData, monthly_salary: e.target.value })
@@ -242,6 +254,52 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
               />
             </div>
 
+            {/* Leave Days (Optional) */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-2">
+                <Label htmlFor="pto_days" className="text-xs">PTO Days/Year</Label>
+                <Input
+                  id="pto_days"
+                  type="number"
+                  min="0"
+                  max="365"
+                  value={formData.pto_days_per_year}
+                  onChange={(e) =>
+                    setFormData({ ...formData, pto_days_per_year: e.target.value })
+                  }
+                  placeholder="0"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="sick_days" className="text-xs">Sick Days/Year</Label>
+                <Input
+                  id="sick_days"
+                  type="number"
+                  min="0"
+                  max="365"
+                  value={formData.sick_days_per_year}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sick_days_per_year: e.target.value })
+                  }
+                  placeholder="0"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="personal_days" className="text-xs">Personal/Year</Label>
+                <Input
+                  id="personal_days"
+                  type="number"
+                  min="0"
+                  max="365"
+                  value={formData.personal_days_per_year}
+                  onChange={(e) =>
+                    setFormData({ ...formData, personal_days_per_year: e.target.value })
+                  }
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
             {/* Color Picker */}
             <div className="grid gap-2">
               <Label htmlFor="color">{t("jobColor")}</Label>
@@ -279,7 +337,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
             </div>
           </div>
 
-          <DialogFooter className="pt-4 -mx-6 -mb-6 px-6 pb-6 mt-6 border-t">
+          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0">
             <Button
               type="button"
               variant="outline"

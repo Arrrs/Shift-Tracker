@@ -93,16 +93,16 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto p-0">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader className="p-6 pb-0">
+      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh]">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <DialogHeader className="p-6 pb-0 flex-shrink-0">
             <DialogTitle>{type === "income" ? t("addIncome") : t("addExpense")} {t("category")}</DialogTitle>
             <DialogDescription>
               {type === "income" ? t("income") : t("expense")} {t("category").toLowerCase()}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 p-6 pt-4">
+          <div className="space-y-4 p-6 pt-4 overflow-y-auto flex-1">
             {/* Category Name */}
             <div className="space-y-2">
               <Label htmlFor="name">
@@ -224,7 +224,7 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
             </div>
           </div>
 
-          <DialogFooter className="pt-4 -mx-6 -mb-6 px-6 pb-6 mt-6 border-t">
+          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={createCategory.isPending}>
               {t("cancel")}
             </Button>

@@ -16,8 +16,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Trash, Archive } from "lucide-react";
-import { deleteJob, archiveJob } from "./actions";
-import { toast } from "sonner";
+import { useDeleteJob, useArchiveJob } from "@/lib/hooks/use-jobs";
 
 interface DeleteJobButtonProps {
   jobId: string;
@@ -39,51 +38,24 @@ export function DeleteJobButton({
   onSuccess,
 }: DeleteJobButtonProps) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [deleteOption, setDeleteOption] = useState<"keep" | "delete">("keep");
 
+  const archiveMutation = useArchiveJob();
+  const deleteMutation = useDeleteJob();
+
   const hasShifts = shiftCount > 0;
+  const loading = archiveMutation.isPending || deleteMutation.isPending;
 
   const handleArchive = async () => {
-    setLoading(true);
-    const result = await archiveJob(jobId);
-    setLoading(false);
-
-    if (result.error) {
-      toast.error("Failed to archive job", {
-        description: result.error
-      });
-    } else {
-      setOpen(false);
-      toast.success("Job archived successfully", {
-        description: "You can restore it from the Archived tab"
-      });
-      onSuccess?.();
-    }
+    await archiveMutation.mutateAsync(jobId);
+    setOpen(false);
+    onSuccess?.();
   };
 
   const handleDelete = async () => {
-    setLoading(true);
-    const result = await deleteJob(jobId, deleteOption === "delete");
-    setLoading(false);
-
-    if (result.error) {
-      toast.error("Failed to delete job", {
-        description: result.error
-      });
-    } else {
-      setOpen(false);
-      if (deleteOption === "delete") {
-        toast.success("Job deleted permanently", {
-          description: "All associated shifts have been removed"
-        });
-      } else {
-        toast.success("Job deleted", {
-          description: "Shifts have been preserved in your history"
-        });
-      }
-      onSuccess?.();
-    }
+    await deleteMutation.mutateAsync({ id: jobId, deleteEntries: deleteOption === "delete" });
+    setOpen(false);
+    onSuccess?.();
   };
 
   return (

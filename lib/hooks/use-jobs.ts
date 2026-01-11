@@ -6,7 +6,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getJobs, createJob, updateJob, deleteJob } from '@/app/(authenticated)/jobs/actions';
+import { getJobs, createJob, updateJob, deleteJob, archiveJob, unarchiveJob } from '@/app/(authenticated)/jobs/actions';
 import { toast } from 'sonner';
 
 /**
@@ -200,6 +200,106 @@ export function useDeleteJob() {
       }
       toast.error('Failed to delete job');
       console.error('Delete job error:', error);
+    },
+  });
+}
+
+/**
+ * Archive job (soft delete) with optimistic updates
+ *
+ * Marks the job as inactive immediately in the UI, then syncs with server.
+ * If the server request fails, restores the job's active status.
+ */
+export function useArchiveJob() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: archiveJob,
+    // Optimistic update: Mark as inactive immediately
+    onMutate: async (jobId: string) => {
+      await queryClient.cancelQueries({ queryKey: jobsQueryKey });
+
+      const previousJobs = queryClient.getQueryData(jobsQueryKey);
+
+      // Optimistically update the job's active status
+      queryClient.setQueryData(jobsQueryKey, (old: any) => {
+        return old?.map((job: any) =>
+          job.id === jobId ? { ...job, is_active: false } : job
+        ) || [];
+      });
+
+      return { previousJobs };
+    },
+    onSuccess: (result) => {
+      if (result.success) {
+        // Sync with server
+        queryClient.invalidateQueries({ queryKey: jobsQueryKey });
+        toast.success('Job archived', {
+          description: 'Moved to archived jobs'
+        });
+      } else if (result.error) {
+        toast.error('Failed to archive job', {
+          description: result.error
+        });
+      }
+    },
+    onError: (error, variables, context) => {
+      // Rollback on error
+      if (context?.previousJobs) {
+        queryClient.setQueryData(jobsQueryKey, context.previousJobs);
+      }
+      toast.error('Failed to archive job');
+      console.error('Archive job error:', error);
+    },
+  });
+}
+
+/**
+ * Unarchive job (restore) with optimistic updates
+ *
+ * Marks the job as active immediately in the UI, then syncs with server.
+ * If the server request fails, restores the job's inactive status.
+ */
+export function useUnarchiveJob() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: unarchiveJob,
+    // Optimistic update: Mark as active immediately
+    onMutate: async (jobId: string) => {
+      await queryClient.cancelQueries({ queryKey: jobsQueryKey });
+
+      const previousJobs = queryClient.getQueryData(jobsQueryKey);
+
+      // Optimistically update the job's active status
+      queryClient.setQueryData(jobsQueryKey, (old: any) => {
+        return old?.map((job: any) =>
+          job.id === jobId ? { ...job, is_active: true } : job
+        ) || [];
+      });
+
+      return { previousJobs };
+    },
+    onSuccess: (result) => {
+      if (result.success) {
+        // Sync with server
+        queryClient.invalidateQueries({ queryKey: jobsQueryKey });
+        toast.success('Job restored', {
+          description: 'Moved to active jobs'
+        });
+      } else if (result.error) {
+        toast.error('Failed to restore job', {
+          description: result.error
+        });
+      }
+    },
+    onError: (error, variables, context) => {
+      // Rollback on error
+      if (context?.previousJobs) {
+        queryClient.setQueryData(jobsQueryKey, context.previousJobs);
+      }
+      toast.error('Failed to restore job');
+      console.error('Unarchive job error:', error);
     },
   });
 }

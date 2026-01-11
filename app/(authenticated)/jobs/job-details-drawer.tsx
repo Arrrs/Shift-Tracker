@@ -55,6 +55,13 @@ export function JobDetailsDrawer({
     return () => window.removeEventListener("resize", checkDesktop);
   }, []);
 
+  // Helper function to format currency values (removes trailing zeros)
+  const formatCurrencyValue = (value: number | null | undefined): string => {
+    if (!value) return '0';
+    // Remove trailing zeros and unnecessary decimal point
+    return value.toFixed(2).replace(/\.?0+$/, '');
+  };
+
   // Format rate display based on pay_type
   const getRateDisplay = () => {
     const symbol = getCurrencySymbol(job.currency || 'USD');
@@ -63,23 +70,23 @@ export function JobDetailsDrawer({
       case 'daily':
         return {
           label: 'Daily Rate',
-          value: `${symbol} ${job.daily_rate?.toFixed(2) || '0.00'} ${job.currency || 'USD'}`
+          value: `${symbol} ${formatCurrencyValue(job.daily_rate)} ${job.currency || 'USD'}`
         };
       case 'monthly':
         return {
           label: 'Monthly Salary',
-          value: `${symbol} ${job.monthly_salary?.toFixed(2) || '0.00'} ${job.currency || 'USD'}`
+          value: `${symbol} ${formatCurrencyValue(job.monthly_salary)} ${job.currency || 'USD'}`
         };
       case 'salary':
         return {
           label: 'Annual Salary',
-          value: `${symbol} ${job.monthly_salary?.toFixed(0) || '0'} ${job.currency || 'USD'}`
+          value: `${symbol} ${Math.round(job.monthly_salary || 0)} ${job.currency || 'USD'}`
         };
       case 'hourly':
       default:
         return {
           label: 'Hourly Rate',
-          value: `${symbol} ${job.hourly_rate?.toFixed(2) || '0.00'} ${job.currency || 'USD'}`
+          value: `${symbol} ${formatCurrencyValue(job.hourly_rate)} ${job.currency || 'USD'}`
         };
     }
   };

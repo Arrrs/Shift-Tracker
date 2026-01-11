@@ -145,11 +145,42 @@ export default function CalendarPage() {
     const plannedShifts = timeEntries.filter(e => e.status === 'planned').length;
     const inProgressShifts = timeEntries.filter(e => e.status === 'in_progress').length;
 
-    // Calculate shift income by currency from income_records
+    // Calculate shift income by currency from income_records (completed shifts)
     const shiftIncomeByCurrency: Record<string, number> = {};
     incomeRecords.forEach(record => {
       const currency = record.currency || 'USD';
       shiftIncomeByCurrency[currency] = (shiftIncomeByCurrency[currency] || 0) + record.amount;
+    });
+
+    // Calculate expected income from planned/in-progress shifts
+    const expectedShiftIncomeByCurrency: Record<string, number> = {};
+    timeEntries.filter(e => e.status === 'planned' || e.status === 'in_progress').forEach(entry => {
+      if (!entry.jobs) return;
+
+      const job = entry.jobs;
+      const currency = job.currency || 'USD';
+      let expectedIncome = 0;
+
+      // Calculate expected income based on pay type and override
+      if (entry.pay_override_type && entry.pay_override_type !== 'default' && entry.pay_override_type !== 'none') {
+        // Use override values
+        if (entry.pay_override_type === 'custom_hourly' && entry.custom_hourly_rate) {
+          expectedIncome = entry.custom_hourly_rate * (entry.scheduled_hours || 0);
+        } else if (entry.pay_override_type === 'custom_daily' && entry.custom_daily_rate) {
+          expectedIncome = entry.custom_daily_rate;
+        }
+      } else {
+        // Use job rates
+        if (job.pay_type === 'hourly' && job.hourly_rate) {
+          expectedIncome = job.hourly_rate * (entry.scheduled_hours || 0);
+        } else if (job.pay_type === 'daily' && job.daily_rate) {
+          expectedIncome = job.daily_rate;
+        }
+      }
+
+      if (expectedIncome > 0) {
+        expectedShiftIncomeByCurrency[currency] = (expectedShiftIncomeByCurrency[currency] || 0) + expectedIncome;
+      }
     });
 
     // Calculate financial records income/expense by currency (completed only)
@@ -166,29 +197,27 @@ export default function CalendarPage() {
       }
     });
 
-    // Combine all earnings by currency (shifts + financial income - financial expenses)
-    const earningsByCurrency: Record<string, number> = {};
+    // Calculate totals for each income type
+    const totalShiftIncome = Object.values(shiftIncomeByCurrency).reduce((sum, amount) => sum + amount, 0);
+    const totalOtherIncome = Object.values(financialIncomeByCurrency).reduce((sum, amount) => sum + amount, 0);
+    const totalExpectedShiftIncome = Object.values(expectedShiftIncomeByCurrency).reduce((sum, amount) => sum + amount, 0);
 
-    // Add shift income
+    // Calculate net income (shift + other - expenses) by currency
+    const earningsByCurrency: Record<string, number> = {};
     Object.entries(shiftIncomeByCurrency).forEach(([currency, amount]) => {
       earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) + amount;
     });
-
-    // Add financial income
     Object.entries(financialIncomeByCurrency).forEach(([currency, amount]) => {
       earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) + amount;
     });
-
-    // Subtract expenses
     Object.entries(financialExpenseByCurrency).forEach(([currency, amount]) => {
       earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) - amount;
     });
 
-    // Calculate total earnings (sum all currencies - for legacy single value)
-    const totalEarnings = Object.values(earningsByCurrency).reduce((sum, amount) => sum + amount, 0);
-
     return {
-      totalEarnings,
+      totalShiftIncome,
+      totalOtherIncome,
+      totalExpectedShiftIncome,
       totalHours: totalActualHours,
       shiftCount: timeEntries.length,
       totalActualHours,
@@ -196,8 +225,11 @@ export default function CalendarPage() {
       completedShifts,
       plannedShifts,
       inProgressShifts,
-      earningsByCurrency,
       shiftIncomeByCurrency,
+      expectedShiftIncomeByCurrency,
+      financialIncomeByCurrency,
+      financialExpenseByCurrency,
+      earningsByCurrency, // Net income (shift + other - expenses)
       shiftIncomeByJob: [], // TODO: Calculate if needed
       fixedIncomeJobIds: [],
       fixedIncomeShiftCounts: {},
@@ -294,15 +326,38 @@ export default function CalendarPage() {
       {/* Stats Cards - Mobile Only */}
       <div className="lg:hidden mb-0 flex-shrink-0">
         <div className="grid grid-cols-3 gap-2">
-          <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-lg p-2">
-            <p className="text-[10px] text-muted-foreground mb-0.5">{t("earnings")}</p>
+          {/* Shift Income Card */}
+          <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-lg p-2">
+            <p className="text-[10px] text-muted-foreground mb-0.5">💼 {t("shiftIncome")}</p>
+            {loading ? (
+              <div className="flex items-center justify-center py-1">
+                <Loader2 className="h-4 w-4 animate-spin text-emerald-600 dark:text-emerald-400" />
+              </div>
+            ) : Object.keys(stats.shiftIncomeByCurrency).length > 1 ? (
+              <div className="space-y-0.5">
+                {Object.entries(stats.shiftIncomeByCurrency).map(([currency, amount]) => (
+                  <p key={currency} className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    {getCurrencySymbol(currency)} {formatCurrency(amount)}
+                  </p>
+                ))}
+              </div>
+            ) : (
+              <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                {getCurrencySymbol(Object.keys(stats.shiftIncomeByCurrency)[0] || 'USD')} {formatCurrency(stats.totalShiftIncome)}
+              </p>
+            )}
+          </div>
+
+          {/* Other Income Card */}
+          <div className="bg-gradient-to-br from-green-500/10 to-lime-500/10 border border-green-500/20 rounded-lg p-2">
+            <p className="text-[10px] text-muted-foreground mb-0.5">💵 {t("otherIncome")}</p>
             {loading ? (
               <div className="flex items-center justify-center py-1">
                 <Loader2 className="h-4 w-4 animate-spin text-green-600 dark:text-green-400" />
               </div>
-            ) : Object.keys(stats.earningsByCurrency).length > 1 ? (
+            ) : Object.keys(stats.financialIncomeByCurrency).length > 1 ? (
               <div className="space-y-0.5">
-                {Object.entries(stats.earningsByCurrency).map(([currency, amount]) => (
+                {Object.entries(stats.financialIncomeByCurrency).map(([currency, amount]) => (
                   <p key={currency} className="text-xs font-bold text-green-600 dark:text-green-400">
                     {getCurrencySymbol(currency)} {formatCurrency(amount)}
                   </p>
@@ -310,12 +365,14 @@ export default function CalendarPage() {
               </div>
             ) : (
               <p className="text-base font-bold text-green-600 dark:text-green-400">
-                {getCurrencySymbol(Object.keys(stats.earningsByCurrency)[0] || 'USD')} {formatCurrency(stats.totalEarnings)}
+                {getCurrencySymbol(Object.keys(stats.financialIncomeByCurrency)[0] || 'USD')} {formatCurrency(stats.totalOtherIncome)}
               </p>
             )}
           </div>
+
+          {/* Hours Card */}
           <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg p-2">
-            <p className="text-[10px] text-muted-foreground mb-0.5">{t("hours")}</p>
+            <p className="text-[10px] text-muted-foreground mb-0.5">⏰ {t("hours")}</p>
             {loading ? (
               <div className="flex items-center justify-center py-1">
                 <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
@@ -328,25 +385,6 @@ export default function CalendarPage() {
                 {stats.totalScheduledHours > 0 && stats.totalScheduledHours !== stats.totalActualHours && (
                   <p className="text-[8px] text-muted-foreground">
                     of {formatHours(stats.totalScheduledHours)}
-                  </p>
-                )}
-              </>
-            )}
-          </div>
-          <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg p-2">
-            <p className="text-[10px] text-muted-foreground mb-0.5">{t("shifts")}</p>
-            {loading ? (
-              <div className="flex items-center justify-center py-1">
-                <Loader2 className="h-4 w-4 animate-spin text-purple-600 dark:text-purple-400" />
-              </div>
-            ) : (
-              <>
-                <p className="text-base font-bold text-purple-600 dark:text-purple-400">
-                  {stats.shiftCount}
-                </p>
-                {stats.completedShifts > 0 && stats.shiftCount !== stats.completedShifts && (
-                  <p className="text-[8px] text-muted-foreground">
-                    {stats.completedShifts} {t("done")}
                   </p>
                 )}
               </>
@@ -508,17 +546,36 @@ export default function CalendarPage() {
           </DrawerHeader>
 
           <div className="overflow-y-auto p-4 space-y-3">
-            {/* Shift Income */}
+            {/* Shift Income (Completed) */}
             {Object.keys(stats.shiftIncomeByCurrency).length > 0 && (
               <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg p-4">
                 <p className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-                  {t("shiftIncomeLabel")}
+                  💼 {t("shiftIncome")} ({t("completed")})
                 </p>
                 <div className="space-y-2">
                   {Object.entries(stats.shiftIncomeByCurrency).map(([currency, amount]) => (
                     <div key={currency} className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">{currency}</span>
                       <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                        {getCurrencySymbol(currency)}{formatCurrency(amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Expected Shift Income (Planned/In Progress) */}
+            {Object.keys(stats.expectedShiftIncomeByCurrency).length > 0 && (
+              <div className="bg-gradient-to-br from-amber-500/10 to-yellow-500/10 border border-amber-500/20 rounded-lg p-4">
+                <p className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                  📅 {t("expectedIncome")} ({t("planned")}/{t("inProgress")})
+                </p>
+                <div className="space-y-2">
+                  {Object.entries(stats.expectedShiftIncomeByCurrency).map(([currency, amount]) => (
+                    <div key={currency} className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{currency}</span>
+                      <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
                         {getCurrencySymbol(currency)}{formatCurrency(amount)}
                       </span>
                     </div>

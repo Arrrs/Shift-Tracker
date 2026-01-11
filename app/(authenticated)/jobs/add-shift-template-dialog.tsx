@@ -99,16 +99,16 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh]">
+        <DialogHeader className="p-6 pb-0 flex-shrink-0">
           <DialogTitle>Add Shift Template</DialogTitle>
           <DialogDescription>
             Create a reusable shift template for this job
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="grid gap-4 p-6 pt-4 overflow-y-auto flex-1">
             {/* Name */}
             <div className="grid gap-2">
               <Label htmlFor="name">Template Name</Label>
@@ -205,7 +205,7 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
             </div>
           </div>
 
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0">
             <Button
               type="button"
               variant="outline"

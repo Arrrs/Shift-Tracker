@@ -72,7 +72,30 @@ export const createJobSchema = z.object({
 
   description: z.string().max(500, 'Description must be less than 500 characters').optional().nullable(),
 
-  show_in_fixed_income: z.boolean().default(false),
+  // PTO and leave days
+  pto_days_per_year: z
+    .number()
+    .int('PTO days must be a whole number')
+    .min(0, 'PTO days cannot be negative')
+    .max(365, 'PTO days cannot exceed 365')
+    .optional()
+    .nullable(),
+
+  sick_days_per_year: z
+    .number()
+    .int('Sick days must be a whole number')
+    .min(0, 'Sick days cannot be negative')
+    .max(365, 'Sick days cannot exceed 365')
+    .optional()
+    .nullable(),
+
+  personal_days_per_year: z
+    .number()
+    .int('Personal days must be a whole number')
+    .min(0, 'Personal days cannot be negative')
+    .max(365, 'Personal days cannot exceed 365')
+    .optional()
+    .nullable(),
 
   // Currency symbol (auto-populated based on currency)
   currency_symbol: z.string().max(5).optional(),

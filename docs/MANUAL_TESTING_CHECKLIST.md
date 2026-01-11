@@ -17,26 +17,26 @@
 ## 🏢 Jobs Management
 
 ### Create Job
-- [ ] Create hourly rate job ($25/hour)
-- [ ] Create daily rate job ($200/day)
-- [ ] Create monthly salary job ($5000/month)
-- [ ] Create job with all optional fields (description, PTO days, sick days)
-- [ ] Try creating job with empty name (should show error)
-- [ ] Try creating job with negative rate (should show error)
-- [ ] Create job with different currency (EUR, GBP, JPY)
+- [x] Create hourly rate job ($25/hour)
+- [x] Create daily rate job ($200/day)
+- [x] Create monthly salary job ($5000/month)
+- [x] Create job with all optional fields (description, PTO days, sick days)
+- [x] Try creating job with empty name (should show error)
+- [x] Try creating job with negative rate (should show error)
+- [x] Create job with different currency (EUR, GBP, JPY)
 
 ### Edit Job
-- [ ] Edit job name
-- [ ] Change pay type (hourly → daily)
-- [ ] Update hourly/daily rates
-- [ ] Mark job as inactive
-- [ ] Edit job color
-- [ ] Save with valid changes (should update immediately in list)
+- [x] Edit job name
+- [x] Change pay type (hourly → daily)
+- [x] Update hourly/daily rates
+- [x] Mark job as inactive
+- [x] Edit job color
+- [x] Save with valid changes (should update immediately in list)
 
 ### Delete Job
-- [ ] Delete job that has NO time entries
-- [ ] Try to delete job that HAS time entries (should show warning)
-- [ ] Delete with confirmation
+- [x] Delete job that has NO time entries
+- [x] Try to delete job that HAS time entries (should show warning)
+- [x] Delete with confirmation
 
 ---
 

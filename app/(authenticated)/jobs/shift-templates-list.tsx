@@ -23,6 +23,13 @@ export function ShiftTemplatesList({ jobId, onTemplateChange }: ShiftTemplatesLi
   const [error, setError] = useState<string | null>(null);
 
   const loadTemplates = async () => {
+    // Skip loading if jobId is a temporary optimistic ID
+    if (jobId.startsWith('temp-')) {
+      setLoading(false);
+      setTemplates([]);
+      return;
+    }
+
     setLoading(true);
     const result = await getShiftTemplates(jobId);
     setLoading(false);

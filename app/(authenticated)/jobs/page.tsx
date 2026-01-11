@@ -20,20 +20,27 @@ const DeleteJobButton = lazy(() => import("./delete-job-button").then((mod) => (
 const ArchiveJobButton = lazy(() => import("./archive-job-button").then((mod) => ({ default: mod.ArchiveJobButton })));
 const UnarchiveJobButton = lazy(() => import("./unarchive-job-button").then((mod) => ({ default: mod.UnarchiveJobButton })));
 
+// Helper function to format currency values (removes trailing zeros)
+function formatCurrencyValue(value: number | null | undefined): string {
+  if (!value) return '0';
+  // Remove trailing zeros and unnecessary decimal point
+  return value.toFixed(2).replace(/\.?0+$/, '');
+}
+
 // Helper function to format job rate display
 function formatJobRate(job: any): string {
   const symbol = getCurrencySymbol(job.currency || 'USD');
 
   switch (job.pay_type) {
     case 'daily':
-      return `${symbol} ${job.daily_rate?.toFixed(2) || '0.00'}/day`;
+      return `${symbol} ${formatCurrencyValue(job.daily_rate)}/day`;
     case 'monthly':
-      return `${symbol} ${job.monthly_salary?.toFixed(2) || '0.00'}/mo`;
+      return `${symbol} ${formatCurrencyValue(job.monthly_salary)}/mo`;
     case 'salary':
-      return `${symbol} ${job.monthly_salary?.toFixed(0) || '0'}/yr`;
+      return `${symbol} ${Math.round(job.monthly_salary || 0)}/yr`;
     case 'hourly':
     default:
-      return `${symbol} ${job.hourly_rate?.toFixed(2) || '0.00'}/hr`;
+      return `${symbol} ${formatCurrencyValue(job.hourly_rate)}/hr`;
   }
 }
 
@@ -192,7 +199,7 @@ function JobsList() {
                         <DeleteJobButton
                           jobId={job.id}
                           jobName={job.name}
-                          shiftCount={job.shift_count}
+                          shiftCount={job.entry_count}
                           isArchived={!job.is_active}
                           variant="link"
                           size="sm"
@@ -249,7 +256,7 @@ function JobsList() {
                   <DeleteJobButton
                     jobId={job.id}
                     jobName={job.name}
-                    shiftCount={job.shift_count}
+                    shiftCount={job.entry_count}
                     isArchived={!job.is_active}
                     variant="ghost"
                     size="sm"
