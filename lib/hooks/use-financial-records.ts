@@ -13,6 +13,7 @@ import {
   deleteFinancialRecord,
 } from '@/app/(authenticated)/finances/actions';
 import { toast } from 'sonner';
+import { incomeRecordsKeys } from './use-income-records';
 
 /**
  * Query key factory for financial records
@@ -66,8 +67,10 @@ export function useCreateFinancialRecord() {
     mutationFn: createFinancialRecord,
     onSuccess: (result) => {
       if (result.record && !result.error) {
-        // Invalidate all financial records queries
+        // Invalidate financial records queries
         queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
+        // Invalidate income records (affects totals in calendar)
+        queryClient.invalidateQueries({ queryKey: incomeRecordsKeys.lists() });
         toast.success('Financial record created successfully');
       } else if (result.error) {
         toast.error(result.error);
@@ -100,7 +103,10 @@ export function useUpdateFinancialRecord() {
     }) => updateFinancialRecord(id, data),
     onSuccess: (result) => {
       if (result.record && !result.error) {
+        // Invalidate financial records queries
         queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
+        // Invalidate income records (affects totals in calendar)
+        queryClient.invalidateQueries({ queryKey: incomeRecordsKeys.lists() });
         toast.success('Financial record updated successfully');
       } else if (result.error) {
         toast.error(result.error);
@@ -127,7 +133,10 @@ export function useDeleteFinancialRecord() {
     mutationFn: (id: string) => deleteFinancialRecord(id),
     onSuccess: (result) => {
       if (!result.error) {
+        // Invalidate financial records queries
         queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
+        // Invalidate income records (affects totals in calendar)
+        queryClient.invalidateQueries({ queryKey: incomeRecordsKeys.lists() });
         toast.success('Financial record deleted successfully');
       } else if (result.error) {
         toast.error(result.error);

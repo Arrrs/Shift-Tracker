@@ -89,6 +89,23 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
       if (hasPayCustomization) {
         setCustomizePay(true);
 
+        // Helper function to match multiplier values numerically
+        const matchPredefinedMultiplier = (value: number | string): string | null => {
+          const numValue = parseFloat(value.toString());
+          if (isNaN(numValue)) return null;
+
+          // Use string keys with normalized numeric values to avoid 2 vs 2.0 issues
+          const predefinedValues = ["1.25", "1.5", "1.75", "2.0", "2.5", "3.0"];
+
+          // Find matching value by comparing numerically
+          for (const predefined of predefinedValues) {
+            if (Math.abs(parseFloat(predefined) - numValue) < 0.001) {
+              return predefined;
+            }
+          }
+          return null;
+        };
+
         // Set pay type
         if (entry.pay_override_type === "fixed_amount") {
           setPayType("fixed_amount");
@@ -96,13 +113,49 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
         } else if (entry.pay_override_type === "holiday_multiplier") {
           setPayType("default");
           setApplyMultiplier(true);
-          setHolidayMultiplier(entry.holiday_multiplier?.toString() || "1.5");
+          const multiplierValue = entry.holiday_multiplier?.toString() || "1.5";
+          // Check if it's a predefined value using numeric comparison
+          const matchedValue = matchPredefinedMultiplier(multiplierValue);
+          if (matchedValue) {
+            setHolidayMultiplier(matchedValue);
+            setCustomMultiplierValue("");
+          } else {
+            // It's a custom value
+            setHolidayMultiplier("custom");
+            setCustomMultiplierValue(multiplierValue);
+          }
         } else if (entry.custom_hourly_rate) {
           setPayType("custom_hourly");
           setCustomHourlyRate(entry.custom_hourly_rate.toString());
+          // Check if there's also a multiplier
+          if (entry.holiday_multiplier) {
+            setApplyMultiplier(true);
+            const multiplierValue = entry.holiday_multiplier.toString();
+            const matchedValue = matchPredefinedMultiplier(multiplierValue);
+            if (matchedValue) {
+              setHolidayMultiplier(matchedValue);
+              setCustomMultiplierValue("");
+            } else {
+              setHolidayMultiplier("custom");
+              setCustomMultiplierValue(multiplierValue);
+            }
+          }
         } else if (entry.custom_daily_rate) {
           setPayType("custom_daily");
           setCustomDailyRate(entry.custom_daily_rate.toString());
+          // Check if there's also a multiplier
+          if (entry.holiday_multiplier) {
+            setApplyMultiplier(true);
+            const multiplierValue = entry.holiday_multiplier.toString();
+            const matchedValue = matchPredefinedMultiplier(multiplierValue);
+            if (matchedValue) {
+              setHolidayMultiplier(matchedValue);
+              setCustomMultiplierValue("");
+            } else {
+              setHolidayMultiplier("custom");
+              setCustomMultiplierValue(multiplierValue);
+            }
+          }
         }
 
         setIsHoliday(entry.is_holiday || false);
@@ -821,35 +874,9 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
           </div>
 
           {/* Actions */}
-          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0">
-            {/* <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting} className="flex-shrink-0">
-              {deleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {t("deleting")}
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {t("delete")}
-                </>
-              )}
-            </Button> */}
-            <DeleteTimeEntryButton
-              entryId={entry.id}
-              onSuccess={() => {
-                toast.success(t("deletedSuccessfully"));
-                onOpenChange(false);
-                onSuccess?.();
-              }}
-              onError={(error) => {
-                toast.error(t("error"), { description: error });
-              }}
-            />
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-              {t("cancel")}
-            </Button>
-            <Button type="submit" disabled={loading} className="flex-1">
+          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0 flex-col gap-2">
+            {/* Save button on top - full width */}
+            <Button type="submit" disabled={loading} className="w-full">
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -859,6 +886,24 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
                 t("saveChanges")
               )}
             </Button>
+            {/* Delete and Cancel below - equal widths */}
+            <div className="flex gap-2 w-full">
+              <DeleteTimeEntryButton
+                entryId={entry.id}
+                className="flex-1"
+                onSuccess={() => {
+                  toast.success(t("deletedSuccessfully"));
+                  onOpenChange(false);
+                  onSuccess?.();
+                }}
+                onError={(error) => {
+                  toast.error(t("error"), { description: error });
+                }}
+              />
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+                {t("cancel")}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

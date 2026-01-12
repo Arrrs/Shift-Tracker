@@ -21,6 +21,7 @@ interface DeleteTimeEntryButtonProps {
   entryId: string;
   variant?: "link" | "ghost" | "destructive";
   size?: "sm";
+  className?: string;
   onSuccess?: () => void;
   onError?: (error: string) => void;
 }
@@ -29,6 +30,7 @@ export function DeleteTimeEntryButton({
   entryId,
   variant = "destructive",
   size,
+  className,
   onSuccess,
   onError,
 }: DeleteTimeEntryButtonProps) {
@@ -52,7 +54,7 @@ export function DeleteTimeEntryButton({
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant={variant} size={size} disabled={loading}>
+        <Button variant={variant} size={size} className={className} disabled={loading}>
           {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

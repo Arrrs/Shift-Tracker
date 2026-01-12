@@ -13,9 +13,10 @@ import {
 } from "@/components/ui/responsive-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useUpdateCategory } from "@/lib/hooks/use-categories";
+import { useUpdateFinancialCategory } from "@/lib/hooks/use-financial-categories";
 import type { FinancialCategory } from "./actions";
 import { Loader2 } from "lucide-react";
+import { parseCurrency } from "@/lib/utils/currency";
 
 // Common emoji suggestions
 const INCOME_EMOJIS = ["💰", "💵", "💸", "🎁", "💼", "🎉", "📈", "🏆", "⭐", "✨"];
@@ -52,7 +53,7 @@ interface EditCategoryDialogProps {
 
 export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: EditCategoryDialogProps) {
   const { t } = useTranslation();
-  const updateCategory = useUpdateCategory();
+  const updateCategory = useUpdateFinancialCategory();
   const [formData, setFormData] = useState({
     name: category.name,
     icon: category.icon || "",
@@ -78,13 +79,13 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
     e.preventDefault();
 
     const result = await updateCategory.mutateAsync({
-      categoryId: category.id,
+      id: category.id,
       data: {
         name: formData.name,
         type: category.type,
         icon: formData.icon,
         color: formData.color,
-        default_amount: formData.default_amount ? parseFloat(formData.default_amount) : undefined,
+        default_amount: formData.default_amount ? parseCurrency(formData.default_amount) : undefined,
         default_currency: formData.default_amount ? formData.default_currency : undefined,
         default_description: formData.default_description || undefined,
       },

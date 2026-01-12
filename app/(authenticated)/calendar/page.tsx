@@ -168,6 +168,17 @@ export default function CalendarPage() {
           expectedIncome = entry.custom_hourly_rate * (entry.scheduled_hours || 0);
         } else if (entry.pay_override_type === 'custom_daily' && entry.custom_daily_rate) {
           expectedIncome = entry.custom_daily_rate;
+        } else if (entry.pay_override_type === 'fixed_amount' && entry.holiday_fixed_amount) {
+          expectedIncome = entry.holiday_fixed_amount;
+        } else if (entry.pay_override_type === 'holiday_multiplier' && entry.holiday_multiplier) {
+          // Calculate base amount from job rates, then apply multiplier
+          let baseAmount = 0;
+          if (job.pay_type === 'hourly' && job.hourly_rate) {
+            baseAmount = job.hourly_rate * (entry.scheduled_hours || 0);
+          } else if (job.pay_type === 'daily' && job.daily_rate) {
+            baseAmount = job.daily_rate;
+          }
+          expectedIncome = baseAmount * entry.holiday_multiplier;
         }
       } else {
         // Use job rates

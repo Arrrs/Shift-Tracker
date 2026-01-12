@@ -13,6 +13,7 @@ import {
   deleteShiftTemplate,
 } from '@/app/(authenticated)/jobs/actions';
 import { toast } from 'sonner';
+import { jobsQueryKey } from './use-jobs';
 
 /**
  * Query key factory for shift templates
@@ -60,6 +61,8 @@ export function useCreateShiftTemplate() {
         queryClient.invalidateQueries({
           queryKey: shiftTemplatesKeys.list(variables.jobId),
         });
+        // Invalidate jobs list (template count may be displayed)
+        queryClient.invalidateQueries({ queryKey: jobsQueryKey });
         toast.success('Template created successfully');
       } else if (result.error) {
         toast.error(result.error);
@@ -92,6 +95,8 @@ export function useUpdateShiftTemplate() {
         queryClient.invalidateQueries({
           queryKey: shiftTemplatesKeys.lists(),
         });
+        // Invalidate jobs list (template may be displayed)
+        queryClient.invalidateQueries({ queryKey: jobsQueryKey });
         toast.success('Template updated successfully');
       } else if (result.error) {
         toast.error(result.error);
@@ -118,6 +123,8 @@ export function useDeleteShiftTemplate() {
         queryClient.invalidateQueries({
           queryKey: shiftTemplatesKeys.lists(),
         });
+        // Invalidate jobs list (template count changed)
+        queryClient.invalidateQueries({ queryKey: jobsQueryKey });
         toast.success('Template deleted successfully');
       } else if (result.error) {
         toast.error(result.error);

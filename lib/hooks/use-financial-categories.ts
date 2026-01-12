@@ -22,24 +22,30 @@ import { toast } from 'sonner';
 export const financialCategoriesKeys = {
   all: ['financial-categories'] as const,
   lists: () => [...financialCategoriesKeys.all, 'list'] as const,
-  list: () => [...financialCategoriesKeys.lists()] as const,
+  list: (type?: 'income' | 'expense') =>
+    type ? [...financialCategoriesKeys.lists(), type] as const : [...financialCategoriesKeys.lists()] as const,
 };
 
 /**
- * Fetch all financial categories for the current user
+ * Fetch financial categories for the current user
+ *
+ * @param type - Optional filter by category type ('income' or 'expense')
  *
  * @example
- * const { data: categories, isLoading } = useFinancialCategories();
+ * const { data: categories, isLoading } = useFinancialCategories(); // All categories
+ * const { data: incomeCategories } = useFinancialCategories('income'); // Income only
  */
-export function useFinancialCategories() {
+export function useFinancialCategories(type?: 'income' | 'expense') {
   return useQuery({
-    queryKey: financialCategoriesKeys.list(),
+    queryKey: financialCategoriesKeys.list(type),
     queryFn: async () => {
       const result = await getFinancialCategories();
       if (result.error) {
         throw new Error(result.error);
       }
-      return result.categories || [];
+      const categories = result.categories || [];
+      // Filter by type if specified
+      return type ? categories.filter(cat => cat.type === type) : categories;
     },
     staleTime: 5 * 60 * 1000, // Keep data fresh for 5 minutes
   });

@@ -8,6 +8,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getJobs, createJob, updateJob, deleteJob, archiveJob, unarchiveJob } from '@/app/(authenticated)/jobs/actions';
 import { toast } from 'sonner';
+import { timeEntriesKeys } from './use-time-entries';
+import { shiftTemplatesKeys } from './use-shift-templates';
 
 /**
  * Query key for jobs
@@ -188,6 +190,10 @@ export function useDeleteJob() {
       if (result.success) {
         // Sync with server
         queryClient.invalidateQueries({ queryKey: jobsQueryKey });
+        // Invalidate time entries (job_id may be NULL now)
+        queryClient.invalidateQueries({ queryKey: timeEntriesKeys.lists() });
+        // Invalidate shift templates (CASCADE deleted)
+        queryClient.invalidateQueries({ queryKey: shiftTemplatesKeys.lists() });
         toast.success('Job deleted successfully');
       } else if (result.error) {
         toast.error(result.error);

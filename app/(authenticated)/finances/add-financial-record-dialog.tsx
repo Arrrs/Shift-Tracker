@@ -12,8 +12,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2 } from "lucide-react";
 import { useCreateFinancialRecord } from "@/lib/hooks/use-financial-records";
 import { useActiveJobs } from "@/lib/hooks/use-jobs";
-import { useCategories } from "@/lib/hooks/use-categories";
+import { useFinancialCategories } from "@/lib/hooks/use-financial-categories";
 import { toast } from "sonner";
+import { parseCurrency } from "@/lib/utils/currency";
 
 interface AddFinancialRecordDialogProps {
   open: boolean;
@@ -33,7 +34,7 @@ export function AddFinancialRecordDialog({
   const { t } = useTranslation();
   const createMutation = useCreateFinancialRecord();
   const [type, setType] = useState<"income" | "expense">(defaultType);
-  const { data: categories = [] } = useCategories(type);
+  const { data: categories = [] } = useFinancialCategories(type);
   const { data: activeJobs = [] } = useActiveJobs();
 
   const [formData, setFormData] = useState({
@@ -74,7 +75,7 @@ export function AddFinancialRecordDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const amount = parseFloat(formData.amount);
+    const amount = parseCurrency(formData.amount);
     if (isNaN(amount) || amount <= 0) {
       toast.error(t("pleaseEnterValidAmount"));
       return;

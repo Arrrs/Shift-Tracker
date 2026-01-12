@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/responsive-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useCreateCategory } from "@/lib/hooks/use-categories";
+import { useCreateFinancialCategory } from "@/lib/hooks/use-financial-categories";
 import { Loader2 } from "lucide-react";
+import { parseCurrency } from "@/lib/utils/currency";
 
 // Common emoji suggestions
 const INCOME_EMOJIS = ["💰", "💵", "💸", "🎁", "💼", "🎉", "📈", "🏆", "⭐", "✨"];
@@ -51,7 +52,7 @@ interface AddCategoryDialogProps {
 
 export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCategoryDialogProps) {
   const { t } = useTranslation();
-  const createCategory = useCreateCategory();
+  const createCategory = useCreateFinancialCategory();
   const [formData, setFormData] = useState({
     name: "",
     icon: type === "income" ? "💰" : "💸",
@@ -69,7 +70,7 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
       type,
       icon: formData.icon,
       color: formData.color,
-      default_amount: formData.default_amount ? parseFloat(formData.default_amount) : undefined,
+      default_amount: formData.default_amount ? parseCurrency(formData.default_amount) : undefined,
       default_currency: formData.default_amount ? formData.default_currency : undefined,
       default_description: formData.default_description || undefined,
     });

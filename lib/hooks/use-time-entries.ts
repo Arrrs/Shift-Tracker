@@ -94,7 +94,7 @@ export function useCreateTimeEntry() {
  *
  * @example
  * const updateEntry = useUpdateTimeEntry();
- * updateEntry.mutate({ id: '123', updates: { ... } });
+ * updateEntry.mutate({ id: '123', data: { ... } });
  */
 export function useUpdateTimeEntry() {
   const queryClient = useQueryClient();
@@ -102,11 +102,11 @@ export function useUpdateTimeEntry() {
   return useMutation({
     mutationFn: ({
       id,
-      updates,
+      data,
     }: {
       id: string;
-      updates: Parameters<typeof updateTimeEntry>[1];
-    }) => updateTimeEntry(id, updates),
+      data: Parameters<typeof updateTimeEntry>[1];
+    }) => updateTimeEntry(id, data),
     onSuccess: (result) => {
       if (result.entry && !result.error) {
         // Invalidate time entries queries

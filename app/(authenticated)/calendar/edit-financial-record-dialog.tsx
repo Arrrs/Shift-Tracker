@@ -21,10 +21,11 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2, Trash2 } from "lucide-react";
 import { useUpdateFinancialRecord, useDeleteFinancialRecord } from "@/lib/hooks/use-financial-records";
 import { useActiveJobs } from "@/lib/hooks/use-jobs";
-import { useCategories } from "@/lib/hooks/use-categories";
+import { useFinancialCategories } from "@/lib/hooks/use-financial-categories";
 import { toast } from "sonner";
 import { Database } from "@/lib/database.types";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { parseCurrency } from "@/lib/utils/currency";
 
 type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] & {
   financial_categories?: Database["public"]["Tables"]["financial_categories"]["Row"] | null;
@@ -49,7 +50,7 @@ export function EditFinancialRecordDialog({
   const deleteMutation = useDeleteFinancialRecord();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [type, setType] = useState<"income" | "expense">("income");
-  const { data: categories = [] } = useCategories(type);
+  const { data: categories = [] } = useFinancialCategories(type);
   const { data: activeJobs = [] } = useActiveJobs();
 
   const [formData, setFormData] = useState({
@@ -85,7 +86,7 @@ export function EditFinancialRecordDialog({
 
     if (!record) return;
 
-    const amount = parseFloat(formData.amount);
+    const amount = parseCurrency(formData.amount);
     if (isNaN(amount) || amount <= 0) {
       toast.error(t("pleaseEnterValidAmount"));
       return;
@@ -324,27 +325,9 @@ export function EditFinancialRecordDialog({
           </div>
 
           {/* Actions */}
-          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0">
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleDeleteClick}
-              disabled={loading || deleting}
-              className="flex-shrink-0"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              {t("delete")}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-              className="flex-1"
-            >
-              {t("cancel")}
-            </Button>
-            <Button type="submit" disabled={loading} className="flex-1">
+          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0 flex-col gap-2">
+            {/* Save button on top - full width */}
+            <Button type="submit" disabled={loading} className="w-full">
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -354,6 +337,28 @@ export function EditFinancialRecordDialog({
                 t("saveChanges")
               )}
             </Button>
+            {/* Delete and Cancel below - equal widths */}
+            <div className="flex gap-2 w-full">
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDeleteClick}
+                disabled={loading || deleting}
+                className="flex-1"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {t("delete")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={loading}
+                className="flex-1"
+              >
+                {t("cancel")}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>
