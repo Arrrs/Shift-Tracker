@@ -194,24 +194,30 @@ export default function CalendarPage() {
       }
     });
 
-    // Calculate financial records income/expense by currency (completed only)
+    // Calculate financial records income/expense by currency
     const financialIncomeByCurrency: Record<string, number> = {};
     const financialExpenseByCurrency: Record<string, number> = {};
+    const expectedFinancialIncomeByCurrency: Record<string, number> = {};
+    const expectedFinancialExpenseByCurrency: Record<string, number> = {};
+
     financialRecords.forEach(record => {
+      const currency = record.currency || 'USD';
+      const amount = Number(record.amount);
+
       if (record.status === 'completed') {
-        const currency = record.currency || 'USD';
         if (record.type === 'income') {
-          financialIncomeByCurrency[currency] = (financialIncomeByCurrency[currency] || 0) + Number(record.amount);
+          financialIncomeByCurrency[currency] = (financialIncomeByCurrency[currency] || 0) + amount;
         } else if (record.type === 'expense') {
-          financialExpenseByCurrency[currency] = (financialExpenseByCurrency[currency] || 0) + Number(record.amount);
+          financialExpenseByCurrency[currency] = (financialExpenseByCurrency[currency] || 0) + amount;
+        }
+      } else if (record.status === 'planned') {
+        if (record.type === 'income') {
+          expectedFinancialIncomeByCurrency[currency] = (expectedFinancialIncomeByCurrency[currency] || 0) + amount;
+        } else if (record.type === 'expense') {
+          expectedFinancialExpenseByCurrency[currency] = (expectedFinancialExpenseByCurrency[currency] || 0) + amount;
         }
       }
     });
-
-    // Calculate totals for each income type
-    const totalShiftIncome = Object.values(shiftIncomeByCurrency).reduce((sum, amount) => sum + amount, 0);
-    const totalOtherIncome = Object.values(financialIncomeByCurrency).reduce((sum, amount) => sum + amount, 0);
-    const totalExpectedShiftIncome = Object.values(expectedShiftIncomeByCurrency).reduce((sum, amount) => sum + amount, 0);
 
     // Calculate net income (shift + other - expenses) by currency
     const earningsByCurrency: Record<string, number> = {};
@@ -226,9 +232,6 @@ export default function CalendarPage() {
     });
 
     return {
-      totalShiftIncome,
-      totalOtherIncome,
-      totalExpectedShiftIncome,
       totalHours: totalActualHours,
       shiftCount: timeEntries.length,
       totalActualHours,
@@ -238,6 +241,8 @@ export default function CalendarPage() {
       inProgressShifts,
       shiftIncomeByCurrency,
       expectedShiftIncomeByCurrency,
+      expectedFinancialIncomeByCurrency,
+      expectedFinancialExpenseByCurrency,
       financialIncomeByCurrency,
       financialExpenseByCurrency,
       earningsByCurrency, // Net income (shift + other - expenses)
@@ -352,9 +357,16 @@ export default function CalendarPage() {
                   </p>
                 ))}
               </div>
+            ) : Object.keys(stats.shiftIncomeByCurrency).length === 1 ? (
+              <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                {(() => {
+                  const [currency, amount] = Object.entries(stats.shiftIncomeByCurrency)[0];
+                  return `${getCurrencySymbol(currency)} ${formatCurrency(amount)}`;
+                })()}
+              </p>
             ) : (
               <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                {getCurrencySymbol(Object.keys(stats.shiftIncomeByCurrency)[0] || 'USD')} {formatCurrency(stats.totalShiftIncome)}
+                {getCurrencySymbol('USD')} {formatCurrency(0)}
               </p>
             )}
           </div>
@@ -374,9 +386,16 @@ export default function CalendarPage() {
                   </p>
                 ))}
               </div>
+            ) : Object.keys(stats.financialIncomeByCurrency).length === 1 ? (
+              <p className="text-base font-bold text-green-600 dark:text-green-400">
+                {(() => {
+                  const [currency, amount] = Object.entries(stats.financialIncomeByCurrency)[0];
+                  return `${getCurrencySymbol(currency)} ${formatCurrency(amount)}`;
+                })()}
+              </p>
             ) : (
               <p className="text-base font-bold text-green-600 dark:text-green-400">
-                {getCurrencySymbol(Object.keys(stats.financialIncomeByCurrency)[0] || 'USD')} {formatCurrency(stats.totalOtherIncome)}
+                {getCurrencySymbol('USD')} {formatCurrency(0)}
               </p>
             )}
           </div>
@@ -467,6 +486,9 @@ export default function CalendarPage() {
             <IncomeStatsCards
               currentDate={currentDate}
               shiftIncomeByCurrency={stats.shiftIncomeByCurrency}
+              expectedShiftIncomeByCurrency={stats.expectedShiftIncomeByCurrency}
+              expectedFinancialIncomeByCurrency={stats.expectedFinancialIncomeByCurrency}
+              expectedFinancialExpenseByCurrency={stats.expectedFinancialExpenseByCurrency}
               shiftIncomeByJob={stats.shiftIncomeByJob}
               fixedIncomeJobIds={stats.fixedIncomeJobIds}
               fixedIncomeShiftCounts={stats.fixedIncomeShiftCounts}
@@ -595,6 +617,25 @@ export default function CalendarPage() {
               </div>
             )}
 
+            {/* Expected Other Income (Planned) */}
+            {Object.keys(stats.expectedFinancialIncomeByCurrency).length > 0 && (
+              <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-lg p-4">
+                <p className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                  📊 {t("expectedOtherIncome")} ({t("planned")})
+                </p>
+                <div className="space-y-2">
+                  {Object.entries(stats.expectedFinancialIncomeByCurrency).map(([currency, amount]) => (
+                    <div key={currency} className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{currency}</span>
+                      <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                        {getCurrencySymbol(currency)}{formatCurrency(amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Financial Income */}
             {(() => {
               const completedFinancialIncome: Record<string, number> = {};
@@ -650,6 +691,25 @@ export default function CalendarPage() {
                 </div>
               ) : null;
             })()}
+
+            {/* Expected Expenses (Planned) */}
+            {Object.keys(stats.expectedFinancialExpenseByCurrency).length > 0 && (
+              <div className="bg-gradient-to-br from-orange-500/10 to-amber-500/10 border border-orange-500/20 rounded-lg p-4">
+                <p className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                  📉 {t("expectedExpenses")} ({t("planned")})
+                </p>
+                <div className="space-y-2">
+                  {Object.entries(stats.expectedFinancialExpenseByCurrency).map(([currency, amount]) => (
+                    <div key={currency} className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{currency}</span>
+                      <span className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                        -{getCurrencySymbol(currency)}{formatCurrency(amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Net Income */}
             {Object.keys(stats.earningsByCurrency).length > 0 && (

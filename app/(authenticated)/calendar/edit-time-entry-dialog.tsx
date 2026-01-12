@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useUpdateTimeEntry } from "@/lib/hooks/use-time-entries";
-import { getShiftTemplates } from "../jobs/actions";
+import { useShiftTemplates } from "@/lib/hooks/use-shift-templates";
 import { Database } from "@/lib/database.types";
 import { DeleteTimeEntryButton } from "./delete-time-entry-button";
 import { useActiveJobs } from "@/lib/hooks/use-jobs";
@@ -29,8 +29,6 @@ interface EditTimeEntryDialogProps {
 export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: EditTimeEntryDialogProps) {
   const { t } = useTranslation();
   const updateMutation = useUpdateTimeEntry();
-  const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   // Form state
   const [entryType, setEntryType] = useState<"work_shift" | "day_off">((entry?.entry_type as "work_shift" | "day_off") || "work_shift");
@@ -177,25 +175,10 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
   // Load jobs with React Query (automatic caching & deduplication)
   const { data: activeJobs = [] } = useActiveJobs();
 
-  // Load templates when job changes
-  useEffect(() => {
-    const loadTemplates = async () => {
-      if (!selectedJobId || selectedJobId === "none") {
-        setTemplates([]);
-        return;
-      }
-
-      setLoadingTemplates(true);
-      const result = await getShiftTemplates(selectedJobId);
-      if (result.templates) {
-        setTemplates(result.templates);
-      } else {
-        setTemplates([]);
-      }
-      setLoadingTemplates(false);
-    };
-    loadTemplates();
-  }, [selectedJobId]);
+  // Load templates with React Query (automatic caching & refetching)
+  const { data: templates = [], isLoading: loadingTemplates } = useShiftTemplates(
+    selectedJobId && selectedJobId !== "none" ? selectedJobId : ""
+  );
 
   // Auto-calculate hours when times change
   useEffect(() => {

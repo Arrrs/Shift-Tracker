@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateTimeEntry } from "@/lib/hooks/use-time-entries";
-import { getShiftTemplates } from "../jobs/actions";
+import { useShiftTemplates } from "@/lib/hooks/use-shift-templates";
 import { Database } from "@/lib/database.types";
 import { useActiveJobs } from "@/lib/hooks/use-jobs";
 
@@ -27,8 +27,6 @@ interface AddTimeEntryDialogProps {
 export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess }: AddTimeEntryDialogProps) {
   const { t } = useTranslation();
   const createMutation = useCreateTimeEntry();
-  const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   // Form state
   const [entryType, setEntryType] = useState<"work_shift" | "day_off">("work_shift");
@@ -70,22 +68,14 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
   // Load jobs with React Query (automatic caching & deduplication)
   const { data: activeJobs = [], isLoading: isLoadingJobs } = useActiveJobs();
 
-  // Load templates when job changes
+  // Load templates with React Query (automatic caching & refetching)
+  const { data: templates = [], isLoading: loadingTemplates } = useShiftTemplates(
+    selectedJobId && selectedJobId !== "none" ? selectedJobId : ""
+  );
+
+  // Reset selected template when job changes
   useEffect(() => {
-    const loadTemplates = async () => {
-      setTemplates([]);
-      setSelectedTemplateId("");
-
-      if (!selectedJobId || selectedJobId === "none") return;
-
-      setLoadingTemplates(true);
-      const result = await getShiftTemplates(selectedJobId);
-      if (result.templates) {
-        setTemplates(result.templates);
-      }
-      setLoadingTemplates(false);
-    };
-    loadTemplates();
+    setSelectedTemplateId("");
   }, [selectedJobId]);
 
   // Auto-calculate hours when times change

@@ -87,7 +87,7 @@ export function AddFinancialRecordDialog({
     }
 
     if (!formData.description) {
-      toast.error(t("description"));
+      toast.error(t("descriptionRequired"));
       return;
     }
 
@@ -258,6 +258,7 @@ export function AddFinancialRecordDialog({
               placeholder={t("whatWasThisFor")}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              required
             />
           </div>
 

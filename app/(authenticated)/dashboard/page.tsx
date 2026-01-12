@@ -72,6 +72,44 @@ export default function DashboardPage() {
       shiftIncomeByCurrency[currency] = (shiftIncomeByCurrency[currency] || 0) + record.amount;
     });
 
+    // Calculate expected income (from planned/in_progress shifts)
+    const expectedIncomeByCurrency: Record<string, number> = {};
+    const plannedOrInProgressEntries = timeEntries.filter(e =>
+      e.entry_type === 'work_shift' &&
+      (e.status === 'planned' || e.status === 'in_progress') &&
+      e.jobs
+    );
+
+    plannedOrInProgressEntries.forEach(entry => {
+      const job = entry.jobs;
+      if (!job) return;
+
+      const currency = job.currency || 'USD';
+      let estimatedAmount = 0;
+
+      // Calculate expected income based on rate type
+      if (entry.custom_rate_type === 'fixed') {
+        estimatedAmount = entry.custom_rate_amount || 0;
+      } else if (job.rate_type === 'hourly') {
+        const hours = entry.actual_hours || entry.scheduled_hours || 0;
+        const rate = entry.custom_rate_type === 'hourly'
+          ? (entry.custom_rate_amount || job.hourly_rate || 0)
+          : (job.hourly_rate || 0);
+        const multiplier = entry.multiplier || 1;
+        estimatedAmount = hours * rate * multiplier;
+      } else if (job.rate_type === 'daily') {
+        const rate = entry.custom_rate_type === 'daily'
+          ? (entry.custom_rate_amount || job.daily_rate || 0)
+          : (job.daily_rate || 0);
+        const multiplier = entry.multiplier || 1;
+        estimatedAmount = rate * multiplier;
+      }
+
+      if (estimatedAmount > 0) {
+        expectedIncomeByCurrency[currency] = (expectedIncomeByCurrency[currency] || 0) + estimatedAmount;
+      }
+    });
+
     // Calculate financial records income/expense by currency (completed only)
     const financialIncomeByCurrency: Record<string, number> = {};
     const financialExpenseByCurrency: Record<string, number> = {};
@@ -112,6 +150,7 @@ export default function DashboardPage() {
       inProgressShifts,
       earningsByCurrency,
       shiftIncomeByCurrency,
+      expectedIncomeByCurrency,
     };
   }, [currentMonthEntries, currentMonthIncome, currentMonthFinancials]);
 
@@ -408,6 +447,30 @@ export default function DashboardPage() {
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {t("of")} {stats.completedShifts} {t("completed")} shift{stats.completedShifts !== 1 ? 's' : ''}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Expected Income Card */}
+        {Object.keys(stats.expectedIncomeByCurrency).length > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Expected Income</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1">
+                {Object.entries(stats.expectedIncomeByCurrency).map(([currency, amount]) => (
+                  <div key={currency} className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                      {getCurrencySymbol(currency)}{formatCurrency(amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.plannedShifts + stats.inProgressShifts} planned/in-progress shift{(stats.plannedShifts + stats.inProgressShifts) !== 1 ? 's' : ''}
               </p>
             </CardContent>
           </Card>

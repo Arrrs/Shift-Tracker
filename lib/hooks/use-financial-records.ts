@@ -67,10 +67,12 @@ export function useCreateFinancialRecord() {
     mutationFn: createFinancialRecord,
     onSuccess: (result) => {
       if (result.record && !result.error) {
-        // Invalidate financial records queries
+        // Invalidate and refetch financial records queries (immediate update)
         queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
-        // Invalidate income records (affects totals in calendar)
+        queryClient.refetchQueries({ queryKey: financialRecordsKeys.lists() });
+        // Invalidate and refetch income records (affects totals in calendar and dashboard)
         queryClient.invalidateQueries({ queryKey: incomeRecordsKeys.lists() });
+        queryClient.refetchQueries({ queryKey: incomeRecordsKeys.lists() });
         toast.success('Financial record created successfully');
       } else if (result.error) {
         toast.error(result.error);
@@ -103,10 +105,12 @@ export function useUpdateFinancialRecord() {
     }) => updateFinancialRecord(id, data),
     onSuccess: (result) => {
       if (result.record && !result.error) {
-        // Invalidate financial records queries
+        // Invalidate and refetch financial records queries (immediate update)
         queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
-        // Invalidate income records (affects totals in calendar)
+        queryClient.refetchQueries({ queryKey: financialRecordsKeys.lists() });
+        // Invalidate and refetch income records (affects totals in calendar and dashboard)
         queryClient.invalidateQueries({ queryKey: incomeRecordsKeys.lists() });
+        queryClient.refetchQueries({ queryKey: incomeRecordsKeys.lists() });
         toast.success('Financial record updated successfully');
       } else if (result.error) {
         toast.error(result.error);
@@ -133,10 +137,12 @@ export function useDeleteFinancialRecord() {
     mutationFn: (id: string) => deleteFinancialRecord(id),
     onSuccess: (result) => {
       if (!result.error) {
-        // Invalidate financial records queries
+        // Invalidate and refetch financial records queries (immediate update)
         queryClient.invalidateQueries({ queryKey: financialRecordsKeys.lists() });
-        // Invalidate income records (affects totals in calendar)
+        queryClient.refetchQueries({ queryKey: financialRecordsKeys.lists() });
+        // Invalidate and refetch income records (affects totals in calendar and dashboard)
         queryClient.invalidateQueries({ queryKey: incomeRecordsKeys.lists() });
+        queryClient.refetchQueries({ queryKey: incomeRecordsKeys.lists() });
         toast.success('Financial record deleted successfully');
       } else if (result.error) {
         toast.error(result.error);

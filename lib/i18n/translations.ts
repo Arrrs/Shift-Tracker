@@ -1,5 +1,3 @@
-import { deleteTimeEntry } from "@/app/(authenticated)/time-entries/actions";
-
 export const translations = {
   en: {
     // Common
@@ -125,6 +123,8 @@ export const translations = {
     expenses: "Expenses",
     expectedIncomePlanned: "Expected Income (Planned)",
     expectedExpensesPlanned: "Expected Expenses (Planned)",
+    expectedOtherIncome: "Expected Other Income",
+    expectedExpenses: "Expected Expenses",
     earned: "Earned",
     fullDay: "Full day",
     partialDay: "Partial day",
@@ -183,6 +183,7 @@ export const translations = {
     failedToUpdateRecord: "Failed to update record",
     failedToDeleteRecord: "Failed to delete record",
     pleaseEnterValidAmount: "Please enter a valid amount",
+    descriptionRequired: "Description is required",
 
     // Settings
     general: "General",
@@ -447,6 +448,8 @@ export const translations = {
     expenses: "Витрати",
     expectedIncomePlanned: "Очікуваний дохід (Запланований)",
     expectedExpensesPlanned: "Очікувані витрати (Заплановані)",
+    expectedOtherIncome: "Очікуваний інший дохід",
+    expectedExpenses: "Очікувані витрати",
     earned: "Зароблено",
     fullDay: "Повний день",
     partialDay: "Частковий день",
@@ -506,6 +509,7 @@ export const translations = {
     failedToUpdateRecord: "Не вдалося оновити запис",
     failedToDeleteRecord: "Не вдалося видалити запис",
     pleaseEnterValidAmount: "Будь ласка, введіть дійсну суму",
+    descriptionRequired: "Опис обов'язковий",
 
     // Settings
     general: "Загальні",
