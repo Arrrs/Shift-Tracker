@@ -19,6 +19,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { usePrimaryCurrency } from "@/lib/hooks/use-user-settings";
 
 // Code splitting: Lazy load heavy dialogs (~800 lines each)
 // These only load when user actually opens them, reducing initial bundle size
@@ -45,6 +46,7 @@ type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] 
 
 export default function CalendarPage() {
   const { t } = useTranslation();
+  const primaryCurrency = usePrimaryCurrency();
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -148,18 +150,32 @@ export default function CalendarPage() {
     // Calculate shift income by currency from income_records (completed shifts)
     const shiftIncomeByCurrency: Record<string, number> = {};
     incomeRecords.forEach(record => {
-      const currency = record.currency || 'USD';
+      // CRITICAL: Only add to aggregation if currency is set
+      if (!record.currency) {
+        console.warn('WARNING: Income record has no currency, skipping:', record.id);
+        return;
+      }
+      const currency = record.currency;
       shiftIncomeByCurrency[currency] = (shiftIncomeByCurrency[currency] || 0) + record.amount;
     });
 
     // Calculate expected income from planned/in-progress shifts
     const expectedShiftIncomeByCurrency: Record<string, number> = {};
     timeEntries.filter(e => e.status === 'planned' || e.status === 'in_progress').forEach(entry => {
-      if (!entry.jobs) return;
+      let currency: string | null = null;
+      let expectedIncome = 0;
+
+      // Determine currency: custom_currency > job.currency > skip
+      if (entry.custom_currency) {
+        currency = entry.custom_currency;
+      } else if (entry.jobs?.currency) {
+        currency = entry.jobs.currency;
+      } else {
+        // No currency available, skip this entry
+        return;
+      }
 
       const job = entry.jobs;
-      const currency = job.currency || 'USD';
-      let expectedIncome = 0;
 
       // Calculate expected income based on pay type and override
       if (entry.pay_override_type && entry.pay_override_type !== 'default' && entry.pay_override_type !== 'none') {
@@ -173,15 +189,15 @@ export default function CalendarPage() {
         } else if (entry.pay_override_type === 'holiday_multiplier' && entry.holiday_multiplier) {
           // Calculate base amount from job rates, then apply multiplier
           let baseAmount = 0;
-          if (job.pay_type === 'hourly' && job.hourly_rate) {
+          if (job?.pay_type === 'hourly' && job.hourly_rate) {
             baseAmount = job.hourly_rate * (entry.scheduled_hours || 0);
-          } else if (job.pay_type === 'daily' && job.daily_rate) {
+          } else if (job?.pay_type === 'daily' && job.daily_rate) {
             baseAmount = job.daily_rate;
           }
           expectedIncome = baseAmount * entry.holiday_multiplier;
         }
-      } else {
-        // Use job rates
+      } else if (job) {
+        // Use job rates (only if job exists)
         if (job.pay_type === 'hourly' && job.hourly_rate) {
           expectedIncome = job.hourly_rate * (entry.scheduled_hours || 0);
         } else if (job.pay_type === 'daily' && job.daily_rate) {
@@ -189,7 +205,7 @@ export default function CalendarPage() {
         }
       }
 
-      if (expectedIncome > 0) {
+      if (expectedIncome > 0 && currency) {
         expectedShiftIncomeByCurrency[currency] = (expectedShiftIncomeByCurrency[currency] || 0) + expectedIncome;
       }
     });
@@ -201,7 +217,12 @@ export default function CalendarPage() {
     const expectedFinancialExpenseByCurrency: Record<string, number> = {};
 
     financialRecords.forEach(record => {
-      const currency = record.currency || 'USD';
+      // CRITICAL: Only add to aggregation if currency is set
+      if (!record.currency) {
+        console.warn('WARNING: Financial record has no currency, skipping:', record.id);
+        return;
+      }
+      const currency = record.currency;
       const amount = Number(record.amount);
 
       if (record.status === 'completed') {
@@ -342,83 +363,102 @@ export default function CalendarPage() {
       {/* Stats Cards - Mobile Only */}
       <div className="lg:hidden mb-0 flex-shrink-0">
         <div className="grid grid-cols-3 gap-2">
-          {/* Shift Income Card */}
-          <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-lg p-2">
-            <p className="text-[10px] text-muted-foreground mb-0.5">💼 {t("shiftIncome")}</p>
+          {/* Net Income Card */}
+          <div className="bg-gradient-to-br from-gray-500/10 to-slate-500/10 border border-gray-500/20 rounded-lg p-2">
+            <p className="text-[10px] text-muted-foreground mb-0.5">💵 {t("netIncome")}</p>
             {loading ? (
               <div className="flex items-center justify-center py-1">
-                <Loader2 className="h-4 w-4 animate-spin text-emerald-600 dark:text-emerald-400" />
+                <Loader2 className="h-4 w-4 animate-spin text-gray-600 dark:text-gray-400" />
               </div>
-            ) : Object.keys(stats.shiftIncomeByCurrency).length > 1 ? (
+            ) : Object.keys(stats.earningsByCurrency).length > 1 ? (
               <div className="space-y-0.5">
-                {Object.entries(stats.shiftIncomeByCurrency).map(([currency, amount]) => (
-                  <p key={currency} className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                {Object.entries(stats.earningsByCurrency).map(([currency, amount]) => (
+                  <p key={currency} className="text-xs font-bold text-gray-900 dark:text-gray-100">
                     {getCurrencySymbol(currency)} {formatCurrency(amount)}
                   </p>
                 ))}
               </div>
-            ) : Object.keys(stats.shiftIncomeByCurrency).length === 1 ? (
-              <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+            ) : Object.keys(stats.earningsByCurrency).length === 1 ? (
+              <p className="text-base font-bold text-gray-900 dark:text-gray-100">
                 {(() => {
-                  const [currency, amount] = Object.entries(stats.shiftIncomeByCurrency)[0];
+                  const [currency, amount] = Object.entries(stats.earningsByCurrency)[0];
                   return `${getCurrencySymbol(currency)} ${formatCurrency(amount)}`;
                 })()}
               </p>
             ) : (
-              <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                {getCurrencySymbol('USD')} {formatCurrency(0)}
+              <p className="text-base font-bold text-gray-900 dark:text-gray-100">
+                {getCurrencySymbol(primaryCurrency)}{formatCurrency(0)}
               </p>
             )}
           </div>
 
-          {/* Other Income Card */}
-          <div className="bg-gradient-to-br from-green-500/10 to-lime-500/10 border border-green-500/20 rounded-lg p-2">
-            <p className="text-[10px] text-muted-foreground mb-0.5">💵 {t("otherIncome")}</p>
+          {/* Expenses Card */}
+          <div className="bg-gradient-to-br from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-lg p-2">
+            <p className="text-[10px] text-muted-foreground mb-0.5">💸 {t("expenses")}</p>
             {loading ? (
               <div className="flex items-center justify-center py-1">
-                <Loader2 className="h-4 w-4 animate-spin text-green-600 dark:text-green-400" />
+                <Loader2 className="h-4 w-4 animate-spin text-red-600 dark:text-red-400" />
               </div>
-            ) : Object.keys(stats.financialIncomeByCurrency).length > 1 ? (
+            ) : Object.keys(stats.financialExpenseByCurrency).length > 1 ? (
               <div className="space-y-0.5">
-                {Object.entries(stats.financialIncomeByCurrency).map(([currency, amount]) => (
-                  <p key={currency} className="text-xs font-bold text-green-600 dark:text-green-400">
-                    {getCurrencySymbol(currency)} {formatCurrency(amount)}
+                {Object.entries(stats.financialExpenseByCurrency).map(([currency, amount]) => (
+                  <p key={currency} className="text-xs font-bold text-red-600 dark:text-red-400">
+                    -{getCurrencySymbol(currency)} {formatCurrency(amount)}
                   </p>
                 ))}
               </div>
-            ) : Object.keys(stats.financialIncomeByCurrency).length === 1 ? (
-              <p className="text-base font-bold text-green-600 dark:text-green-400">
+            ) : Object.keys(stats.financialExpenseByCurrency).length === 1 ? (
+              <p className="text-base font-bold text-red-600 dark:text-red-400">
                 {(() => {
-                  const [currency, amount] = Object.entries(stats.financialIncomeByCurrency)[0];
-                  return `${getCurrencySymbol(currency)} ${formatCurrency(amount)}`;
+                  const [currency, amount] = Object.entries(stats.financialExpenseByCurrency)[0];
+                  return `-${getCurrencySymbol(currency)} ${formatCurrency(amount)}`;
                 })()}
               </p>
             ) : (
-              <p className="text-base font-bold text-green-600 dark:text-green-400">
-                {getCurrencySymbol('USD')} {formatCurrency(0)}
+              <p className="text-base font-bold text-red-600 dark:text-red-400">
+                -{getCurrencySymbol(primaryCurrency)}{formatCurrency(0)}
               </p>
             )}
           </div>
 
-          {/* Hours Card */}
-          <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg p-2">
-            <p className="text-[10px] text-muted-foreground mb-0.5">⏰ {t("hours")}</p>
+          {/* Expected Income (Total from all sources) Card */}
+          <div className="bg-gradient-to-br from-amber-500/10 to-yellow-500/10 border border-amber-500/20 rounded-lg p-2">
+            <p className="text-[10px] text-muted-foreground mb-0.5">📅 {t("expectedIncome")}</p>
             {loading ? (
               <div className="flex items-center justify-center py-1">
-                <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
+                <Loader2 className="h-4 w-4 animate-spin text-amber-600 dark:text-amber-400" />
               </div>
-            ) : (
-              <>
-                <p className="text-base font-bold text-blue-600 dark:text-blue-400">
-                  {formatHours(stats.totalActualHours)}
+            ) : (() => {
+              // Calculate total expected income by combining shift + financial income
+              const totalExpectedByCurrency: Record<string, number> = {};
+              Object.entries(stats.expectedShiftIncomeByCurrency).forEach(([currency, amount]) => {
+                totalExpectedByCurrency[currency] = (totalExpectedByCurrency[currency] || 0) + amount;
+              });
+              Object.entries(stats.expectedFinancialIncomeByCurrency).forEach(([currency, amount]) => {
+                totalExpectedByCurrency[currency] = (totalExpectedByCurrency[currency] || 0) + amount;
+              });
+
+              return Object.keys(totalExpectedByCurrency).length > 1 ? (
+                <div className="space-y-0.5">
+                  {Object.entries(totalExpectedByCurrency).map(([currency, amount]) => (
+                    <p key={currency} className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                      {getCurrencySymbol(currency)} {formatCurrency(amount)}
+                    </p>
+                  ))}
+                </div>
+              ) : Object.keys(totalExpectedByCurrency).length === 1 ? (
+                <p className="text-base font-bold text-amber-600 dark:text-amber-400">
+                  {(() => {
+                    const [currency, amount] = Object.entries(totalExpectedByCurrency)[0];
+                    return `${getCurrencySymbol(currency)} ${formatCurrency(amount)}`;
+                  })()}
                 </p>
-                {stats.totalScheduledHours > 0 && stats.totalScheduledHours !== stats.totalActualHours && (
-                  <p className="text-[8px] text-muted-foreground">
-                    of {formatHours(stats.totalScheduledHours)}
-                  </p>
-                )}
-              </>
-            )}
+              ) : (
+                <p className="text-base font-bold text-amber-600 dark:text-amber-400">
+                  {getCurrencySymbol(primaryCurrency)}{formatCurrency(0)}
+                </p>
+              );
+            })()}
           </div>
         </div>
 

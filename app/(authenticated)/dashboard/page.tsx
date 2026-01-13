@@ -9,6 +9,7 @@ import { useIncomeRecords } from "@/lib/hooks/use-income-records";
 import { Database } from "@/lib/database.types";
 import { getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time-format";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { usePrimaryCurrency } from "@/lib/hooks/use-user-settings";
 
 type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
@@ -22,6 +23,7 @@ type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] 
 
 export default function DashboardPage() {
   const { t } = useTranslation();
+  const primaryCurrency = usePrimaryCurrency();
   const [currentDate] = useState(new Date());
 
   // Calculate date ranges
@@ -68,7 +70,12 @@ export default function DashboardPage() {
     // Calculate shift income by currency from income_records
     const shiftIncomeByCurrency: Record<string, number> = {};
     incomeRecords.forEach(record => {
-      const currency = record.currency || 'USD';
+      // CRITICAL: Only add to aggregation if currency is set
+      if (!record.currency) {
+        console.warn('WARNING: Income record has no currency, skipping:', record.id);
+        return;
+      }
+      const currency = record.currency;
       shiftIncomeByCurrency[currency] = (shiftIncomeByCurrency[currency] || 0) + record.amount;
     });
 
@@ -84,7 +91,12 @@ export default function DashboardPage() {
       const job = entry.jobs;
       if (!job) return;
 
-      const currency = job.currency || 'USD';
+      // CRITICAL: Must have currency to add to aggregation
+      if (!job.currency) {
+        console.warn('WARNING: Job has no currency for expected income calc, skipping entry:', entry.id);
+        return;
+      }
+      const currency = job.currency;
       let estimatedAmount = 0;
 
       // Calculate expected income based on rate type
@@ -115,7 +127,12 @@ export default function DashboardPage() {
     const financialExpenseByCurrency: Record<string, number> = {};
     financials.forEach(record => {
       if (record.status === 'completed') {
-        const currency = record.currency || 'USD';
+        // CRITICAL: Only add to aggregation if currency is set
+        if (!record.currency) {
+          console.warn('WARNING: Financial record has no currency, skipping:', record.id);
+          return;
+        }
+        const currency = record.currency;
         if (record.type === 'income') {
           financialIncomeByCurrency[currency] = (financialIncomeByCurrency[currency] || 0) + Number(record.amount);
         } else if (record.type === 'expense') {
@@ -375,7 +392,7 @@ export default function DashboardPage() {
           <CardContent>
             {Object.keys(stats.earningsByCurrency).length === 0 ? (
               <div className="text-2xl font-bold">
-                {getCurrencySymbol('USD')}0.00
+                {getCurrencySymbol(primaryCurrency)}{formatCurrency(0)}
               </div>
             ) : (
               <div className="space-y-1">

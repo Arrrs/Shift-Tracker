@@ -26,6 +26,7 @@ import { Plus } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { getCurrencyOptions } from "@/lib/utils/currency";
 import { DialogErrorBoundary } from "@/components/error-boundary";
+import { usePrimaryCurrency } from "@/lib/hooks/use-user-settings";
 
 const CURRENCIES = getCurrencyOptions();
 
@@ -35,6 +36,7 @@ interface AddJobDialogProps {
 
 export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
   const { t } = useTranslation();
+  const primaryCurrency = usePrimaryCurrency();
   const [open, setOpen] = useState(false);
   const createJob = useCreateJob();
 
@@ -44,7 +46,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
     hourly_rate: "",
     daily_rate: "",
     monthly_salary: "",
-    currency: "USD",
+    currency: primaryCurrency,
     color: "#3b82f6",
     description: "",
     pto_days_per_year: "",
@@ -84,14 +86,14 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
     // Mutation hook handles toasts, we just handle success/error flow
     if (result.success && !result.error) {
       setOpen(false);
-      // Reset form
+      // Reset form with user's primary currency
       setFormData({
         name: "",
         pay_type: "hourly",
         hourly_rate: "",
         daily_rate: "",
         monthly_salary: "",
-        currency: "USD",
+        currency: primaryCurrency,
         color: "#3b82f6",
         description: "",
         pto_days_per_year: "",
@@ -103,8 +105,29 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
     }
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    // Reset form when opening dialog to ensure primary currency is current
+    if (newOpen) {
+      setFormData({
+        name: "",
+        pay_type: "hourly",
+        hourly_rate: "",
+        daily_rate: "",
+        monthly_salary: "",
+        currency: primaryCurrency,
+        color: "#3b82f6",
+        description: "",
+        pto_days_per_year: "",
+        sick_days_per_year: "",
+        personal_days_per_year: "",
+        is_active: true,
+      });
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <Plus />

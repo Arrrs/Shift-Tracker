@@ -126,7 +126,12 @@ export function DayShiftsDrawer({
       currency: record.currency,
       date: record.date,
     });
-    const currency = record.currency || 'USD';
+    // CRITICAL: Only add to aggregation if currency is set
+    if (!record.currency) {
+      console.warn('  WARNING: Income record has no currency, skipping:', record.id);
+      return;
+    }
+    const currency = record.currency;
     shiftIncomeByCurrency[currency] = addCurrency(shiftIncomeByCurrency[currency] || 0, record.amount);
   });
   console.log('DEBUG - Shift income by currency:', shiftIncomeByCurrency);
@@ -138,7 +143,12 @@ export function DayShiftsDrawer({
   const plannedFinancialExpenseByCurrency: Record<string, number> = {};
 
   financialRecords.forEach((record) => {
-    const currency = record.currency || 'USD';
+    // CRITICAL: Only add to aggregation if currency is set
+    if (!record.currency) {
+      console.warn('WARNING: Financial record has no currency, skipping:', record.id);
+      return;
+    }
+    const currency = record.currency;
     const isCompleted = record.status === 'completed';
     const isPlanned = record.status === 'planned';
 
@@ -161,7 +171,12 @@ export function DayShiftsDrawer({
 
   // First, add all completed shift income from income records
   incomeRecords.forEach((record) => {
-    const currency = record.currency || 'USD';
+    // CRITICAL: Only add to aggregation if currency is set
+    if (!record.currency) {
+      console.warn('WARNING: Income record has no currency for expected calc, skipping:', record.id);
+      return;
+    }
+    const currency = record.currency;
     expectedIncomeByCurrency[currency] = addCurrency(expectedIncomeByCurrency[currency] || 0, record.amount);
   });
 
@@ -179,7 +194,13 @@ export function DayShiftsDrawer({
         entry.status !== 'completed' &&
         entry.status !== 'cancelled') {
 
-      const currency = entry.custom_currency || entry.jobs?.currency || 'USD';
+      // CRITICAL: Must have currency to add to aggregation
+      const currency = entry.custom_currency || entry.jobs?.currency;
+      if (!currency) {
+        console.warn('WARNING: Planned shift has no currency (no job and no custom currency), skipping expected income calc:', entry.id);
+        return;
+      }
+
       let estimatedAmount = 0;
       const hours = entry.actual_hours || entry.scheduled_hours || 0;
 

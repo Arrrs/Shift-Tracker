@@ -5,6 +5,7 @@ import { StatCard } from "./stat-card";
 import { getCurrencySymbol, formatCurrency, formatHours } from "@/lib/utils/time-format";
 import { useFinancialRecords } from "@/lib/hooks/use-financial-records";
 import { useIncomeRecords } from "@/lib/hooks/use-income-records";
+import { usePrimaryCurrency } from "@/lib/hooks/use-user-settings";
 
 interface IncomeStatsCardsProps {
   currentDate: Date;
@@ -29,6 +30,8 @@ export function IncomeStatsCards({
   fixedIncomeShiftCounts,
   loading,
 }: IncomeStatsCardsProps) {
+  const primaryCurrency = usePrimaryCurrency();
+
   // Calculate date range for current month
   const { startDate, endDate } = useMemo(() => {
     const year = currentDate.getFullYear();
@@ -54,7 +57,12 @@ export function IncomeStatsCards({
 
     financialRecords.forEach(record => {
       if (record.status === 'completed') {
-        const currency = record.currency || 'USD';
+        // CRITICAL: Only add to aggregation if currency is set
+        if (!record.currency) {
+          console.warn('WARNING: Financial record has no currency, skipping:', record.id);
+          return;
+        }
+        const currency = record.currency;
         const amount = Number(record.amount);
 
         if (record.type === 'income') {
@@ -115,15 +123,25 @@ export function IncomeStatsCards({
     netIncomeByCurrency[currency] = earnings + otherIncome - expenses;
   });
 
+  // Calculate Total Expected Income (combining shift + financial expected income)
+  const totalExpectedIncomeByCurrency: Record<string, number> = {};
+  Object.entries(expectedShiftIncomeByCurrency).forEach(([currency, amount]) => {
+    totalExpectedIncomeByCurrency[currency] = (totalExpectedIncomeByCurrency[currency] || 0) + amount;
+  });
+  Object.entries(expectedFinancialIncomeByCurrency).forEach(([currency, amount]) => {
+    totalExpectedIncomeByCurrency[currency] = (totalExpectedIncomeByCurrency[currency] || 0) + amount;
+  });
+
   return (
     <div className="grid gap-2.5 lg:grid-cols-2">
-      {/* Net Income Card - MOVED TO TOP */}
+      {/* Row 1: Net Income | Total Expected Income */}
+      {/* Net Income Card */}
       <div className="bg-gradient-to-br from-gray-500/10 to-slate-500/10 border border-gray-500/20 rounded-lg p-3">
         <p className="text-xs text-muted-foreground mb-1.5">💵 Net Income</p>
         {loading || loadingFinancials ? (
           <div className="text-xl font-bold text-gray-600 dark:text-gray-400">...</div>
         ) : Object.keys(netIncomeByCurrency).length === 0 ? (
-          <div className="text-xl font-bold text-gray-900 dark:text-gray-100">$0</div>
+          <div className="text-xl font-bold text-gray-900 dark:text-gray-100">{getCurrencySymbol(primaryCurrency)}{formatCurrency(0)}</div>
         ) : Object.keys(netIncomeByCurrency).length === 1 ? (
           Object.entries(netIncomeByCurrency).map(([currency, amount]) => (
             <div key={currency} className="text-xl font-bold text-gray-900 dark:text-gray-100">
@@ -141,6 +159,69 @@ export function IncomeStatsCards({
         )}
       </div>
 
+      {/* Total Expected Income Card (combines all expected income sources) */}
+      {Object.keys(totalExpectedIncomeByCurrency).length > 0 && (
+        <StatCard
+          cardId="total-expected-income"
+          title="Total Expected Income"
+          icon="📈"
+          value={
+            loading ? (
+              "..."
+            ) : Object.keys(totalExpectedIncomeByCurrency).length === 1 ? (
+              Object.entries(totalExpectedIncomeByCurrency).map(([currency, amount]) => (
+                `${getCurrencySymbol(currency)}${formatCurrency(amount)}`
+              ))[0]
+            ) : (
+              <div className="space-y-0.5">
+                {Object.entries(totalExpectedIncomeByCurrency).map(([currency, amount]) => (
+                  <div key={currency} className="text-xl font-bold">
+                    {getCurrencySymbol(currency)}{formatCurrency(amount)}
+                  </div>
+                ))}
+              </div>
+            )
+          }
+          loading={loading}
+          gradient="bg-gradient-to-br from-violet-500/10 to-purple-500/10"
+          border="border border-violet-500/20"
+          textColor="text-violet-600 dark:text-violet-400"
+          expandedContent={
+            Object.keys(totalExpectedIncomeByCurrency).length > 0 ? (
+              <div className="space-y-2">
+                {Object.entries(expectedShiftIncomeByCurrency).length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-xs font-semibold text-muted-foreground">From Shifts:</div>
+                    {Object.entries(expectedShiftIncomeByCurrency).map(([currency, amount]) => (
+                      <div key={`shift-${currency}`} className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">💼 {currency}:</span>
+                        <span className="font-medium">
+                          {getCurrencySymbol(currency)}{formatCurrency(amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {Object.entries(expectedFinancialIncomeByCurrency).length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-xs font-semibold text-muted-foreground">From Other Income:</div>
+                    {Object.entries(expectedFinancialIncomeByCurrency).map(([currency, amount]) => (
+                      <div key={`financial-${currency}`} className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">💰 {currency}:</span>
+                        <span className="font-medium">
+                          {getCurrencySymbol(currency)}{formatCurrency(amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : undefined
+          }
+        />
+      )}
+
+      {/* Row 2: Expenses | Expected Expenses */}
       {/* Expenses Card */}
       <StatCard
         cardId="expenses"
@@ -150,7 +231,7 @@ export function IncomeStatsCards({
           loadingFinancials ? (
             "..."
           ) : Object.keys(expensesByCurrency).length === 0 ? (
-            "$0"
+            `${getCurrencySymbol(primaryCurrency)}${formatCurrency(0)}`
           ) : Object.keys(expensesByCurrency).length === 1 ? (
             Object.entries(expensesByCurrency).map(([currency, amount]) => (
               `${getCurrencySymbol(currency)}${formatCurrency(amount)}`
@@ -190,6 +271,37 @@ export function IncomeStatsCards({
         }
       />
 
+      {/* Expected Financial Expenses Card (from planned financial records) */}
+      {Object.keys(expectedFinancialExpenseByCurrency).length > 0 && (
+        <StatCard
+          cardId="expected-financial-expenses"
+          title="Expected Expenses"
+          icon="📉"
+          value={
+            loading ? (
+              "..."
+            ) : Object.keys(expectedFinancialExpenseByCurrency).length === 1 ? (
+              Object.entries(expectedFinancialExpenseByCurrency).map(([currency, amount]) => (
+                `${getCurrencySymbol(currency)}${formatCurrency(amount)}`
+              ))[0]
+            ) : (
+              <div className="space-y-0.5">
+                {Object.entries(expectedFinancialExpenseByCurrency).map(([currency, amount]) => (
+                  <div key={currency} className="text-xl font-bold">
+                    {getCurrencySymbol(currency)}{formatCurrency(amount)}
+                  </div>
+                ))}
+              </div>
+            )
+          }
+          loading={loading}
+          gradient="bg-gradient-to-br from-orange-500/10 to-amber-500/10"
+          border="border border-orange-500/20"
+          textColor="text-orange-600 dark:text-orange-400"
+        />
+      )}
+
+      {/* Row 3: Total Earnings | Expected Shift Income */}
       {/* Total Earnings Card (combines shift income + fixed income) */}
       <StatCard
         cardId="total-earnings"
@@ -199,7 +311,7 @@ export function IncomeStatsCards({
           loading || loadingFinancials ? (
             "..."
           ) : Object.keys(totalEarningsByCurrency).length === 0 ? (
-            "$0"
+            `${getCurrencySymbol(primaryCurrency)}${formatCurrency(0)}`
           ) : Object.keys(totalEarningsByCurrency).length === 1 ? (
             Object.entries(totalEarningsByCurrency).map(([currency, amount]) => (
               `${getCurrencySymbol(currency)}${formatCurrency(amount)}`
@@ -239,6 +351,37 @@ export function IncomeStatsCards({
         }
       />
 
+      {/* Expected Shift Income Card (from planned/in-progress shifts) */}
+      {Object.keys(expectedShiftIncomeByCurrency).length > 0 && (
+        <StatCard
+          cardId="expected-shift-income"
+          title="Expected Shift Income"
+          icon="📅"
+          value={
+            loading ? (
+              "..."
+            ) : Object.keys(expectedShiftIncomeByCurrency).length === 1 ? (
+              Object.entries(expectedShiftIncomeByCurrency).map(([currency, amount]) => (
+                `${getCurrencySymbol(currency)}${formatCurrency(amount)}`
+              ))[0]
+            ) : (
+              <div className="space-y-0.5">
+                {Object.entries(expectedShiftIncomeByCurrency).map(([currency, amount]) => (
+                  <div key={currency} className="text-xl font-bold">
+                    {getCurrencySymbol(currency)}{formatCurrency(amount)}
+                  </div>
+                ))}
+              </div>
+            )
+          }
+          loading={loading}
+          gradient="bg-gradient-to-br from-amber-500/10 to-yellow-500/10"
+          border="border border-amber-500/20"
+          textColor="text-amber-600 dark:text-amber-400"
+        />
+      )}
+
+      {/* Row 4: Other Income | Expected Other Income */}
       {/* Other Income Card */}
       <StatCard
         cardId="other-income"
@@ -248,7 +391,7 @@ export function IncomeStatsCards({
           loadingFinancials ? (
             "..."
           ) : Object.keys(otherIncomeByCurrency).length === 0 ? (
-            "$0"
+            `${getCurrencySymbol(primaryCurrency)}${formatCurrency(0)}`
           ) : Object.keys(otherIncomeByCurrency).length === 1 ? (
             Object.entries(otherIncomeByCurrency).map(([currency, amount]) => (
               `${getCurrencySymbol(currency)}${formatCurrency(amount)}`
@@ -288,37 +431,7 @@ export function IncomeStatsCards({
         }
       />
 
-      {/* Expected Shift Income Card (from planned/in-progress shifts) */}
-      {Object.keys(expectedShiftIncomeByCurrency).length > 0 && (
-        <StatCard
-          cardId="expected-shift-income"
-          title="Expected Shift Income"
-          icon="📅"
-          value={
-            loading ? (
-              "..."
-            ) : Object.keys(expectedShiftIncomeByCurrency).length === 1 ? (
-              Object.entries(expectedShiftIncomeByCurrency).map(([currency, amount]) => (
-                `${getCurrencySymbol(currency)}${formatCurrency(amount)}`
-              ))[0]
-            ) : (
-              <div className="space-y-0.5">
-                {Object.entries(expectedShiftIncomeByCurrency).map(([currency, amount]) => (
-                  <div key={currency} className="text-xl font-bold">
-                    {getCurrencySymbol(currency)}{formatCurrency(amount)}
-                  </div>
-                ))}
-              </div>
-            )
-          }
-          loading={loading}
-          gradient="bg-gradient-to-br from-amber-500/10 to-yellow-500/10"
-          border="border border-amber-500/20"
-          textColor="text-amber-600 dark:text-amber-400"
-        />
-      )}
-
-      {/* Expected Financial Income Card (from planned financial records) */}
+      {/* Expected Other Income Card (from planned financial records) */}
       {Object.keys(expectedFinancialIncomeByCurrency).length > 0 && (
         <StatCard
           cardId="expected-financial-income"
@@ -345,36 +458,6 @@ export function IncomeStatsCards({
           gradient="bg-gradient-to-br from-emerald-500/10 to-teal-500/10"
           border="border border-emerald-500/20"
           textColor="text-emerald-600 dark:text-emerald-400"
-        />
-      )}
-
-      {/* Expected Financial Expenses Card (from planned financial records) */}
-      {Object.keys(expectedFinancialExpenseByCurrency).length > 0 && (
-        <StatCard
-          cardId="expected-financial-expenses"
-          title="Expected Expenses"
-          icon="📉"
-          value={
-            loading ? (
-              "..."
-            ) : Object.keys(expectedFinancialExpenseByCurrency).length === 1 ? (
-              Object.entries(expectedFinancialExpenseByCurrency).map(([currency, amount]) => (
-                `${getCurrencySymbol(currency)}${formatCurrency(amount)}`
-              ))[0]
-            ) : (
-              <div className="space-y-0.5">
-                {Object.entries(expectedFinancialExpenseByCurrency).map(([currency, amount]) => (
-                  <div key={currency} className="text-xl font-bold">
-                    {getCurrencySymbol(currency)}{formatCurrency(amount)}
-                  </div>
-                ))}
-              </div>
-            )
-          }
-          loading={loading}
-          gradient="bg-gradient-to-br from-orange-500/10 to-amber-500/10"
-          border="border border-orange-500/20"
-          textColor="text-orange-600 dark:text-orange-400"
         />
       )}
     </div>

@@ -14,6 +14,7 @@ import { useShiftTemplates } from "@/lib/hooks/use-shift-templates";
 import { Database } from "@/lib/database.types";
 import { DeleteTimeEntryButton } from "./delete-time-entry-button";
 import { useActiveJobs } from "@/lib/hooks/use-jobs";
+import { usePrimaryCurrency } from "@/lib/hooks/use-user-settings";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
@@ -28,6 +29,7 @@ interface EditTimeEntryDialogProps {
 
 export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: EditTimeEntryDialogProps) {
   const { t } = useTranslation();
+  const primaryCurrency = usePrimaryCurrency();
   const updateMutation = useUpdateTimeEntry();
 
   // Form state
@@ -51,7 +53,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
   const [holidayMultiplier, setHolidayMultiplier] = useState<string>("1.5");
   const [customMultiplierValue, setCustomMultiplierValue] = useState<string>("");
   const [isHoliday, setIsHoliday] = useState(false);
-  const [customCurrency, setCustomCurrency] = useState<string>("USD");
+  const [customCurrency, setCustomCurrency] = useState<string>(primaryCurrency);
 
   // Day-off specific
   const [dayOffType, setDayOffType] = useState(entry?.day_off_type || "pto");

@@ -15,6 +15,7 @@ import { useActiveJobs } from "@/lib/hooks/use-jobs";
 import { useFinancialCategories } from "@/lib/hooks/use-financial-categories";
 import { toast } from "sonner";
 import { parseCurrency } from "@/lib/utils/currency";
+import { usePrimaryCurrency } from "@/lib/hooks/use-user-settings";
 
 interface AddFinancialRecordDialogProps {
   open: boolean;
@@ -32,6 +33,7 @@ export function AddFinancialRecordDialog({
   onSuccess,
 }: AddFinancialRecordDialogProps) {
   const { t } = useTranslation();
+  const primaryCurrency = usePrimaryCurrency();
   const createMutation = useCreateFinancialRecord();
   const [type, setType] = useState<"income" | "expense">(defaultType);
   const { data: categories = [] } = useFinancialCategories(type);
@@ -39,7 +41,7 @@ export function AddFinancialRecordDialog({
 
   const [formData, setFormData] = useState({
     amount: "",
-    currency: "USD",
+    currency: primaryCurrency,
     date: selectedDate ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}` : "",
     category_id: "",
     description: "",
@@ -108,10 +110,10 @@ export function AddFinancialRecordDialog({
       if (!result.error) {
         onOpenChange(false);
         onSuccess?.();
-        // Reset form
+        // Reset form with user's primary currency
         setFormData({
           amount: "",
-          currency: "USD",
+          currency: primaryCurrency,
           date: selectedDate ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}` : "",
           category_id: "",
           description: "",

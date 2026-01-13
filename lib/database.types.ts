@@ -299,17 +299,71 @@ export type Database = {
           {
             foreignKeyName: "income_records_time_entry_id_fkey"
             columns: ["time_entry_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "time_entries"
             referencedColumns: ["id"]
           },
         ]
       }
+      income_records_cleanup_backup_20260113: {
+        Row: {
+          amount: number | null
+          backed_up_at: string | null
+          calculation_basis: Json | null
+          created_at: string | null
+          currency: string | null
+          date: string | null
+          id: string | null
+          is_manual: boolean | null
+          job_id: string | null
+          notes: string | null
+          source_type: string | null
+          time_entry_id: string | null
+          time_entry_status: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          backed_up_at?: string | null
+          calculation_basis?: Json | null
+          created_at?: string | null
+          currency?: string | null
+          date?: string | null
+          id?: string | null
+          is_manual?: boolean | null
+          job_id?: string | null
+          notes?: string | null
+          source_type?: string | null
+          time_entry_id?: string | null
+          time_entry_status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          backed_up_at?: string | null
+          calculation_basis?: Json | null
+          created_at?: string | null
+          currency?: string | null
+          date?: string | null
+          id?: string | null
+          is_manual?: boolean | null
+          job_id?: string | null
+          notes?: string | null
+          source_type?: string | null
+          time_entry_id?: string | null
+          time_entry_status?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       jobs: {
         Row: {
           color: string | null
           created_at: string | null
-          currency: string | null
+          currency: string
           currency_symbol: string | null
           daily_rate: number | null
           description: string | null
@@ -329,7 +383,7 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string | null
-          currency?: string | null
+          currency?: string
           currency_symbol?: string | null
           daily_rate?: number | null
           description?: string | null
@@ -349,7 +403,7 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string | null
-          currency?: string | null
+          currency?: string
           currency_symbol?: string | null
           daily_rate?: number | null
           description?: string | null
@@ -687,7 +741,7 @@ export type Database = {
           id: string
           language: string | null
           notification_prefs: Json | null
-          primary_currency: string | null
+          primary_currency: string
           show_currency_breakdown: boolean | null
           theme: string | null
           updated_at: string | null
@@ -703,7 +757,7 @@ export type Database = {
           id?: string
           language?: string | null
           notification_prefs?: Json | null
-          primary_currency?: string | null
+          primary_currency?: string
           show_currency_breakdown?: boolean | null
           theme?: string | null
           updated_at?: string | null
@@ -719,7 +773,7 @@ export type Database = {
           id?: string
           language?: string | null
           notification_prefs?: Json | null
-          primary_currency?: string | null
+          primary_currency?: string
           show_currency_breakdown?: boolean | null
           theme?: string | null
           updated_at?: string | null

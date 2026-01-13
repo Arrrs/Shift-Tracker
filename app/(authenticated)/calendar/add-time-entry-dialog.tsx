@@ -13,6 +13,7 @@ import { useCreateTimeEntry } from "@/lib/hooks/use-time-entries";
 import { useShiftTemplates } from "@/lib/hooks/use-shift-templates";
 import { Database } from "@/lib/database.types";
 import { useActiveJobs } from "@/lib/hooks/use-jobs";
+import { usePrimaryCurrency } from "@/lib/hooks/use-user-settings";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
@@ -26,6 +27,7 @@ interface AddTimeEntryDialogProps {
 
 export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess }: AddTimeEntryDialogProps) {
   const { t } = useTranslation();
+  const primaryCurrency = usePrimaryCurrency();
   const createMutation = useCreateTimeEntry();
 
   // Form state
@@ -49,7 +51,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
   const [holidayMultiplier, setHolidayMultiplier] = useState<string>("1.5");
   const [customMultiplierValue, setCustomMultiplierValue] = useState<string>("");
   const [isHoliday, setIsHoliday] = useState(false);
-  const [customCurrency, setCustomCurrency] = useState<string>("USD");
+  const [customCurrency, setCustomCurrency] = useState<string>(primaryCurrency);
 
   // Day-off specific
   const [dayOffType, setDayOffType] = useState("pto");
