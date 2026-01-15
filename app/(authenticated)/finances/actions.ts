@@ -310,7 +310,12 @@ export async function getMonthlyFinancialSummary(year: number, month: number) {
   }> = {}
 
   records?.forEach((record) => {
-    const currency = record.currency || 'USD'
+    // Skip records without currency to avoid incorrect aggregation
+    if (!record.currency) {
+      console.warn('WARNING: Financial record has no currency, skipping:', record.id)
+      return
+    }
+    const currency = record.currency
     const category = Array.isArray(record.financial_categories)
       ? record.financial_categories[0]
       : record.financial_categories

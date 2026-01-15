@@ -201,7 +201,7 @@ export const translations = {
     chooseYourPreferredTheme: "Choose your preferred theme",
     selectYourPreferredLanguage: "Select your preferred language",
     customizeYourPreferences: "Customize your preferences",
-    currency: "Currency",
+    // currency: "Currency",
     primaryCurrency: "Primary Currency",
     selectPrimaryCurrency: "Select your primary currency",
     primaryCurrencyDescription: "This currency will be used as default for new jobs, shifts, and financial records.",
@@ -380,7 +380,7 @@ export const translations = {
 
     // Navigation
     navigation: "Навігація",
-    dashboard: "Панель управління",
+    dashboard: "Статистика",
     calendar: "Календар",
     finances: "Фінанси",
     settings: "Налаштування",
@@ -537,7 +537,7 @@ export const translations = {
     chooseYourPreferredTheme: "Виберіть бажану тему",
     selectYourPreferredLanguage: "Виберіть бажану мову",
     customizeYourPreferences: "Налаштуйте свої переваги",
-    currency: "Валюта",
+    // currency: "Валюта",
     primaryCurrency: "Основна валюта",
     selectPrimaryCurrency: "Виберіть свою основну валюту",
     primaryCurrencyDescription: "Ця валюта буде використовуватися за замовчуванням для нових робіт, змін та фінансових записів.",

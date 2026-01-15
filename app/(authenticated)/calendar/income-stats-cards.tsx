@@ -49,11 +49,9 @@ export function IncomeStatsCards({
   const { data: financialRecords = [], isLoading: loadingFinancials } = useFinancialRecords(startDate, endDate);
 
   // Calculate financial records income/expense by currency (completed only) using useMemo
-  const { otherIncomeByCurrency, expensesByCurrency, incomeByCategory, expenseByCategory } = useMemo(() => {
+  const { otherIncomeByCurrency, expensesByCurrency } = useMemo(() => {
     const otherIncomeByCurrency: Record<string, number> = {};
     const expensesByCurrency: Record<string, number> = {};
-    const incomeByCategory: Record<string, Record<string, { amount: number; icon: string }>> = {};
-    const expenseByCategory: Record<string, Record<string, { amount: number; icon: string }>> = {};
 
     financialRecords.forEach(record => {
       if (record.status === 'completed') {
@@ -67,37 +65,13 @@ export function IncomeStatsCards({
 
         if (record.type === 'income') {
           otherIncomeByCurrency[currency] = (otherIncomeByCurrency[currency] || 0) + amount;
-
-          // Group by category
-          if (record.financial_categories) {
-            if (!incomeByCategory[currency]) incomeByCategory[currency] = {};
-            const catName = record.financial_categories.name;
-            const catIcon = record.financial_categories.icon || '💰';
-
-            if (!incomeByCategory[currency][catName]) {
-              incomeByCategory[currency][catName] = { amount: 0, icon: catIcon };
-            }
-            incomeByCategory[currency][catName].amount += amount;
-          }
         } else if (record.type === 'expense') {
           expensesByCurrency[currency] = (expensesByCurrency[currency] || 0) + amount;
-
-          // Group by category
-          if (record.financial_categories) {
-            if (!expenseByCategory[currency]) expenseByCategory[currency] = {};
-            const catName = record.financial_categories.name;
-            const catIcon = record.financial_categories.icon || '💸';
-
-            if (!expenseByCategory[currency][catName]) {
-              expenseByCategory[currency][catName] = { amount: 0, icon: catIcon };
-            }
-            expenseByCategory[currency][catName].amount += amount;
-          }
         }
       }
     });
 
-    return { otherIncomeByCurrency, expensesByCurrency, incomeByCategory, expenseByCategory };
+    return { otherIncomeByCurrency, expensesByCurrency };
   }, [financialRecords]);
 
   // Calculate totals by currency (never mix currencies)
@@ -186,38 +160,6 @@ export function IncomeStatsCards({
           gradient="bg-gradient-to-br from-violet-500/10 to-purple-500/10"
           border="border border-violet-500/20"
           textColor="text-violet-600 dark:text-violet-400"
-          expandedContent={
-            Object.keys(totalExpectedIncomeByCurrency).length > 0 ? (
-              <div className="space-y-2">
-                {Object.entries(expectedShiftIncomeByCurrency).length > 0 && (
-                  <div className="space-y-1">
-                    <div className="text-xs font-semibold text-muted-foreground">From Shifts:</div>
-                    {Object.entries(expectedShiftIncomeByCurrency).map(([currency, amount]) => (
-                      <div key={`shift-${currency}`} className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">💼 {currency}:</span>
-                        <span className="font-medium">
-                          {getCurrencySymbol(currency)}{formatCurrency(amount)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {Object.entries(expectedFinancialIncomeByCurrency).length > 0 && (
-                  <div className="space-y-1">
-                    <div className="text-xs font-semibold text-muted-foreground">From Other Income:</div>
-                    {Object.entries(expectedFinancialIncomeByCurrency).map(([currency, amount]) => (
-                      <div key={`financial-${currency}`} className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">💰 {currency}:</span>
-                        <span className="font-medium">
-                          {getCurrencySymbol(currency)}{formatCurrency(amount)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : undefined
-          }
         />
       )}
 
@@ -250,25 +192,6 @@ export function IncomeStatsCards({
         gradient="bg-gradient-to-br from-red-500/10 to-orange-500/10"
         border="border border-red-500/20"
         textColor="text-red-600 dark:text-red-400"
-        expandedContent={
-          Object.values(expensesByCurrency).some(v => v > 0) ? (
-            <div className="space-y-2">
-              {Object.entries(expenseByCategory).map(([currency, categories]) =>
-                Object.entries(categories).map(([catName, catData]) => (
-                  <div key={`${currency}-${catName}`} className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">
-                      {catData.icon} {catName}:
-                    </span>
-                    <span className="font-medium">
-                      {getCurrencySymbol(currency)}
-                      {formatCurrency(catData.amount)}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          ) : undefined
-        }
       />
 
       {/* Expected Financial Expenses Card (from planned financial records) */}
@@ -330,25 +253,6 @@ export function IncomeStatsCards({
         gradient="bg-gradient-to-br from-blue-500/10 to-cyan-500/10"
         border="border border-blue-500/20"
         textColor="text-blue-600 dark:text-blue-400"
-        expandedContent={
-          shiftIncomeByJob.length > 0 ? (
-            <div className="space-y-2">
-              <div className="text-xs font-semibold text-muted-foreground">Completed Shifts</div>
-              {shiftIncomeByJob.map((job) => (
-                <div key={job.jobId} className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">{job.jobName}:</span>
-                  <span className="font-medium">
-                    {formatCurrency(job.amount)}
-                  </span>
-                </div>
-              ))}
-              <div className="text-[10px] text-muted-foreground">
-                {shiftIncomeByJob.reduce((sum, j) => sum + j.shifts, 0)} shifts,{" "}
-                {formatHours(shiftIncomeByJob.reduce((sum, j) => sum + j.hours, 0))}
-              </div>
-            </div>
-          ) : undefined
-        }
       />
 
       {/* Expected Shift Income Card (from planned/in-progress shifts) */}
@@ -410,25 +314,6 @@ export function IncomeStatsCards({
         gradient="bg-gradient-to-br from-green-500/10 to-emerald-500/10"
         border="border border-green-500/20"
         textColor="text-green-600 dark:text-green-400"
-        expandedContent={
-          Object.values(otherIncomeByCurrency).some(v => v > 0) ? (
-            <div className="space-y-2">
-              {Object.entries(incomeByCategory).map(([currency, categories]) =>
-                Object.entries(categories).map(([catName, catData]) => (
-                  <div key={`${currency}-${catName}`} className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">
-                      {catData.icon} {catName}:
-                    </span>
-                    <span className="font-medium">
-                      {getCurrencySymbol(currency)}
-                      {formatCurrency(catData.amount)}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          ) : undefined
-        }
       />
 
       {/* Expected Other Income Card (from planned financial records) */}
