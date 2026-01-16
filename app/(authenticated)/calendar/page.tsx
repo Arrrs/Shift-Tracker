@@ -267,9 +267,6 @@ export default function CalendarPage() {
       financialIncomeByCurrency,
       financialExpenseByCurrency,
       earningsByCurrency, // Net income (shift + other - expenses)
-      shiftIncomeByJob: [], // TODO: Calculate if needed
-      fixedIncomeJobIds: [],
-      fixedIncomeShiftCounts: {},
     };
   }, [entries, incomeRecords, financialRecords]);
 
@@ -524,14 +521,12 @@ export default function CalendarPage() {
         <div className="hidden lg:flex lg:flex-col gap-3 overflow-y-auto min-h-0">
           {currentDate && (
             <IncomeStatsCards
-              currentDate={currentDate}
               shiftIncomeByCurrency={stats.shiftIncomeByCurrency}
               expectedShiftIncomeByCurrency={stats.expectedShiftIncomeByCurrency}
+              financialIncomeByCurrency={stats.financialIncomeByCurrency}
+              financialExpenseByCurrency={stats.financialExpenseByCurrency}
               expectedFinancialIncomeByCurrency={stats.expectedFinancialIncomeByCurrency}
               expectedFinancialExpenseByCurrency={stats.expectedFinancialExpenseByCurrency}
-              shiftIncomeByJob={stats.shiftIncomeByJob}
-              fixedIncomeJobIds={stats.fixedIncomeJobIds}
-              fixedIncomeShiftCounts={stats.fixedIncomeShiftCounts}
               loading={loading}
             />
           )}

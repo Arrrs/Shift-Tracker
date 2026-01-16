@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2, Trash2 } from "lucide-react";
 import { useUpdateFinancialRecord, useDeleteFinancialRecord } from "@/lib/hooks/use-financial-records";
@@ -214,31 +215,11 @@ export function EditFinancialRecordDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="currency-edit">{t("currency")}</Label>
-              <Select
+              <CurrencySelect
+                id="currency-edit"
                 value={formData.currency}
                 onValueChange={(value) => setFormData({ ...formData, currency: value })}
-              >
-                <SelectTrigger id="currency-edit">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USD">$ USD</SelectItem>
-                  <SelectItem value="EUR">€ EUR</SelectItem>
-                  <SelectItem value="GBP">£ GBP</SelectItem>
-                  <SelectItem value="JPY">¥ JPY</SelectItem>
-                  <SelectItem value="CAD">$ CAD</SelectItem>
-                  <SelectItem value="AUD">$ AUD</SelectItem>
-                  <SelectItem value="CHF">CHF</SelectItem>
-                  <SelectItem value="CNY">¥ CNY</SelectItem>
-                  <SelectItem value="INR">₹ INR</SelectItem>
-                  <SelectItem value="MXN">$ MXN</SelectItem>
-                  <SelectItem value="BRL">R$ BRL</SelectItem>
-                  <SelectItem value="ZAR">R ZAR</SelectItem>
-                  <SelectItem value="RUB">₽ RUB</SelectItem>
-                  <SelectItem value="KRW">₩ KRW</SelectItem>
-                  <SelectItem value="SGD">$ SGD</SelectItem>
-                </SelectContent>
-              </Select>
+              />
             </div>
           </div>
 

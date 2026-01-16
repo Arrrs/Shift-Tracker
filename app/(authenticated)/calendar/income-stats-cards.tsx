@@ -1,78 +1,29 @@
 "use client";
 
-import { useMemo } from "react";
 import { StatCard } from "./stat-card";
-import { getCurrencySymbol, formatCurrency, formatHours } from "@/lib/utils/time-format";
-import { useFinancialRecords } from "@/lib/hooks/use-financial-records";
-import { useIncomeRecords } from "@/lib/hooks/use-income-records";
+import { getCurrencySymbol, formatCurrency } from "@/lib/utils/time-format";
 import { usePrimaryCurrency } from "@/lib/hooks/use-user-settings";
 
 interface IncomeStatsCardsProps {
-  currentDate: Date;
   shiftIncomeByCurrency: Record<string, number>;
   expectedShiftIncomeByCurrency: Record<string, number>;
+  financialIncomeByCurrency: Record<string, number>;
+  financialExpenseByCurrency: Record<string, number>;
   expectedFinancialIncomeByCurrency: Record<string, number>;
   expectedFinancialExpenseByCurrency: Record<string, number>;
-  shiftIncomeByJob: Array<{jobId: string; jobName: string; amount: number; hours: number; shifts: number}>;
-  fixedIncomeJobIds: string[];
-  fixedIncomeShiftCounts: Record<string, number>;
   loading: boolean;
 }
 
 export function IncomeStatsCards({
-  currentDate,
   shiftIncomeByCurrency,
   expectedShiftIncomeByCurrency,
+  financialIncomeByCurrency,
+  financialExpenseByCurrency,
   expectedFinancialIncomeByCurrency,
   expectedFinancialExpenseByCurrency,
-  shiftIncomeByJob,
-  fixedIncomeJobIds,
-  fixedIncomeShiftCounts,
   loading,
 }: IncomeStatsCardsProps) {
   const primaryCurrency = usePrimaryCurrency();
-
-  // Calculate date range for current month
-  const { startDate, endDate } = useMemo(() => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-
-    return {
-      startDate: `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`,
-      endDate: `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`,
-    };
-  }, [currentDate]);
-
-  // Use React Query hooks for financial data (this will auto-refresh when data changes!)
-  const { data: financialRecords = [], isLoading: loadingFinancials } = useFinancialRecords(startDate, endDate);
-
-  // Calculate financial records income/expense by currency (completed only) using useMemo
-  const { otherIncomeByCurrency, expensesByCurrency } = useMemo(() => {
-    const otherIncomeByCurrency: Record<string, number> = {};
-    const expensesByCurrency: Record<string, number> = {};
-
-    financialRecords.forEach(record => {
-      if (record.status === 'completed') {
-        // CRITICAL: Only add to aggregation if currency is set
-        if (!record.currency) {
-          console.warn('WARNING: Financial record has no currency, skipping:', record.id);
-          return;
-        }
-        const currency = record.currency;
-        const amount = Number(record.amount);
-
-        if (record.type === 'income') {
-          otherIncomeByCurrency[currency] = (otherIncomeByCurrency[currency] || 0) + amount;
-        } else if (record.type === 'expense') {
-          expensesByCurrency[currency] = (expensesByCurrency[currency] || 0) + amount;
-        }
-      }
-    });
-
-    return { otherIncomeByCurrency, expensesByCurrency };
-  }, [financialRecords]);
 
   // Calculate totals by currency (never mix currencies)
   const totalEarningsByCurrency: Record<string, number> = {};
@@ -86,14 +37,14 @@ export function IncomeStatsCards({
   // Calculate net income by currency
   const allCurrencies = new Set([
     ...Object.keys(totalEarningsByCurrency),
-    ...Object.keys(otherIncomeByCurrency),
-    ...Object.keys(expensesByCurrency)
+    ...Object.keys(financialIncomeByCurrency),
+    ...Object.keys(financialExpenseByCurrency)
   ]);
 
   allCurrencies.forEach(currency => {
     const earnings = totalEarningsByCurrency[currency] || 0;
-    const otherIncome = otherIncomeByCurrency[currency] || 0;
-    const expenses = expensesByCurrency[currency] || 0;
+    const otherIncome = financialIncomeByCurrency[currency] || 0;
+    const expenses = financialExpenseByCurrency[currency] || 0;
     netIncomeByCurrency[currency] = earnings + otherIncome - expenses;
   });
 
@@ -112,7 +63,7 @@ export function IncomeStatsCards({
       {/* Net Income Card */}
       <div className="bg-gradient-to-br from-gray-500/10 to-slate-500/10 border border-gray-500/20 rounded-lg p-3">
         <p className="text-xs text-muted-foreground mb-1.5">💵 Net Income</p>
-        {loading || loadingFinancials ? (
+        {loading ? (
           <div className="text-xl font-bold text-gray-600 dark:text-gray-400">...</div>
         ) : Object.keys(netIncomeByCurrency).length === 0 ? (
           <div className="text-xl font-bold text-gray-900 dark:text-gray-100">{getCurrencySymbol(primaryCurrency)}{formatCurrency(0)}</div>
@@ -170,17 +121,17 @@ export function IncomeStatsCards({
         title="Expenses"
         icon="💸"
         value={
-          loadingFinancials ? (
+          loading ? (
             "..."
-          ) : Object.keys(expensesByCurrency).length === 0 ? (
+          ) : Object.keys(financialExpenseByCurrency).length === 0 ? (
             `${getCurrencySymbol(primaryCurrency)}${formatCurrency(0)}`
-          ) : Object.keys(expensesByCurrency).length === 1 ? (
-            Object.entries(expensesByCurrency).map(([currency, amount]) => (
+          ) : Object.keys(financialExpenseByCurrency).length === 1 ? (
+            Object.entries(financialExpenseByCurrency).map(([currency, amount]) => (
               `${getCurrencySymbol(currency)}${formatCurrency(amount)}`
             ))[0]
           ) : (
             <div className="space-y-0.5">
-              {Object.entries(expensesByCurrency).map(([currency, amount]) => (
+              {Object.entries(financialExpenseByCurrency).map(([currency, amount]) => (
                 <div key={currency} className="text-xl font-bold">
                   {getCurrencySymbol(currency)}{formatCurrency(amount)}
                 </div>
@@ -188,7 +139,7 @@ export function IncomeStatsCards({
             </div>
           )
         }
-        loading={loadingFinancials}
+        loading={loading}
         gradient="bg-gradient-to-br from-red-500/10 to-orange-500/10"
         border="border border-red-500/20"
         textColor="text-red-600 dark:text-red-400"
@@ -231,7 +182,7 @@ export function IncomeStatsCards({
         title="Total Earnings"
         icon="💼"
         value={
-          loading || loadingFinancials ? (
+          loading ? (
             "..."
           ) : Object.keys(totalEarningsByCurrency).length === 0 ? (
             `${getCurrencySymbol(primaryCurrency)}${formatCurrency(0)}`
@@ -249,7 +200,7 @@ export function IncomeStatsCards({
             </div>
           )
         }
-        loading={loading || loadingFinancials}
+        loading={loading}
         gradient="bg-gradient-to-br from-blue-500/10 to-cyan-500/10"
         border="border border-blue-500/20"
         textColor="text-blue-600 dark:text-blue-400"
@@ -292,17 +243,17 @@ export function IncomeStatsCards({
         title="Other Income"
         icon="💰"
         value={
-          loadingFinancials ? (
+          loading ? (
             "..."
-          ) : Object.keys(otherIncomeByCurrency).length === 0 ? (
+          ) : Object.keys(financialIncomeByCurrency).length === 0 ? (
             `${getCurrencySymbol(primaryCurrency)}${formatCurrency(0)}`
-          ) : Object.keys(otherIncomeByCurrency).length === 1 ? (
-            Object.entries(otherIncomeByCurrency).map(([currency, amount]) => (
+          ) : Object.keys(financialIncomeByCurrency).length === 1 ? (
+            Object.entries(financialIncomeByCurrency).map(([currency, amount]) => (
               `${getCurrencySymbol(currency)}${formatCurrency(amount)}`
             ))[0]
           ) : (
             <div className="space-y-0.5">
-              {Object.entries(otherIncomeByCurrency).map(([currency, amount]) => (
+              {Object.entries(financialIncomeByCurrency).map(([currency, amount]) => (
                 <div key={currency} className="text-xl font-bold">
                   {getCurrencySymbol(currency)}{formatCurrency(amount)}
                 </div>
@@ -310,7 +261,7 @@ export function IncomeStatsCards({
             </div>
           )
         }
-        loading={loadingFinancials}
+        loading={loading}
         gradient="bg-gradient-to-br from-green-500/10 to-emerald-500/10"
         border="border border-green-500/20"
         textColor="text-green-600 dark:text-green-400"

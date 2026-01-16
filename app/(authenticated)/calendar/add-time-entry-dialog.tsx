@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useCreateTimeEntry } from "@/lib/hooks/use-time-entries";
@@ -511,28 +512,12 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                         <span className="text-xs font-normal text-muted-foreground ml-1">(overrides job default)</span>
                       )}
                     </Label>
-                      <Select value={customCurrency} onValueChange={setCustomCurrency}>
-                        <SelectTrigger id="custom-currency" className="w-40">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="USD">$ USD</SelectItem>
-                          <SelectItem value="EUR">€ EUR</SelectItem>
-                          <SelectItem value="GBP">£ GBP</SelectItem>
-                          <SelectItem value="JPY">¥ JPY</SelectItem>
-                          <SelectItem value="CAD">$ CAD</SelectItem>
-                          <SelectItem value="AUD">$ AUD</SelectItem>
-                          <SelectItem value="CHF">CHF</SelectItem>
-                          <SelectItem value="CNY">¥ CNY</SelectItem>
-                          <SelectItem value="INR">₹ INR</SelectItem>
-                          <SelectItem value="MXN">$ MXN</SelectItem>
-                          <SelectItem value="BRL">R$ BRL</SelectItem>
-                          <SelectItem value="ZAR">R ZAR</SelectItem>
-                          <SelectItem value="RUB">₽ RUB</SelectItem>
-                          <SelectItem value="KRW">₩ KRW</SelectItem>
-                          <SelectItem value="SGD">$ SGD</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <CurrencySelect
+                      id="custom-currency"
+                      value={customCurrency}
+                      onValueChange={setCustomCurrency}
+                      className="w-40"
+                    />
                     <p className="text-xs text-muted-foreground mt-1">
                       {selectedJobId && selectedJobId !== "none"
                         ? "This currency will be used for this shift instead of the job default"

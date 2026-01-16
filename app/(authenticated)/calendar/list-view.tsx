@@ -4,8 +4,8 @@ import { useState } from "react";
 import { Database } from "@/lib/database.types";
 import { EditTimeEntryDialog } from "./edit-time-entry-dialog";
 import { EditFinancialRecordDialog } from "./edit-financial-record-dialog";
-import { formatTimeFromTimestamp, getStatusInfo, formatHours, getCurrencySymbol, formatCurrency } from "@/lib/utils/time-format";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { getStatusInfo, formatHours, getCurrencySymbol, formatCurrency } from "@/lib/utils/time-format";
+import { TrendingUp, TrendingDown, Briefcase, CalendarOff } from "lucide-react";
 
 type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
@@ -22,6 +22,37 @@ interface ListViewProps {
   financialRecords?: FinancialRecord[];
   loading: boolean;
   onEntryChange?: () => void;
+}
+
+// Helper to get item type icon
+function getItemIcon(item: { type: 'entry' | 'financial'; data: TimeEntry | FinancialRecord }) {
+  if (item.type === 'entry') {
+    const entry = item.data as TimeEntry;
+    if (entry.entry_type === 'day_off') {
+      return <CalendarOff className="h-4 w-4 text-purple-500" />;
+    }
+    return <Briefcase className="h-4 w-4 text-blue-500" />;
+  } else {
+    const record = item.data as FinancialRecord;
+    if (record.type === 'income') {
+      return <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />;
+    }
+    return <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />;
+  }
+}
+
+// Helper to get item name/title
+function getItemName(item: { type: 'entry' | 'financial'; data: TimeEntry | FinancialRecord }) {
+  if (item.type === 'entry') {
+    const entry = item.data as TimeEntry;
+    if (entry.entry_type === 'day_off') {
+      return entry.day_off_type?.toUpperCase() || 'Day Off';
+    }
+    return entry.jobs?.name || 'Freelance';
+  } else {
+    const record = item.data as FinancialRecord;
+    return record.description || (record.type === 'income' ? 'Income' : 'Expense');
+  }
 }
 
 export function ListView({ entries, financialRecords = [], loading, onEntryChange }: ListViewProps) {
@@ -50,7 +81,7 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
         {[...Array(5)].map((_, i) => (
           <div
             key={i}
-            className="h-20 bg-muted/50 rounded-lg animate-pulse"
+            className="h-16 md:h-20 bg-muted/50 rounded-lg animate-pulse"
           />
         ))}
       </div>
@@ -75,17 +106,17 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
     ...financialRecords.map((record): ListItem => ({ type: 'financial', data: record }))
   ];
 
-  // Sort all items by date
+  // Sort all items by date (newest first)
   const sortedItems = allItems.sort((a, b) => {
     const aDate = new Date(a.data.date).getTime();
     const bDate = new Date(b.data.date).getTime();
-    if (aDate !== bDate) return aDate - bDate;
+    if (aDate !== bDate) return bDate - aDate; // Descending (newest first)
 
-    // If same date, put shifts before financial records, then sort by time
+    // If same date, sort by type then time
     if (a.type === 'entry' && b.type === 'entry') {
-      const aTime = a.data.start_time || "00:00";
-      const bTime = b.data.start_time || "00:00";
-      return aTime.localeCompare(bTime);
+      const aTime = (a.data as TimeEntry).start_time || "00:00";
+      const bTime = (b.data as TimeEntry).start_time || "00:00";
+      return bTime.localeCompare(aTime); // Later times first
     }
     if (a.type === 'entry' && b.type === 'financial') return -1;
     if (a.type === 'financial' && b.type === 'entry') return 1;
@@ -95,12 +126,16 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
   return (
     <>
       <div className="space-y-2">
-        {sortedItems.map((item, index) => {
+        {sortedItems.map((item) => {
           if (item.type === 'entry') {
             const entry = item.data;
             const status = getStatusInfo(entry.status || "planned");
             const entryDate = new Date(entry.date);
-            const formattedDate = entryDate.toLocaleDateString("en-US", {
+            const formattedDateShort = entryDate.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            });
+            const formattedDateFull = entryDate.toLocaleDateString("en-US", {
               weekday: "short",
               month: "short",
               day: "numeric",
@@ -109,137 +144,161 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
 
             const isWorkShift = entry.entry_type === "work_shift";
             const isDayOff = entry.entry_type === "day_off";
+            const jobColor = entry.jobs?.color || "#6B7280";
+            const templateCode = entry.shift_templates?.short_code || entry.shift_templates?.name;
+
+            // Calculate earnings for work shifts
+            let amount = 0;
+            const currency = entry.custom_currency || entry.jobs?.currency || 'USD';
+            if (isWorkShift) {
+              const hours = entry.actual_hours || entry.scheduled_hours || 0;
+              if (entry.pay_override_type === 'fixed_amount' && entry.holiday_fixed_amount) {
+                amount = entry.holiday_fixed_amount;
+              } else if (entry.custom_hourly_rate && hours > 0) {
+                amount = hours * entry.custom_hourly_rate * (entry.holiday_multiplier || 1);
+              } else if (entry.custom_daily_rate) {
+                amount = entry.custom_daily_rate * (entry.holiday_multiplier || 1);
+              } else if (entry.jobs && (entry.jobs.pay_type === 'hourly' || entry.jobs.pay_type === 'daily')) {
+                const multiplier = entry.holiday_multiplier || 1;
+                if (entry.jobs.pay_type === 'hourly' && entry.jobs.hourly_rate && hours > 0) {
+                  amount = hours * entry.jobs.hourly_rate * multiplier;
+                } else if (entry.jobs.pay_type === 'daily' && entry.jobs.daily_rate) {
+                  amount = entry.jobs.daily_rate * multiplier;
+                }
+              }
+            }
 
             return (
               <div
                 key={`entry-${entry.id}`}
                 onClick={() => handleEntryClick(entry)}
-                className={`border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer ${status.borderColor}`}
+                className={`border rounded-lg p-3 md:p-4 hover:bg-muted/50 transition-colors cursor-pointer ${status.borderColor}`}
               >
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-              {/* Left side: Date and Job */}
-              <div className="flex-1 space-y-1.5">
-                <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
-                  <h3 className="font-semibold text-base">
-                    {formattedDate}
-                  </h3>
-                  {isWorkShift && entry.start_time && entry.end_time && (
-                    <span className="text-sm text-muted-foreground">
-                      {entry.start_time} - {entry.end_time}
-                    </span>
-                  )}
-                  {isDayOff && (
-                    <span className="text-sm text-muted-foreground">
-                      {entry.day_off_type?.toUpperCase()} - {entry.is_full_day ? "Full Day" : `${entry.actual_hours}h`}
-                    </span>
-                  )}
-                  <span className="text-sm">{status.emoji}</span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {entry.jobs ? (
-                    <>
+                {/* Mobile View - Simplified */}
+                <div className="flex md:hidden items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    {/* Icon */}
+                    {getItemIcon(item)}
+                    {/* Job color dot */}
+                    {isWorkShift && (
                       <div
-                        className="w-2 h-2 rounded flex-shrink-0"
-                        style={{ backgroundColor: entry.jobs.color || "#3B82F6" }}
+                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: jobColor }}
                       />
-                      <p className="text-sm text-muted-foreground">
-                        {entry.jobs.name}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-2 h-2 rounded bg-gray-400 flex-shrink-0" />
-                      <p className="text-sm text-muted-foreground">
-                        {isDayOff ? "Day Off" : "Personal Time"}
-                      </p>
-                    </>
-                  )}
-                </div>
-
-                {/* Badges row - overnight and template */}
-                {(entry.is_overnight || entry.shift_templates) && (
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {entry.is_overnight && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
-                        🌙 overnight
+                    )}
+                    {/* Name with template code */}
+                    <span className="font-medium truncate">
+                      {getItemName(item)}
+                      {templateCode && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          [{templateCode}]
+                        </span>
+                      )}
+                    </span>
+                    {/* Status emoji */}
+                    <span className="text-sm flex-shrink-0">{status.emoji}</span>
+                  </div>
+                  {/* Right side: Date and amount */}
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    {amount > 0 && (
+                      <span className={`font-semibold text-sm ${
+                        entry.status === 'completed' ? status.color : 'text-amber-600 dark:text-amber-400'
+                      }`}>
+                        {getCurrencySymbol(currency)}{formatCurrency(amount)}
                       </span>
                     )}
-                    {entry.shift_templates && (
-                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
-                        📋 {entry.shift_templates.short_code || entry.shift_templates.name}
-                      </span>
+                    <span className="text-xs text-muted-foreground">{formattedDateShort}</span>
+                  </div>
+                </div>
+
+                {/* Desktop View - Full details */}
+                <div className="hidden md:flex flex-row items-center justify-between gap-3">
+                  {/* Left side: Date and Job */}
+                  <div className="flex-1 space-y-1.5">
+                    <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
+                      <h3 className="font-semibold text-base">
+                        {formattedDateFull}
+                      </h3>
+                      {isWorkShift && entry.start_time && entry.end_time && (
+                        <span className="text-sm text-muted-foreground">
+                          {entry.start_time} - {entry.end_time}
+                        </span>
+                      )}
+                      {isDayOff && (
+                        <span className="text-sm text-muted-foreground">
+                          {entry.day_off_type?.toUpperCase()} - {entry.is_full_day ? "Full Day" : `${entry.actual_hours}h`}
+                        </span>
+                      )}
+                      <span className="text-sm">{status.emoji}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {entry.jobs ? (
+                        <>
+                          <div
+                            className="w-2 h-2 rounded flex-shrink-0"
+                            style={{ backgroundColor: jobColor }}
+                          />
+                          <p className="text-sm text-muted-foreground">
+                            {entry.jobs.name}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-2 h-2 rounded bg-gray-400 flex-shrink-0" />
+                          <p className="text-sm text-muted-foreground">
+                            {isDayOff ? "Day Off" : "Freelance"}
+                          </p>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Badges row - overnight and template */}
+                    {(entry.is_overnight || entry.shift_templates) && (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {entry.is_overnight && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
+                            🌙 overnight
+                          </span>
+                        )}
+                        {entry.shift_templates && (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                            📋 {templateCode}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {entry.notes && (
+                      <p className="text-xs text-muted-foreground line-clamp-1">
+                        {entry.notes}
+                      </p>
                     )}
                   </div>
-                )}
 
-                {entry.notes && (
-                  <p className="text-xs text-muted-foreground line-clamp-1">
-                    {entry.notes}
-                  </p>
-                )}
-              </div>
-
-              {/* Right side: Stats */}
-              <div className="flex items-center gap-4 md:gap-6">
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground">Hours</p>
-                  <p className="font-semibold">
-                    {formatHours(entry.actual_hours || 0)}
-                  </p>
-                </div>
-                {isWorkShift && (() => {
-                  const currency = entry.custom_currency || entry.jobs?.currency || 'USD';
-                  const hours = entry.actual_hours || entry.scheduled_hours || 0;
-                  let amount = 0;
-
-                  // Calculate amount using same logic as day-shifts-drawer
-                  // Priority 1: Fixed amount
-                  if (entry.pay_override_type === 'fixed_amount' && entry.holiday_fixed_amount) {
-                    amount = entry.holiday_fixed_amount;
-                  }
-                  // Priority 2: Custom rates with optional multiplier
-                  else if (entry.custom_hourly_rate && hours > 0) {
-                    const multiplier = entry.holiday_multiplier || 1;
-                    amount = hours * entry.custom_hourly_rate * multiplier;
-                  }
-                  else if (entry.custom_daily_rate) {
-                    const multiplier = entry.holiday_multiplier || 1;
-                    amount = entry.custom_daily_rate * multiplier;
-                  }
-                  // Priority 3: Job rates with optional multiplier (ONLY hourly/daily, NOT salary)
-                  else if (entry.jobs && (entry.jobs.pay_type === 'hourly' || entry.jobs.pay_type === 'daily')) {
-                    const job = entry.jobs;
-                    const multiplier = entry.holiday_multiplier || 1;
-
-                    if (job.pay_type === 'hourly' && job.hourly_rate && hours > 0) {
-                      amount = hours * job.hourly_rate * multiplier;
-                    } else if (job.pay_type === 'daily' && job.daily_rate) {
-                      amount = job.daily_rate * multiplier;
-                    }
-                  }
-
-                  if (amount > 0) {
-                    return (
+                  {/* Right side: Stats */}
+                  <div className="flex items-center gap-4 md:gap-6">
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">Hours</p>
+                      <p className="font-semibold">
+                        {formatHours(entry.actual_hours || 0)}
+                      </p>
+                    </div>
+                    {amount > 0 && (
                       <div className="text-right">
                         <p className="text-xs text-muted-foreground">
                           {entry.status === 'completed' ? 'Earned' : 'Expected'}
                         </p>
                         <p className={`font-semibold ${
-                          entry.status === 'completed'
-                            ? 'text-green-600 dark:text-green-400'
-                            : 'text-amber-600 dark:text-amber-400'
+                          entry.status === 'completed' ? status.color : 'text-amber-600 dark:text-amber-400'
                         }`}>
-                          {getCurrencySymbol(currency)} {formatCurrency(amount)}
+                          {getCurrencySymbol(currency)}{formatCurrency(amount)}
                         </p>
                       </div>
-                    );
-                  }
-                  return null;
-                })()}
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
             );
           } else {
             // Financial record
@@ -247,38 +306,84 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
             const isIncome = record.type === 'income';
             const category = record.financial_categories;
             const recordDate = new Date(record.date);
-            const formattedDate = recordDate.toLocaleDateString("en-US", {
+            const formattedDateShort = recordDate.toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            });
+            const formattedDateFull = recordDate.toLocaleDateString("en-US", {
               weekday: "short",
               month: "short",
               day: "numeric",
               year: "numeric",
             });
 
-            // Status styling
-            const status = record.status || 'completed';
-            const isCancelled = status === 'cancelled';
-            const isPlanned = status === 'planned';
+            // Status styling using centralized approach
+            const recordStatus = record.status || 'completed';
+            const isCancelled = recordStatus === 'cancelled';
+            const isPlanned = recordStatus === 'planned';
 
-            let borderColor = isIncome ? 'border-green-200 dark:border-green-900' : 'border-red-200 dark:border-red-900';
+            // Get border color based on status and type
+            let borderColor: string;
             if (isCancelled) {
               borderColor = 'border-gray-300 dark:border-gray-700';
             } else if (isPlanned) {
               borderColor = 'border-amber-200 dark:border-amber-900';
+            } else {
+              borderColor = isIncome
+                ? 'border-green-200 dark:border-green-900'
+                : 'border-red-200 dark:border-red-900';
+            }
+
+            // Get text color for amount
+            let amountColor: string;
+            if (isCancelled) {
+              amountColor = 'text-gray-400 dark:text-gray-600';
+            } else if (isPlanned) {
+              amountColor = 'text-amber-600 dark:text-amber-400';
+            } else {
+              amountColor = isIncome
+                ? 'text-green-600 dark:text-green-400'
+                : 'text-red-600 dark:text-red-400';
             }
 
             return (
               <div
                 key={`financial-${record.id}`}
                 onClick={() => handleFinancialClick(record)}
-                className={`border rounded-lg p-4 hover:bg-muted/50 transition-colors cursor-pointer ${borderColor}`}
+                className={`border rounded-lg p-3 md:p-4 hover:bg-muted/50 transition-colors cursor-pointer ${borderColor}`}
                 style={{ opacity: isCancelled ? 0.5 : 1 }}
               >
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                {/* Mobile View - Simplified */}
+                <div className="flex md:hidden items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    {/* Icon */}
+                    {getItemIcon(item)}
+                    {/* Category icon if available */}
+                    {category?.icon && (
+                      <span className="text-sm flex-shrink-0">{category.icon}</span>
+                    )}
+                    {/* Description */}
+                    <span className="font-medium truncate">{getItemName(item)}</span>
+                    {/* Status indicator */}
+                    {isPlanned && <span className="text-xs flex-shrink-0">📅</span>}
+                    {isCancelled && <span className="text-xs flex-shrink-0">❌</span>}
+                  </div>
+                  {/* Right side: Amount and date */}
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    <span className={`font-semibold text-sm ${amountColor}`}>
+                      {isIncome ? '+' : '-'}{getCurrencySymbol(record.currency)}{formatCurrency(Number(record.amount))}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{formattedDateShort}</span>
+                  </div>
+                </div>
+
+                {/* Desktop View - Full details */}
+                <div className="hidden md:flex flex-row items-center justify-between gap-3">
                   {/* Left side: Date and Details */}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="font-semibold text-base">
-                        {formattedDate}
+                        {formattedDateFull}
                       </h3>
                       {isIncome ? (
                         <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -320,18 +425,10 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
                     <p className="text-xs text-muted-foreground">
                       {isPlanned ? 'Expected' : isCancelled ? 'Cancelled' : 'Amount'}
                     </p>
-                    <p className={`text-lg font-bold ${
-                      isCancelled ? 'text-gray-400 dark:text-gray-600' :
-                      isPlanned ? 'text-amber-600 dark:text-amber-400' :
-                      isIncome ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
-                    }`}>
-                      {isIncome ? '+' : '-'}{getCurrencySymbol(record.currency)}{Number(record.amount).toFixed(2)}
+                    <p className={`text-lg font-bold ${amountColor}`}>
+                      {isIncome ? '+' : '-'}{getCurrencySymbol(record.currency)}{formatCurrency(Number(record.amount))}
                     </p>
-                    <p className={`text-[10px] ${
-                      isCancelled ? 'text-gray-400 dark:text-gray-600' :
-                      isPlanned ? 'text-amber-600 dark:text-amber-400' :
-                      'text-muted-foreground'
-                    }`}>
+                    <p className={`text-[10px] ${amountColor}`}>
                       {record.currency}
                     </p>
                   </div>

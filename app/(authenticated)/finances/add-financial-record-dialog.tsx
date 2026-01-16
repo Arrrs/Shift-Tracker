@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2 } from "lucide-react";
 import { useCreateFinancialRecord } from "@/lib/hooks/use-financial-records";
@@ -200,22 +201,11 @@ export function AddFinancialRecordDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="currency">{t("currency")}</Label>
-              <Select
+              <CurrencySelect
+                id="currency"
                 value={formData.currency}
                 onValueChange={(value) => setFormData({ ...formData, currency: value })}
-              >
-                <SelectTrigger id="currency">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USD">$ USD</SelectItem>
-                  <SelectItem value="EUR">€ EUR</SelectItem>
-                  <SelectItem value="GBP">£ GBP</SelectItem>
-                  <SelectItem value="UAH">₴ UAH</SelectItem>
-                  <SelectItem value="PLN">zł PLN</SelectItem>
-                  <SelectItem value="CZK">Kč CZK</SelectItem>
-                </SelectContent>
-              </Select>
+              />
             </div>
           </div>
 

@@ -95,6 +95,57 @@ export function getStatusInfo(status: string | null | undefined) {
 }
 
 /**
+ * Get styling info for financial records (income/expense)
+ * @param type - 'income' or 'expense'
+ * @param status - 'completed', 'planned', or 'cancelled'
+ * @returns Object with border color and text color classes
+ */
+export function getFinancialRecordStyle(
+  type: 'income' | 'expense',
+  status: string | null | undefined
+) {
+  const isIncome = type === 'income';
+  const isCancelled = status === 'cancelled';
+  const isPlanned = status === 'planned';
+
+  // Border colors - semantic naming for easy theming
+  let borderColor: string;
+  if (isCancelled) {
+    borderColor = 'border-gray-300 dark:border-gray-700';
+  } else if (isPlanned) {
+    borderColor = 'border-amber-200 dark:border-amber-900';
+  } else {
+    borderColor = isIncome
+      ? 'border-green-200 dark:border-green-900'
+      : 'border-red-200 dark:border-red-900';
+  }
+
+  // Text colors for amounts
+  let textColor: string;
+  if (isCancelled) {
+    textColor = 'text-gray-400 dark:text-gray-600';
+  } else if (isPlanned) {
+    textColor = 'text-amber-600 dark:text-amber-400';
+  } else {
+    textColor = isIncome
+      ? 'text-green-600 dark:text-green-400'
+      : 'text-red-600 dark:text-red-400';
+  }
+
+  // Icon color
+  const iconColor = isIncome
+    ? 'text-green-600 dark:text-green-400'
+    : 'text-red-600 dark:text-red-400';
+
+  return {
+    borderColor,
+    textColor,
+    iconColor,
+    opacity: isCancelled ? 0.5 : 1,
+  };
+}
+
+/**
  * Calculate shift earnings based on job pay type (hourly, daily, monthly, salary)
  * @param shift - Shift object with rate and type information
  * @param job - Job object with pay type and rate information

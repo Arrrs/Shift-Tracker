@@ -285,10 +285,11 @@ export function getSupportedCurrencies(): Currency[] {
 /**
  * Get currency options for select dropdown
  */
-export function getCurrencyOptions(): Array<{ value: string; label: string }> {
+export function getCurrencyOptions(): Array<{ value: string; label: string; shortLabel: string }> {
   return getSupportedCurrencies().map(currency => ({
     value: currency.code,
     label: `${currency.code} - ${currency.name}`,
+    shortLabel: `${currency.symbol} ${currency.code}`,
   }));
 }
 
