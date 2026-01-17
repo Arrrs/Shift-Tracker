@@ -99,21 +99,17 @@ export default function DashboardPage() {
       const currency = job.currency;
       let estimatedAmount = 0;
 
-      // Calculate expected income based on rate type
-      if (entry.custom_rate_type === 'fixed') {
-        estimatedAmount = entry.custom_rate_amount || 0;
-      } else if (job.rate_type === 'hourly') {
+      // Calculate expected income based on pay type
+      if (entry.pay_override_type === 'fixed') {
+        estimatedAmount = entry.holiday_fixed_amount || 0;
+      } else if (job.pay_type === 'hourly') {
         const hours = entry.actual_hours || entry.scheduled_hours || 0;
-        const rate = entry.custom_rate_type === 'hourly'
-          ? (entry.custom_rate_amount || job.hourly_rate || 0)
-          : (job.hourly_rate || 0);
-        const multiplier = entry.multiplier || 1;
+        const rate = entry.custom_hourly_rate || job.hourly_rate || 0;
+        const multiplier = entry.holiday_multiplier || 1;
         estimatedAmount = hours * rate * multiplier;
-      } else if (job.rate_type === 'daily') {
-        const rate = entry.custom_rate_type === 'daily'
-          ? (entry.custom_rate_amount || job.daily_rate || 0)
-          : (job.daily_rate || 0);
-        const multiplier = entry.multiplier || 1;
+      } else if (job.pay_type === 'daily') {
+        const rate = entry.custom_daily_rate || job.daily_rate || 0;
+        const multiplier = entry.holiday_multiplier || 1;
         estimatedAmount = rate * multiplier;
       }
 
