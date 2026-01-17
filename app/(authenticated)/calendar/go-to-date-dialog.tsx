@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CalendarDays } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface GoToDateDialogProps {
   currentDate: Date;
@@ -25,6 +26,7 @@ interface GoToDateDialogProps {
 }
 
 export function GoToDateDialog({ currentDate, onDateChange }: GoToDateDialogProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth().toString());
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear().toString());
@@ -38,8 +40,9 @@ export function GoToDateDialog({ currentDate, onDateChange }: GoToDateDialogProp
   }, [open, currentDate]);
 
   const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    t("monthJanuary"), t("monthFebruary"), t("monthMarch"), t("monthApril"),
+    t("monthMay"), t("monthJune"), t("monthJuly"), t("monthAugust"),
+    t("monthSeptember"), t("monthOctober"), t("monthNovember"), t("monthDecember")
   ];
 
   // Generate years from 10 years ago to 10 years ahead (21 years total)

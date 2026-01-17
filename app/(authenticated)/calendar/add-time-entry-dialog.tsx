@@ -81,6 +81,16 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
     setSelectedTemplateId("");
   }, [selectedJobId]);
 
+  // Update currency to match job's currency when job is selected
+  useEffect(() => {
+    if (selectedJobId && selectedJobId !== "none") {
+      const selectedJob = activeJobs.find(j => j.id === selectedJobId);
+      if (selectedJob?.currency) {
+        setCustomCurrency(selectedJob.currency);
+      }
+    }
+  }, [selectedJobId, activeJobs]);
+
   // Auto-calculate hours when times change
   useEffect(() => {
     if (startTime && endTime) {
@@ -98,6 +108,11 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
 
   // Apply template
   const applyTemplate = (templateId: string) => {
+    if (templateId === "none") {
+      // Manual entry selected - clear template but keep current values
+      setSelectedTemplateId("none");
+      return;
+    }
     const template = templates.find((t) => t.id === templateId);
     if (template) {
       // Strip seconds from times (database returns HH:MM:SS, we need HH:MM)
@@ -386,7 +401,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
     setHolidayMultiplier("1.5");
     setCustomMultiplierValue("");
     setIsHoliday(false);
-    setCustomCurrency("USD");
+    setCustomCurrency(primaryCurrency);
   };
 
   return (
@@ -443,7 +458,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
           {entryType === "work_shift" ? (
             <>
               {/* Template (Optional) */}
-              {selectedJobId && templates.length > 0 && (
+              {selectedJobId && selectedJobId !== "none" && templates.length > 0 && (
                 <div className="space-y-2">
                   <Label>Template (Optional)</Label>
                   <Select value={selectedTemplateId} onValueChange={applyTemplate}>

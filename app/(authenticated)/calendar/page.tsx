@@ -45,7 +45,7 @@ type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] 
 };
 
 export default function CalendarPage() {
-  const { t } = useTranslation();
+  const { t, formatDate } = useTranslation();
   const primaryCurrency = usePrimaryCurrency();
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
@@ -130,10 +130,10 @@ export default function CalendarPage() {
     setCurrentDate(date);
   }, []);
 
-  const monthYear = currentDate?.toLocaleDateString("en-US", {
+  const monthYear = currentDate ? formatDate(currentDate, {
     month: "long",
-    year: "numeric",
-  }) || "";
+    year: true,
+  }) : "";
 
   // Calculate stats from loaded data using useMemo for performance
   const stats = useMemo(() => {

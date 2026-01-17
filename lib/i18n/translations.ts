@@ -42,6 +42,7 @@ export const translations = {
     orContinueWith: "Or continue with",
     continueWithGoogle: "Continue with Google",
     passwordsDoNotMatch: "Passwords do not match",
+    backToHome: "Back to home",
 
     // Navigation
     navigation: "Navigation",
@@ -233,6 +234,52 @@ export const translations = {
     yesterday: "Yesterday",
     tomorrow: "Tomorrow",
 
+    // Weekdays (full)
+    weekdaySunday: "Sunday",
+    weekdayMonday: "Monday",
+    weekdayTuesday: "Tuesday",
+    weekdayWednesday: "Wednesday",
+    weekdayThursday: "Thursday",
+    weekdayFriday: "Friday",
+    weekdaySaturday: "Saturday",
+
+    // Weekdays (short)
+    weekdaySundayShort: "Sun",
+    weekdayMondayShort: "Mon",
+    weekdayTuesdayShort: "Tue",
+    weekdayWednesdayShort: "Wed",
+    weekdayThursdayShort: "Thu",
+    weekdayFridayShort: "Fri",
+    weekdaySaturdayShort: "Sat",
+
+    // Months (full)
+    monthJanuary: "January",
+    monthFebruary: "February",
+    monthMarch: "March",
+    monthApril: "April",
+    monthMay: "May",
+    monthJune: "June",
+    monthJuly: "July",
+    monthAugust: "August",
+    monthSeptember: "September",
+    monthOctober: "October",
+    monthNovember: "November",
+    monthDecember: "December",
+
+    // Months (short)
+    monthJanuaryShort: "Jan",
+    monthFebruaryShort: "Feb",
+    monthMarchShort: "Mar",
+    monthAprilShort: "Apr",
+    monthMayShort: "May",
+    monthJuneShort: "Jun",
+    monthJulyShort: "Jul",
+    monthAugustShort: "Aug",
+    monthSeptemberShort: "Sep",
+    monthOctoberShort: "Oct",
+    monthNovemberShort: "Nov",
+    monthDecemberShort: "Dec",
+
     // Jobs
     job: "Job",
     jobName: "Job Name",
@@ -377,6 +424,7 @@ export const translations = {
     orContinueWith: "Або продовжте з",
     continueWithGoogle: "Продовжити з Google",
     passwordsDoNotMatch: "Паролі не збігаються",
+    backToHome: "На головну",
 
     // Navigation
     navigation: "Навігація",
@@ -568,6 +616,52 @@ export const translations = {
     today: "Сьогодні",
     yesterday: "Вчора",
     tomorrow: "Завтра",
+
+    // Weekdays (full)
+    weekdaySunday: "Неділя",
+    weekdayMonday: "Понеділок",
+    weekdayTuesday: "Вівторок",
+    weekdayWednesday: "Середа",
+    weekdayThursday: "Четвер",
+    weekdayFriday: "П'ятниця",
+    weekdaySaturday: "Субота",
+
+    // Weekdays (short)
+    weekdaySundayShort: "Нд",
+    weekdayMondayShort: "Пн",
+    weekdayTuesdayShort: "Вт",
+    weekdayWednesdayShort: "Ср",
+    weekdayThursdayShort: "Чт",
+    weekdayFridayShort: "Пт",
+    weekdaySaturdayShort: "Сб",
+
+    // Months (full)
+    monthJanuary: "Січень",
+    monthFebruary: "Лютий",
+    monthMarch: "Березень",
+    monthApril: "Квітень",
+    monthMay: "Травень",
+    monthJune: "Червень",
+    monthJuly: "Липень",
+    monthAugust: "Серпень",
+    monthSeptember: "Вересень",
+    monthOctober: "Жовтень",
+    monthNovember: "Листопад",
+    monthDecember: "Грудень",
+
+    // Months (short)
+    monthJanuaryShort: "Січ",
+    monthFebruaryShort: "Лют",
+    monthMarchShort: "Бер",
+    monthAprilShort: "Кві",
+    monthMayShort: "Тра",
+    monthJuneShort: "Чер",
+    monthJulyShort: "Лип",
+    monthAugustShort: "Сер",
+    monthSeptemberShort: "Вер",
+    monthOctoberShort: "Жов",
+    monthNovemberShort: "Лис",
+    monthDecemberShort: "Гру",
 
     // Jobs
     job: "Робота",

@@ -23,7 +23,7 @@ export function ShiftCountdown({ activeShift, style = 'digital' }: ShiftCountdow
   }
 
   if (activeShift.status === 'notStarted') {
-    const shiftName = activeShift.entry?.jobs?.name || activeShift.template?.jobs?.name || t("shift");
+    const shiftName = activeShift.entry.jobs?.name || t("shift");
     return (
       <Card className="p-8 text-center">
         <p className="text-lg text-muted-foreground">
@@ -37,7 +37,7 @@ export function ShiftCountdown({ activeShift, style = 'digital' }: ShiftCountdow
   }
 
   if (activeShift.status === 'ended') {
-    const shiftName = activeShift.entry?.jobs?.name || activeShift.template?.jobs?.name || t("shift");
+    const shiftName = activeShift.entry.jobs?.name || t("shift");
     return (
       <Card className="p-8 text-center">
         <p className="text-lg font-semibold">{t("shiftEnded")}</p>
@@ -61,7 +61,7 @@ export function ShiftCountdown({ activeShift, style = 'digital' }: ShiftCountdow
 
 function CountdownDigital({ countdown, activeShift }: { countdown: ReturnType<typeof useCountdown>; activeShift: ActiveShift }) {
   const { t } = useTranslation();
-  const shiftName = activeShift.entry?.jobs?.name || activeShift.template?.jobs?.name || t("shift");
+  const shiftName = activeShift.entry.jobs?.name || t("shift");
 
   return (
     <Card className="p-6 md:p-8">
@@ -82,7 +82,7 @@ function CountdownDigital({ countdown, activeShift }: { countdown: ReturnType<ty
 
 function CountdownCards({ countdown, activeShift }: { countdown: ReturnType<typeof useCountdown>; activeShift: ActiveShift }) {
   const { t } = useTranslation();
-  const shiftName = activeShift.entry?.jobs?.name || activeShift.template?.jobs?.name || t("shift");
+  const shiftName = activeShift.entry.jobs?.name || t("shift");
 
   return (
     <Card className="p-6 md:p-8">
@@ -115,7 +115,7 @@ function CountdownCards({ countdown, activeShift }: { countdown: ReturnType<type
 
 function CountdownCompact({ countdown, activeShift }: { countdown: ReturnType<typeof useCountdown>; activeShift: ActiveShift }) {
   const { t } = useTranslation();
-  const shiftName = activeShift.entry?.jobs?.name || activeShift.template?.jobs?.name || t("shift");
+  const shiftName = activeShift.entry.jobs?.name || t("shift");
 
   return (
     <Card className="p-4 md:p-6">

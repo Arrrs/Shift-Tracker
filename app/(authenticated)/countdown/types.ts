@@ -18,9 +18,6 @@ export interface CountdownSettings {
   showCounter: boolean;
 
   // Clock settings
-  clockType: 'analog' | 'digital';
-  clockStyle: ClockStyle;
-  digitalClockStyle: DigitalClockStyle;
   use24Hour: boolean;
 
   // Countdown settings
@@ -28,26 +25,15 @@ export interface CountdownSettings {
 
   // Counter settings
   counterDefaultValue: number;
-
-  // Auto-detection
-  autoDetectShift: boolean;
-  selectedJobId: string | null;
-  selectedTemplateId: string | null;
 }
 
-export type ClockStyle = 'modern' | 'classic' | 'minimal' | 'elegant' | 'neon';
-
-export type DigitalClockStyle = 'default' | 'lcd' | 'neon' | 'segment' | 'flip' | 'minimal';
-
-export type CountdownStyle = 'digital' | 'cards' | 'text' | 'progress' | 'circular' | 'flip' | 'compact';
+export type CountdownStyle = 'digital' | 'cards' | 'compact';
 
 export interface ActiveShift {
-  entry?: TimeEntry;
-  template?: ShiftTemplate;
+  entry: TimeEntry;
   startTime: Date;
   endTime: Date;
   status: 'active' | 'notStarted' | 'ended';
-  source: 'entry' | 'template' | 'none';
 }
 
 export interface ShiftCompletionData {

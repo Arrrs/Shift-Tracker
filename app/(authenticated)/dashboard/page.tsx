@@ -22,7 +22,7 @@ type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] 
 };
 
 export default function DashboardPage() {
-  const { t } = useTranslation();
+  const { t, formatDate } = useTranslation();
   const primaryCurrency = usePrimaryCurrency();
   const [currentDate] = useState(new Date());
 
@@ -215,7 +215,7 @@ export default function DashboardPage() {
     for (let i = 2; i >= 0; i--) {
       const targetDate = new Date(year, month - i, 1);
       const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
-      const monthName = targetDate.toLocaleDateString('en-US', { month: 'short' });
+      const monthName = formatDate(targetDate, { month: 'short' });
 
       const earningsByCurrency = monthlyEarnings[monthKey] || {};
 
@@ -241,9 +241,9 @@ export default function DashboardPage() {
     return { yearlyData: chartData, yearlyTotalByCurrency: totalByCurrency };
   }, [threeMonthIncome, threeMonthFinancials, year, month]);
 
-  const monthYear = currentDate.toLocaleDateString("en-US", {
+  const monthYear = formatDate(currentDate, {
     month: "long",
-    year: "numeric",
+    year: true,
   });
 
   const totalShifts = stats.completedShifts + stats.plannedShifts + stats.inProgressShifts;

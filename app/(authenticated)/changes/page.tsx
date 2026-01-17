@@ -40,6 +40,24 @@ export default function SettingsPage() {
       <div className="max-w-2xl space-y-6 mx-auto">
         <Card>
           <CardHeader>
+            <CardTitle>Version 1.0.1 - Performance & Fixes</CardTitle>
+            <CardDescription>
+              Bug fixes and performance improvements
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <ul className="list-disc list-inside">
+                <li>Optimized application performance and load times.</li>
+                <li>Fixed critical bugs affecting user experience.</li>
+                <li>Improved database query efficiency.</li>
+                <li>Enhanced UI responsiveness across devices.</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
             <CardTitle>Version 1.0.0 - Initial Release</CardTitle>
           </CardHeader>
           <CardContent>

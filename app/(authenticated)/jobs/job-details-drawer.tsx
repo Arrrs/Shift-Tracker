@@ -27,6 +27,7 @@ import { Eye } from "lucide-react";
 import { Database } from "@/lib/database.types";
 import { ShiftTemplatesList } from "./shift-templates-list";
 import { getCurrencySymbol } from "@/lib/utils/time-format";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 
@@ -45,6 +46,7 @@ export function JobDetailsDrawer({
   children,
   onTemplateChange,
 }: JobDetailsDrawerProps) {
+  const { formatDate } = useTranslation();
   const [open, setOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
@@ -145,10 +147,10 @@ export function JobDetailsDrawer({
               Created
             </h3>
             <p className="text-sm">
-              {job.created_at && new Date(job.created_at).toLocaleDateString("en-US", {
-                year: "numeric",
+              {job.created_at && formatDate(new Date(job.created_at), {
+                year: true,
                 month: "long",
-                day: "numeric",
+                day: true,
               })}
             </p>
           </div>

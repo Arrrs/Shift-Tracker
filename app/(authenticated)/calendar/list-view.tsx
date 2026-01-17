@@ -5,7 +5,8 @@ import { Database } from "@/lib/database.types";
 import { EditTimeEntryDialog } from "./edit-time-entry-dialog";
 import { EditFinancialRecordDialog } from "./edit-financial-record-dialog";
 import { getStatusInfo, formatHours, getCurrencySymbol, formatCurrency } from "@/lib/utils/time-format";
-import { TrendingUp, TrendingDown, Briefcase, CalendarOff } from "lucide-react";
+import { TrendingUp, TrendingDown, Briefcase, CalendarOff, Moon } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
@@ -25,19 +26,20 @@ interface ListViewProps {
 }
 
 // Helper to get item type icon
-function getItemIcon(item: { type: 'entry' | 'financial'; data: TimeEntry | FinancialRecord }) {
+function getItemIcon(item: { type: 'entry' | 'financial'; data: TimeEntry | FinancialRecord }, size: 'sm' | 'md' = 'sm') {
+  const sizeClass = size === 'md' ? 'h-5 w-5' : 'h-4 w-4';
   if (item.type === 'entry') {
     const entry = item.data as TimeEntry;
     if (entry.entry_type === 'day_off') {
-      return <CalendarOff className="h-4 w-4 text-purple-500" />;
+      return <CalendarOff className={`${sizeClass} text-purple-500`} />;
     }
-    return <Briefcase className="h-4 w-4 text-blue-500" />;
+    return <Briefcase className={`${sizeClass} text-blue-500`} />;
   } else {
     const record = item.data as FinancialRecord;
     if (record.type === 'income') {
-      return <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />;
+      return <TrendingUp className={`${sizeClass} text-green-600 dark:text-green-400`} />;
     }
-    return <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />;
+    return <TrendingDown className={`${sizeClass} text-red-600 dark:text-red-400`} />;
   }
 }
 
@@ -56,6 +58,7 @@ function getItemName(item: { type: 'entry' | 'financial'; data: TimeEntry | Fina
 }
 
 export function ListView({ entries, financialRecords = [], loading, onEntryChange }: ListViewProps) {
+  const { formatDate } = useTranslation();
   const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedFinancialRecord, setSelectedFinancialRecord] = useState<FinancialRecord | null>(null);
@@ -81,7 +84,7 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
         {[...Array(5)].map((_, i) => (
           <div
             key={i}
-            className="h-16 md:h-20 bg-muted/50 rounded-lg animate-pulse"
+            className="h-12 bg-muted/50 rounded-lg animate-pulse"
           />
         ))}
       </div>
@@ -131,15 +134,14 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
             const entry = item.data;
             const status = getStatusInfo(entry.status || "planned");
             const entryDate = new Date(entry.date);
-            const formattedDateShort = entryDate.toLocaleDateString("en-US", {
+            const formattedDateShort = formatDate(entryDate, {
               month: "short",
-              day: "numeric",
+              day: true,
             });
-            const formattedDateFull = entryDate.toLocaleDateString("en-US", {
+            const formattedDateFull = formatDate(entryDate, {
               weekday: "short",
               month: "short",
-              day: "numeric",
-              year: "numeric",
+              day: true,
             });
 
             const isWorkShift = entry.entry_type === "work_shift";
@@ -172,129 +174,69 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
               <div
                 key={`entry-${entry.id}`}
                 onClick={() => handleEntryClick(entry)}
-                className={`border rounded-lg p-3 md:p-4 hover:bg-muted/50 transition-colors cursor-pointer ${status.borderColor}`}
+                className={`border rounded-lg p-3 hover:bg-muted/50 transition-colors cursor-pointer ${status.borderColor}`}
               >
-                {/* Mobile View - Simplified */}
-                <div className="flex md:hidden items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {/* Icon */}
-                    {getItemIcon(item)}
+                <div className="flex items-center justify-between gap-3">
+                  {/* Left: Icon + Details */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {/* Type Icon */}
+                    {getItemIcon(item, 'md')}
+
                     {/* Job color dot */}
-                    {isWorkShift && (
+                    {isWorkShift && entry.jobs && (
                       <div
-                        className="w-2 h-2 rounded-full flex-shrink-0"
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                         style={{ backgroundColor: jobColor }}
                       />
                     )}
-                    {/* Name with template code */}
-                    <span className="font-medium truncate">
-                      {getItemName(item)}
-                      {templateCode && (
-                        <span className="text-xs text-muted-foreground ml-1">
-                          [{templateCode}]
+
+                    {/* Main info */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium truncate">
+                          {getItemName(item)}
                         </span>
-                      )}
-                    </span>
-                    {/* Status emoji */}
-                    <span className="text-sm flex-shrink-0">{status.emoji}</span>
+                        {templateCode && (
+                          <span className="text-xs text-muted-foreground px-1.5 py-0.5 bg-muted rounded">
+                            {templateCode}
+                          </span>
+                        )}
+                        {entry.is_overnight && (
+                          <Moon className="h-3.5 w-3.5 text-orange-500 flex-shrink-0" />
+                        )}
+                        <span className="text-sm flex-shrink-0">{status.emoji}</span>
+                      </div>
+
+                      {/* Secondary info - visible on desktop */}
+                      <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                        {isWorkShift && entry.start_time && entry.end_time && (
+                          <span>{entry.start_time} - {entry.end_time}</span>
+                        )}
+                        {isDayOff && (
+                          <span>{entry.is_full_day ? "Full Day" : `${entry.actual_hours}h`}</span>
+                        )}
+                        {isWorkShift && (entry.actual_hours || 0) > 0 && (
+                          <span>• {formatHours(entry.actual_hours || 0)}</span>
+                        )}
+                        {entry.notes && (
+                          <span className="truncate max-w-[200px]">• {entry.notes}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  {/* Right side: Date and amount */}
-                  <div className="flex items-center gap-3 flex-shrink-0">
+
+                  {/* Right: Date + Amount */}
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">
+                      <span className="md:hidden">{formattedDateShort}</span>
+                      <span className="hidden md:inline">{formattedDateFull}</span>
+                    </span>
                     {amount > 0 && (
-                      <span className={`font-semibold text-sm ${
+                      <span className={`font-semibold ${
                         entry.status === 'completed' ? status.color : 'text-amber-600 dark:text-amber-400'
                       }`}>
                         {getCurrencySymbol(currency)}{formatCurrency(amount)}
                       </span>
-                    )}
-                    <span className="text-xs text-muted-foreground">{formattedDateShort}</span>
-                  </div>
-                </div>
-
-                {/* Desktop View - Full details */}
-                <div className="hidden md:flex flex-row items-center justify-between gap-3">
-                  {/* Left side: Date and Job */}
-                  <div className="flex-1 space-y-1.5">
-                    <div className="flex items-center flex-wrap gap-x-2 gap-y-1">
-                      <h3 className="font-semibold text-base">
-                        {formattedDateFull}
-                      </h3>
-                      {isWorkShift && entry.start_time && entry.end_time && (
-                        <span className="text-sm text-muted-foreground">
-                          {entry.start_time} - {entry.end_time}
-                        </span>
-                      )}
-                      {isDayOff && (
-                        <span className="text-sm text-muted-foreground">
-                          {entry.day_off_type?.toUpperCase()} - {entry.is_full_day ? "Full Day" : `${entry.actual_hours}h`}
-                        </span>
-                      )}
-                      <span className="text-sm">{status.emoji}</span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {entry.jobs ? (
-                        <>
-                          <div
-                            className="w-2 h-2 rounded flex-shrink-0"
-                            style={{ backgroundColor: jobColor }}
-                          />
-                          <p className="text-sm text-muted-foreground">
-                            {entry.jobs.name}
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-2 h-2 rounded bg-gray-400 flex-shrink-0" />
-                          <p className="text-sm text-muted-foreground">
-                            {isDayOff ? "Day Off" : "Freelance"}
-                          </p>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Badges row - overnight and template */}
-                    {(entry.is_overnight || entry.shift_templates) && (
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {entry.is_overnight && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
-                            🌙 overnight
-                          </span>
-                        )}
-                        {entry.shift_templates && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
-                            📋 {templateCode}
-                          </span>
-                        )}
-                      </div>
-                    )}
-
-                    {entry.notes && (
-                      <p className="text-xs text-muted-foreground line-clamp-1">
-                        {entry.notes}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Right side: Stats */}
-                  <div className="flex items-center gap-4 md:gap-6">
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">Hours</p>
-                      <p className="font-semibold">
-                        {formatHours(entry.actual_hours || 0)}
-                      </p>
-                    </div>
-                    {amount > 0 && (
-                      <div className="text-right">
-                        <p className="text-xs text-muted-foreground">
-                          {entry.status === 'completed' ? 'Earned' : 'Expected'}
-                        </p>
-                        <p className={`font-semibold ${
-                          entry.status === 'completed' ? status.color : 'text-amber-600 dark:text-amber-400'
-                        }`}>
-                          {getCurrencySymbol(currency)}{formatCurrency(amount)}
-                        </p>
-                      </div>
                     )}
                   </div>
                 </div>
@@ -306,18 +248,17 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
             const isIncome = record.type === 'income';
             const category = record.financial_categories;
             const recordDate = new Date(record.date);
-            const formattedDateShort = recordDate.toLocaleDateString("en-US", {
+            const formattedDateShort = formatDate(recordDate, {
               month: "short",
-              day: "numeric",
+              day: true,
             });
-            const formattedDateFull = recordDate.toLocaleDateString("en-US", {
+            const formattedDateFull = formatDate(recordDate, {
               weekday: "short",
               month: "short",
-              day: "numeric",
-              year: "numeric",
+              day: true,
             });
 
-            // Status styling using centralized approach
+            // Status styling
             const recordStatus = record.status || 'completed';
             const isCancelled = recordStatus === 'cancelled';
             const isPlanned = recordStatus === 'planned';
@@ -350,87 +291,53 @@ export function ListView({ entries, financialRecords = [], loading, onEntryChang
               <div
                 key={`financial-${record.id}`}
                 onClick={() => handleFinancialClick(record)}
-                className={`border rounded-lg p-3 md:p-4 hover:bg-muted/50 transition-colors cursor-pointer ${borderColor}`}
+                className={`border rounded-lg p-3 hover:bg-muted/50 transition-colors cursor-pointer ${borderColor}`}
                 style={{ opacity: isCancelled ? 0.5 : 1 }}
               >
-                {/* Mobile View - Simplified */}
-                <div className="flex md:hidden items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {/* Icon */}
-                    {getItemIcon(item)}
-                    {/* Category icon if available */}
+                <div className="flex items-center justify-between gap-3">
+                  {/* Left: Icon + Details */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {/* Type Icon */}
+                    {getItemIcon(item, 'md')}
+
+                    {/* Category icon */}
                     {category?.icon && (
-                      <span className="text-sm flex-shrink-0">{category.icon}</span>
+                      <span className="text-base flex-shrink-0">{category.icon}</span>
                     )}
-                    {/* Description */}
-                    <span className="font-medium truncate">{getItemName(item)}</span>
-                    {/* Status indicator */}
-                    {isPlanned && <span className="text-xs flex-shrink-0">📅</span>}
-                    {isCancelled && <span className="text-xs flex-shrink-0">❌</span>}
+
+                    {/* Main info */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium truncate">{getItemName(item)}</span>
+                        {isPlanned && <span className="text-xs flex-shrink-0">📅</span>}
+                        {isCancelled && <span className="text-xs flex-shrink-0">❌</span>}
+                      </div>
+
+                      {/* Secondary info - visible on desktop */}
+                      <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                        {category && <span>{category.name}</span>}
+                        {record.jobs && (
+                          <span className="flex items-center gap-1">
+                            • <span className="w-2 h-2 rounded inline-block" style={{ backgroundColor: record.jobs.color || "#3B82F6" }} />
+                            {record.jobs.name}
+                          </span>
+                        )}
+                        {record.notes && (
+                          <span className="truncate max-w-[200px]">• {record.notes}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  {/* Right side: Amount and date */}
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    <span className={`font-semibold text-sm ${amountColor}`}>
+
+                  {/* Right: Date + Amount */}
+                  <div className="flex items-center gap-4 flex-shrink-0">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">
+                      <span className="md:hidden">{formattedDateShort}</span>
+                      <span className="hidden md:inline">{formattedDateFull}</span>
+                    </span>
+                    <span className={`font-semibold ${amountColor}`}>
                       {isIncome ? '+' : '-'}{getCurrencySymbol(record.currency)}{formatCurrency(Number(record.amount))}
                     </span>
-                    <span className="text-xs text-muted-foreground">{formattedDateShort}</span>
-                  </div>
-                </div>
-
-                {/* Desktop View - Full details */}
-                <div className="hidden md:flex flex-row items-center justify-between gap-3">
-                  {/* Left side: Date and Details */}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-base">
-                        {formattedDateFull}
-                      </h3>
-                      {isIncome ? (
-                        <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-                      ) : (
-                        <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
-                      )}
-                      <span className="text-sm font-medium">
-                        {isIncome ? 'Income' : 'Expense'}
-                      </span>
-                      {isPlanned && <span className="text-xs">📅</span>}
-                      {isCancelled && <span className="text-xs">❌</span>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium">
-                        {record.description}
-                      </p>
-                    </div>
-                    {category && (
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-                        <span>{category.icon}</span>
-                        <span>{category.name}</span>
-                      </div>
-                    )}
-                    {record.jobs && (
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-1">
-                        <div className="w-2 h-2 rounded" style={{ backgroundColor: record.jobs.color || "#3B82F6" }} />
-                        <span>{record.jobs.name}</span>
-                      </div>
-                    )}
-                    {record.notes && (
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">
-                        {record.notes}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Right side: Amount */}
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">
-                      {isPlanned ? 'Expected' : isCancelled ? 'Cancelled' : 'Amount'}
-                    </p>
-                    <p className={`text-lg font-bold ${amountColor}`}>
-                      {isIncome ? '+' : '-'}{getCurrencySymbol(record.currency)}{formatCurrency(Number(record.amount))}
-                    </p>
-                    <p className={`text-[10px] ${amountColor}`}>
-                      {record.currency}
-                    </p>
                   </div>
                 </div>
               </div>

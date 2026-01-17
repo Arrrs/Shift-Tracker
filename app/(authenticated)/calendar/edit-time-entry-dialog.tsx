@@ -76,7 +76,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
       setDayOffType(entry.day_off_type || "pto");
       setIsFullDay(entry.is_full_day ?? true);
       setDayOffHours(entry.actual_hours || 8);
-      setCustomCurrency(entry.custom_currency || "USD");
+      setCustomCurrency(entry.custom_currency || primaryCurrency);
 
       // Load pay customization data
       const hasPayCustomization =
@@ -200,6 +200,11 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
 
   // Apply template
   const applyTemplate = (templateId: string) => {
+    if (templateId === "none") {
+      // Manual entry selected - clear template but keep current values
+      setSelectedTemplateId("none");
+      return;
+    }
     const template = templates.find((t) => t.id === templateId);
     if (template) {
       // Strip seconds from times (database returns HH:MM:SS)

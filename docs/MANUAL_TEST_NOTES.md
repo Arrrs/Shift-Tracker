@@ -1,8 +1,0 @@
-Also i dont understand where we have the full list of currencies. When we show this list to choose one we should have it to be the same list every time i think. But i saw that we have different list for financial records to create (just 6 variants). But changed primary currency used good on form open so it's ok. Can you think of good way to handle it everywhere to be used from one plase? I think we have now table in db where we use that currencies (so this way is ok). 
-
-Also we should change the order of items in /calendar list view.
-And item view should be simplified i think for mobile view (notice that i mean only mobile view) because i have a lot of items in the list and all of them have different structure. I'd like to use in the first row only icon of type (shift, day off, income, expence and maybe i forgot something else) and name of the job or expense or investigate please and think what better to show. I think we can remove words like earned and amount. And do not duplicate symbols like symbol and letter marks. Also we can keep status with green and yellow collors or something. We have shift templates and we can show short code of job shift template near the job name and don't show shift time. I think date will be enough.
-
-Also make sure that red green yellow and other colors are not hardcoded so we can change them in one plase somewhere where theme settings are located.
-
-Also detailed stats for mobile view has duplicated currency letter short code and symbols. It looks good for me but theoreticaly i don't feel like it's correct, what you think? And if we decide to change it how can it be changed?

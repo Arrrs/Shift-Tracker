@@ -64,7 +64,7 @@ export function DayShiftsDrawer({
   onOpenChange,
   onEntryChange,
 }: DayShiftsDrawerProps) {
-  const { t } = useTranslation();
+  const { t, formatDate } = useTranslation();
   const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -92,11 +92,11 @@ export function DayShiftsDrawer({
   if (!date) return null;
   const dayEntries = entries.filter((entry) => entry.date === dateStr);
 
-  const formattedDate = date.toLocaleDateString("en-US", {
+  const formattedDate = formatDate(date, {
     weekday: "long",
     month: "long",
-    day: "numeric",
-    year: "numeric",
+    day: true,
+    year: true,
   });
 
   // Calculate total hours - only count completed entries

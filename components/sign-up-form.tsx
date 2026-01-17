@@ -129,7 +129,7 @@ export function SignUpForm({
                   <span className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
+                  <span className="bg-card px-2 text-muted-foreground">
                     {t("orContinueWith")}
                   </span>
                 </div>
@@ -165,6 +165,14 @@ export function SignUpForm({
               {t("alreadyHaveAccount")}{" "}
               <Link href="/auth/login" className="underline underline-offset-4">
                 {t("login")}
+              </Link>
+            </div>
+            <div className="mt-3 text-center">
+              <Link
+                href="/"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← {t("backToHome")}
               </Link>
             </div>
           </form>

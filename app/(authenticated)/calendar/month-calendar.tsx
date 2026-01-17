@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { Database } from "@/lib/database.types";
 import { getStatusInfo, getCurrencySymbol, formatCurrency } from "@/lib/utils/time-format";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
@@ -24,6 +25,7 @@ interface MonthCalendarProps {
 }
 
 export function MonthCalendar({ currentDate, entries = [], financialRecords = [], onDayClick }: MonthCalendarProps) {
+  const { t } = useTranslation();
   const calendar = useMemo(() => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -94,7 +96,15 @@ export function MonthCalendar({ currentDate, entries = [], financialRecords = []
     return days;
   }, [currentDate]);
 
-  const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const weekDays = [
+    t("weekdaySundayShort"),
+    t("weekdayMondayShort"),
+    t("weekdayTuesdayShort"),
+    t("weekdayWednesdayShort"),
+    t("weekdayThursdayShort"),
+    t("weekdayFridayShort"),
+    t("weekdaySaturdayShort"),
+  ];
 
   // Get time entries for a specific date
   const getEntriesForDate = (date: Date) => {
@@ -126,9 +136,9 @@ export function MonthCalendar({ currentDate, entries = [], financialRecords = []
     <div className="w-full h-full flex flex-col">
       {/* Week day headers */}
       <div className="grid grid-cols-7 gap-1 md:gap-2 mb-1 md:mb-2">
-        {weekDays.map((day) => (
+        {weekDays.map((day, index) => (
           <div
-            key={day}
+            key={index}
             className="text-center text-xs md:text-sm font-semibold text-muted-foreground py-1 md:py-2"
           >
             {day}
