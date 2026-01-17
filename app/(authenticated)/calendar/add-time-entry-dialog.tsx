@@ -3,15 +3,18 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n/use-translation";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/responsive-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { createTimeEntry } from "../time-entries/actions";
-import { getJobs, getShiftTemplates } from "../jobs/actions";
+import { useCreateTimeEntry } from "@/lib/hooks/use-time-entries";
+import { useShiftTemplates } from "@/lib/hooks/use-shift-templates";
 import { Database } from "@/lib/database.types";
+import { useActiveJobs } from "@/lib/hooks/use-jobs";
+import { usePrimaryCurrency } from "@/lib/hooks/use-user-settings";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
@@ -25,10 +28,8 @@ interface AddTimeEntryDialogProps {
 
 export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess }: AddTimeEntryDialogProps) {
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const primaryCurrency = usePrimaryCurrency();
+  const createMutation = useCreateTimeEntry();
 
   // Form state
   const [entryType, setEntryType] = useState<"work_shift" | "day_off">("work_shift");
@@ -51,7 +52,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
   const [holidayMultiplier, setHolidayMultiplier] = useState<string>("1.5");
   const [customMultiplierValue, setCustomMultiplierValue] = useState<string>("");
   const [isHoliday, setIsHoliday] = useState(false);
-  const [customCurrency, setCustomCurrency] = useState<string>("USD");
+  const [customCurrency, setCustomCurrency] = useState<string>(primaryCurrency);
 
   // Day-off specific
   const [dayOffType, setDayOffType] = useState("pto");
@@ -67,35 +68,28 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
     }
   }, [open, date]);
 
-  // Load jobs
+  // Load jobs with React Query (automatic caching & deduplication)
+  const { data: activeJobs = [], isLoading: isLoadingJobs } = useActiveJobs();
+
+  // Load templates with React Query (automatic caching & refetching)
+  const { data: templates = [], isLoading: loadingTemplates } = useShiftTemplates(
+    selectedJobId && selectedJobId !== "none" ? selectedJobId : ""
+  );
+
+  // Reset selected template when job changes
   useEffect(() => {
-    const loadJobs = async () => {
-      const result = await getJobs();
-      if (result.jobs) {
-        const activeJobs = result.jobs.filter((job) => job.is_active);
-        setJobs(activeJobs);
-      }
-    };
-    loadJobs();
-  }, []);
-
-  // Load templates when job changes
-  useEffect(() => {
-    const loadTemplates = async () => {
-      setTemplates([]);
-      setSelectedTemplateId("");
-
-      if (!selectedJobId || selectedJobId === "none") return;
-
-      setLoadingTemplates(true);
-      const result = await getShiftTemplates(selectedJobId);
-      if (result.templates) {
-        setTemplates(result.templates);
-      }
-      setLoadingTemplates(false);
-    };
-    loadTemplates();
+    setSelectedTemplateId("");
   }, [selectedJobId]);
+
+  // Update currency to match job's currency when job is selected
+  useEffect(() => {
+    if (selectedJobId && selectedJobId !== "none") {
+      const selectedJob = activeJobs.find(j => j.id === selectedJobId);
+      if (selectedJob?.currency) {
+        setCustomCurrency(selectedJob.currency);
+      }
+    }
+  }, [selectedJobId, activeJobs]);
 
   // Auto-calculate hours when times change
   useEffect(() => {
@@ -114,10 +108,16 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
 
   // Apply template
   const applyTemplate = (templateId: string) => {
+    if (templateId === "none") {
+      // Manual entry selected - clear template but keep current values
+      setSelectedTemplateId("none");
+      return;
+    }
     const template = templates.find((t) => t.id === templateId);
     if (template) {
-      setStartTime(template.start_time);
-      setEndTime(template.end_time);
+      // Strip seconds from times (database returns HH:MM:SS, we need HH:MM)
+      if (template.start_time) setStartTime(template.start_time.substring(0, 5));
+      if (template.end_time) setEndTime(template.end_time.substring(0, 5));
       setActualHours(template.expected_hours);
       setSelectedTemplateId(templateId);
     }
@@ -134,7 +134,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
   // Calculate expected income for live preview
   const getCurrencySymbolForPreview = () => {
     if (payType === "default" && selectedJobId && selectedJobId !== "none") {
-      const selectedJob = jobs.find(j => j.id === selectedJobId);
+      const selectedJob = activeJobs.find(j => j.id === selectedJobId);
       return selectedJob?.currency_symbol || "$";
     }
     // Map common currencies to symbols
@@ -149,7 +149,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
   const calculateExpectedIncome = (): { amount: number; formula: string; currency: string; symbol: string } | null => {
     if (!customizePay || entryType !== "work_shift") return null;
 
-    const selectedJob = jobs.find(j => j.id === selectedJobId);
+    const selectedJob = activeJobs.find((j) => j.id === selectedJobId);
     const currencySymbol = getCurrencySymbolForPreview();
     const currencyCode = (payType === "default" && selectedJob ? selectedJob.currency : customCurrency) || "USD";
     let baseRate = 0;
@@ -218,9 +218,19 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (entryType === "work_shift" && (!startTime || !endTime)) {
-      toast.error(`${t("startTime")} / ${t("endTime")}`);
-      return;
+    if (entryType === "work_shift") {
+      if (!startTime || !endTime) {
+        toast.error(`${t("startTime")} / ${t("endTime")}`);
+        return;
+      }
+
+      // Validate time format (HH:MM)
+      const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+      if (!timeRegex.test(startTime) || !timeRegex.test(endTime)) {
+        console.error('Invalid time format:', { startTime, endTime });
+        toast.error('Invalid time format. Please check start and end times.');
+        return;
+      }
     }
 
     // Validate pay customization
@@ -270,8 +280,6 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
       }
     }
 
-    setLoading(true);
-
     const baseData = {
       date,
       status,
@@ -281,7 +289,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
     let result;
 
     if (entryType === "day_off") {
-      result = await createTimeEntry({
+      result = await createMutation.mutateAsync({
         ...baseData,
         entry_type: "day_off",
         day_off_type: dayOffType,
@@ -292,7 +300,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
     } else {
       const scheduledHours = actualHours; // For now, same as actual
 
-      // Prepare pay customization fields
+      // Prepare pay customization fields - only include fields with valid values
       const payData: any = {
         is_holiday: isHoliday,
       };
@@ -301,22 +309,34 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
         // Determine pay_override_type based on multiplier + base rate combination
         if (applyMultiplier) {
           payData.pay_override_type = "holiday_multiplier";
-          payData.holiday_multiplier = getMultiplierValue();
+          const multiplier = getMultiplierValue();
+          if (multiplier > 0) {
+            payData.holiday_multiplier = multiplier;
+          }
         } else {
           payData.pay_override_type = payType;
         }
 
-        // Set base rate fields
+        // Set base rate fields - only add if they have valid values
         switch (payType) {
           case "custom_hourly":
-            payData.custom_hourly_rate = parseFloat(customHourlyRate);
+            const hourlyRate = parseFloat(customHourlyRate);
+            if (!isNaN(hourlyRate) && hourlyRate > 0) {
+              payData.custom_hourly_rate = hourlyRate;
+            }
             break;
           case "custom_daily":
-            payData.custom_daily_rate = parseFloat(customDailyRate);
+            const dailyRate = parseFloat(customDailyRate);
+            if (!isNaN(dailyRate) && dailyRate > 0) {
+              payData.custom_daily_rate = dailyRate;
+            }
             break;
           case "fixed_amount":
             payData.pay_override_type = "fixed_amount";
-            payData.holiday_fixed_amount = parseFloat(fixedAmount);
+            const fixedAmt = parseFloat(fixedAmount);
+            if (!isNaN(fixedAmt) && fixedAmt > 0) {
+              payData.holiday_fixed_amount = fixedAmt;
+            }
             break;
           case "default":
             // Use job default, but if multiplier is applied, still set override type
@@ -328,37 +348,41 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
 
         // Always set custom currency when customizing pay
         if (customCurrency) {
-          (payData as any).custom_currency = customCurrency;
+          payData.custom_currency = customCurrency;
         }
       } else {
         payData.pay_override_type = "default";
       }
 
-      result = await createTimeEntry({
+      // Strip seconds from times if present (database may return HH:MM:SS)
+      const cleanStartTime = (startTime || "09:00").substring(0, 5);
+      const cleanEndTime = (endTime || "17:00").substring(0, 5);
+
+      const entryData = {
         ...baseData,
-        entry_type: "work_shift",
+        entry_type: "work_shift" as const,
         job_id: selectedJobId && selectedJobId !== "none" ? selectedJobId : null,
         template_id: selectedTemplateId && selectedTemplateId !== "none" ? selectedTemplateId : null,
-        start_time: startTime,
-        end_time: endTime,
+        start_time: cleanStartTime,
+        end_time: cleanEndTime,
         scheduled_hours: scheduledHours,
         actual_hours: actualHours,
-        is_overnight: endTime <= startTime,
+        is_overnight: cleanEndTime <= cleanStartTime,
         ...payData,
-      });
+      };
+
+      console.log('Sending time entry data:', JSON.stringify(entryData, null, 2));
+      result = await createMutation.mutateAsync(entryData);
     }
 
-    setLoading(false);
-
-    if (result.error) {
-      toast.error(t("error"), { description: result.error });
-    } else {
-      toast.success(t("savedSuccessfully"));
+    if (!result.error) {
       onOpenChange(false);
       onSuccess?.();
       resetForm();
     }
   };
+
+  const loading = createMutation.isPending;
 
   const resetForm = () => {
     setSelectedJobId("");
@@ -377,18 +401,19 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
     setHolidayMultiplier("1.5");
     setCustomMultiplierValue("");
     setIsHoliday(false);
-    setCustomCurrency("USD");
+    setCustomCurrency(primaryCurrency);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh]">
+        <DialogHeader className="p-6 pb-0 flex-shrink-0">
           <DialogTitle>{t("addEntry")}</DialogTitle>
           <DialogDescription>{t("workShift")} / {t("dayOff")}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="space-y-4 p-6 pt-4 overflow-y-auto flex-1">
           {/* Type Selector */}
           <div className="space-y-2">
             <Label>{t("type")}</Label>
@@ -418,7 +443,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">{t("none")}</SelectItem>
-                {jobs.map((job) => (
+                {activeJobs.map((job) => (
                   <SelectItem key={job.id} value={job.id}>
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded" style={{ backgroundColor: job.color || "#3B82F6" }} />
@@ -433,7 +458,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
           {entryType === "work_shift" ? (
             <>
               {/* Template (Optional) */}
-              {selectedJobId && templates.length > 0 && (
+              {selectedJobId && selectedJobId !== "none" && templates.length > 0 && (
                 <div className="space-y-2">
                   <Label>Template (Optional)</Label>
                   <Select value={selectedTemplateId} onValueChange={applyTemplate}>
@@ -502,28 +527,12 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                         <span className="text-xs font-normal text-muted-foreground ml-1">(overrides job default)</span>
                       )}
                     </Label>
-                      <Select value={customCurrency} onValueChange={setCustomCurrency}>
-                        <SelectTrigger id="custom-currency" className="w-40">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="USD">$ USD</SelectItem>
-                          <SelectItem value="EUR">€ EUR</SelectItem>
-                          <SelectItem value="GBP">£ GBP</SelectItem>
-                          <SelectItem value="JPY">¥ JPY</SelectItem>
-                          <SelectItem value="CAD">$ CAD</SelectItem>
-                          <SelectItem value="AUD">$ AUD</SelectItem>
-                          <SelectItem value="CHF">CHF</SelectItem>
-                          <SelectItem value="CNY">¥ CNY</SelectItem>
-                          <SelectItem value="INR">₹ INR</SelectItem>
-                          <SelectItem value="MXN">$ MXN</SelectItem>
-                          <SelectItem value="BRL">R$ BRL</SelectItem>
-                          <SelectItem value="ZAR">R ZAR</SelectItem>
-                          <SelectItem value="RUB">₽ RUB</SelectItem>
-                          <SelectItem value="KRW">₩ KRW</SelectItem>
-                          <SelectItem value="SGD">$ SGD</SelectItem>
-                        </SelectContent>
-                    </Select>
+                    <CurrencySelect
+                      id="custom-currency"
+                      value={customCurrency}
+                      onValueChange={setCustomCurrency}
+                      className="w-40"
+                    />
                     <p className="text-xs text-muted-foreground mt-1">
                       {selectedJobId && selectedJobId !== "none"
                         ? "This currency will be used for this shift instead of the job default"
@@ -545,10 +554,10 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                             className="h-4 w-4"
                           />
                           <Label htmlFor="pay-default" className="cursor-pointer font-normal">
-                            Use job default ({jobs.find(j => j.id === selectedJobId)?.pay_type === "hourly"
-                              ? `$${jobs.find(j => j.id === selectedJobId)?.hourly_rate}/hr`
-                              : jobs.find(j => j.id === selectedJobId)?.pay_type === "daily"
-                              ? `$${jobs.find(j => j.id === selectedJobId)?.daily_rate}/day`
+                            Use job default ({activeJobs.find(j => j.id === selectedJobId)?.pay_type === "hourly"
+                              ? `$${activeJobs.find(j => j.id === selectedJobId)?.hourly_rate}/hr`
+                              : activeJobs.find(j => j.id === selectedJobId)?.pay_type === "daily"
+                              ? `$${activeJobs.find(j => j.id === selectedJobId)?.daily_rate}/day`
                               : "N/A"})
                           </Label>
                         </div>
@@ -638,7 +647,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                         </Label>
                       </div>
                       {applyMultiplier && (
-                        <div className="flex items-center gap-2 ml-6">
+                        <div className="flex flex-col items-start gap-2 ml-6">
                           <Select value={holidayMultiplier} onValueChange={setHolidayMultiplier}>
                             <SelectTrigger className="w-40">
                               <SelectValue />
@@ -769,9 +778,10 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
             <Label htmlFor="notes">{t("notes")} ({t("optional")})</Label>
             <Input id="notes" placeholder="Add notes..." value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
+          </div>
 
           {/* Actions */}
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
               {t("cancel")}
             </Button>

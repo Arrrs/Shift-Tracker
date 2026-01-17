@@ -19,15 +19,9 @@ const DEFAULT_SETTINGS: CountdownSettings = {
   showClock: true,
   showCountdown: true,
   showCounter: true,
-  clockType: 'digital',
-  clockStyle: 'modern',
-  digitalClockStyle: 'default',
   use24Hour: true,
   countdownStyle: 'digital',
   counterDefaultValue: 3,
-  autoDetectShift: true,
-  selectedJobId: null,
-  selectedTemplateId: null,
 };
 
 export default function CountdownPage() {
@@ -38,11 +32,7 @@ export default function CountdownPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [startShiftOpen, setStartShiftOpen] = useState(false);
 
-  const { activeShift, loading, refresh } = useCurrentShift({
-    autoDetect: settingsLoaded ? settings.autoDetectShift : false,
-    selectedJobId: settings.selectedJobId,
-    selectedTemplateId: settings.selectedTemplateId,
-  });
+  const { activeShift, loading, refresh } = useCurrentShift();
 
   // Load settings from database and localStorage
   useEffect(() => {
@@ -129,15 +119,13 @@ export default function CountdownPage() {
     }
   };
 
-  if (loading) {
+  if (loading || !settingsLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
-
-  // Normal layout
   return (
     <div className="min-h-full p-4 md:p-6 lg:p-8" suppressHydrationWarning>
       {/* Header */}

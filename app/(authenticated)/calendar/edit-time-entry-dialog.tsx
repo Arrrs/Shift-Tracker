@@ -3,15 +3,19 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n/use-translation";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/responsive-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { updateTimeEntry, deleteTimeEntry } from "../time-entries/actions";
-import { getJobs, getShiftTemplates } from "../jobs/actions";
+import { useUpdateTimeEntry } from "@/lib/hooks/use-time-entries";
+import { useShiftTemplates } from "@/lib/hooks/use-shift-templates";
 import { Database } from "@/lib/database.types";
+import { DeleteTimeEntryButton } from "./delete-time-entry-button";
+import { useActiveJobs } from "@/lib/hooks/use-jobs";
+import { usePrimaryCurrency } from "@/lib/hooks/use-user-settings";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
@@ -26,19 +30,16 @@ interface EditTimeEntryDialogProps {
 
 export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: EditTimeEntryDialogProps) {
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const primaryCurrency = usePrimaryCurrency();
+  const updateMutation = useUpdateTimeEntry();
 
   // Form state
   const [entryType, setEntryType] = useState<"work_shift" | "day_off">((entry?.entry_type as "work_shift" | "day_off") || "work_shift");
   const [selectedJobId, setSelectedJobId] = useState<string>(entry?.job_id || "");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>(entry?.template_id || "");
   const [date, setDate] = useState(entry?.date || "");
-  const [startTime, setStartTime] = useState(entry?.start_time || "09:00");
-  const [endTime, setEndTime] = useState(entry?.end_time || "17:00");
+  const [startTime, setStartTime] = useState((entry?.start_time || "09:00").substring(0, 5));
+  const [endTime, setEndTime] = useState((entry?.end_time || "17:00").substring(0, 5));
   const [actualHours, setActualHours] = useState<number>(entry?.actual_hours || 8);
   const [status, setStatus] = useState(entry?.status || "planned");
   const [notes, setNotes] = useState(entry?.notes || "");
@@ -53,7 +54,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
   const [holidayMultiplier, setHolidayMultiplier] = useState<string>("1.5");
   const [customMultiplierValue, setCustomMultiplierValue] = useState<string>("");
   const [isHoliday, setIsHoliday] = useState(false);
-  const [customCurrency, setCustomCurrency] = useState<string>("USD");
+  const [customCurrency, setCustomCurrency] = useState<string>(primaryCurrency);
 
   // Day-off specific
   const [dayOffType, setDayOffType] = useState(entry?.day_off_type || "pto");
@@ -67,15 +68,15 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
       setSelectedJobId(entry.job_id || "none");
       setSelectedTemplateId(entry.template_id || "none");
       setDate(entry.date);
-      setStartTime(entry.start_time || "09:00");
-      setEndTime(entry.end_time || "17:00");
+      setStartTime((entry.start_time || "09:00").substring(0, 5));
+      setEndTime((entry.end_time || "17:00").substring(0, 5));
       setActualHours(entry.actual_hours || 8);
       setStatus(entry.status || "planned");
       setNotes(entry.notes || "");
       setDayOffType(entry.day_off_type || "pto");
       setIsFullDay(entry.is_full_day ?? true);
       setDayOffHours(entry.actual_hours || 8);
-      setCustomCurrency(entry.custom_currency || "USD");
+      setCustomCurrency(entry.custom_currency || primaryCurrency);
 
       // Load pay customization data
       const hasPayCustomization =
@@ -89,6 +90,23 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
       if (hasPayCustomization) {
         setCustomizePay(true);
 
+        // Helper function to match multiplier values numerically
+        const matchPredefinedMultiplier = (value: number | string): string | null => {
+          const numValue = parseFloat(value.toString());
+          if (isNaN(numValue)) return null;
+
+          // Use string keys with normalized numeric values to avoid 2 vs 2.0 issues
+          const predefinedValues = ["1.25", "1.5", "1.75", "2.0", "2.5", "3.0"];
+
+          // Find matching value by comparing numerically
+          for (const predefined of predefinedValues) {
+            if (Math.abs(parseFloat(predefined) - numValue) < 0.001) {
+              return predefined;
+            }
+          }
+          return null;
+        };
+
         // Set pay type
         if (entry.pay_override_type === "fixed_amount") {
           setPayType("fixed_amount");
@@ -96,13 +114,49 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
         } else if (entry.pay_override_type === "holiday_multiplier") {
           setPayType("default");
           setApplyMultiplier(true);
-          setHolidayMultiplier(entry.holiday_multiplier?.toString() || "1.5");
+          const multiplierValue = entry.holiday_multiplier?.toString() || "1.5";
+          // Check if it's a predefined value using numeric comparison
+          const matchedValue = matchPredefinedMultiplier(multiplierValue);
+          if (matchedValue) {
+            setHolidayMultiplier(matchedValue);
+            setCustomMultiplierValue("");
+          } else {
+            // It's a custom value
+            setHolidayMultiplier("custom");
+            setCustomMultiplierValue(multiplierValue);
+          }
         } else if (entry.custom_hourly_rate) {
           setPayType("custom_hourly");
           setCustomHourlyRate(entry.custom_hourly_rate.toString());
+          // Check if there's also a multiplier
+          if (entry.holiday_multiplier) {
+            setApplyMultiplier(true);
+            const multiplierValue = entry.holiday_multiplier.toString();
+            const matchedValue = matchPredefinedMultiplier(multiplierValue);
+            if (matchedValue) {
+              setHolidayMultiplier(matchedValue);
+              setCustomMultiplierValue("");
+            } else {
+              setHolidayMultiplier("custom");
+              setCustomMultiplierValue(multiplierValue);
+            }
+          }
         } else if (entry.custom_daily_rate) {
           setPayType("custom_daily");
           setCustomDailyRate(entry.custom_daily_rate.toString());
+          // Check if there's also a multiplier
+          if (entry.holiday_multiplier) {
+            setApplyMultiplier(true);
+            const multiplierValue = entry.holiday_multiplier.toString();
+            const matchedValue = matchPredefinedMultiplier(multiplierValue);
+            if (matchedValue) {
+              setHolidayMultiplier(matchedValue);
+              setCustomMultiplierValue("");
+            } else {
+              setHolidayMultiplier("custom");
+              setCustomMultiplierValue(multiplierValue);
+            }
+          }
         }
 
         setIsHoliday(entry.is_holiday || false);
@@ -121,37 +175,13 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
     }
   }, [entry, open]);
 
-  // Load jobs
-  useEffect(() => {
-    const loadJobs = async () => {
-      const result = await getJobs();
-      if (result.jobs) {
-        const activeJobs = result.jobs.filter((job) => job.is_active);
-        setJobs(activeJobs);
-      }
-    };
-    loadJobs();
-  }, []);
+  // Load jobs with React Query (automatic caching & deduplication)
+  const { data: activeJobs = [] } = useActiveJobs();
 
-  // Load templates when job changes
-  useEffect(() => {
-    const loadTemplates = async () => {
-      if (!selectedJobId || selectedJobId === "none") {
-        setTemplates([]);
-        return;
-      }
-
-      setLoadingTemplates(true);
-      const result = await getShiftTemplates(selectedJobId);
-      if (result.templates) {
-        setTemplates(result.templates);
-      } else {
-        setTemplates([]);
-      }
-      setLoadingTemplates(false);
-    };
-    loadTemplates();
-  }, [selectedJobId]);
+  // Load templates with React Query (automatic caching & refetching)
+  const { data: templates = [], isLoading: loadingTemplates } = useShiftTemplates(
+    selectedJobId && selectedJobId !== "none" ? selectedJobId : ""
+  );
 
   // Auto-calculate hours when times change
   useEffect(() => {
@@ -170,10 +200,16 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
 
   // Apply template
   const applyTemplate = (templateId: string) => {
+    if (templateId === "none") {
+      // Manual entry selected - clear template but keep current values
+      setSelectedTemplateId("none");
+      return;
+    }
     const template = templates.find((t) => t.id === templateId);
     if (template) {
-      setStartTime(template.start_time);
-      setEndTime(template.end_time);
+      // Strip seconds from times (database returns HH:MM:SS)
+      setStartTime(template.start_time.substring(0, 5));
+      setEndTime(template.end_time.substring(0, 5));
       setActualHours(template.expected_hours);
       setSelectedTemplateId(templateId);
     }
@@ -190,7 +226,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
   // Calculate expected income for live preview
   const getCurrencySymbolForPreview = () => {
     if (payType === "default" && selectedJobId && selectedJobId !== "none") {
-      const selectedJob = jobs.find(j => j.id === selectedJobId);
+      const selectedJob = activeJobs.find(j => j.id === selectedJobId);
       return selectedJob?.currency_symbol || "$";
     }
     // Map common currencies to symbols
@@ -205,7 +241,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
   const calculateExpectedIncome = (): { amount: number; formula: string; currency: string; symbol: string } | null => {
     if (!customizePay || entryType !== "work_shift") return null;
 
-    const selectedJob = jobs.find(j => j.id === selectedJobId);
+    const selectedJob = activeJobs.find(j => j.id === selectedJobId);
     const currencySymbol = getCurrencySymbolForPreview();
     const currencyCode = (payType === "default" && selectedJob ? selectedJob.currency : customCurrency) || "USD";
     let baseRate = 0;
@@ -326,8 +362,6 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
       }
     }
 
-    setLoading(true);
-
     const baseData = {
       date,
       status,
@@ -337,18 +371,21 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
     let result;
 
     if (entryType === "day_off") {
-      result = await updateTimeEntry(entry.id, {
-        ...baseData,
-        entry_type: "day_off",
-        day_off_type: dayOffType,
-        actual_hours: isFullDay ? dayOffHours : dayOffHours,
-        is_full_day: isFullDay,
-        job_id: selectedJobId && selectedJobId !== "none" ? selectedJobId : null,
+      result = await updateMutation.mutateAsync({
+        id: entry.id,
+        data: {
+          ...baseData,
+          entry_type: "day_off",
+          day_off_type: dayOffType,
+          actual_hours: isFullDay ? dayOffHours : dayOffHours,
+          is_full_day: isFullDay,
+          job_id: selectedJobId && selectedJobId !== "none" ? selectedJobId : null,
+        },
       });
     } else {
       const scheduledHours = actualHours; // For now, same as actual
 
-      // Prepare pay customization fields
+      // Prepare pay customization fields - only include fields with valid values
       const payData: any = {
         is_holiday: isHoliday,
       };
@@ -357,22 +394,34 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
         // Determine pay_override_type based on multiplier + base rate combination
         if (applyMultiplier) {
           payData.pay_override_type = "holiday_multiplier";
-          payData.holiday_multiplier = getMultiplierValue();
+          const multiplier = getMultiplierValue();
+          if (multiplier > 0) {
+            payData.holiday_multiplier = multiplier;
+          }
         } else {
           payData.pay_override_type = payType;
         }
 
-        // Set base rate fields
+        // Set base rate fields - only add if they have valid values
         switch (payType) {
           case "custom_hourly":
-            payData.custom_hourly_rate = parseFloat(customHourlyRate);
+            const hourlyRate = parseFloat(customHourlyRate);
+            if (!isNaN(hourlyRate) && hourlyRate > 0) {
+              payData.custom_hourly_rate = hourlyRate;
+            }
             break;
           case "custom_daily":
-            payData.custom_daily_rate = parseFloat(customDailyRate);
+            const dailyRate = parseFloat(customDailyRate);
+            if (!isNaN(dailyRate) && dailyRate > 0) {
+              payData.custom_daily_rate = dailyRate;
+            }
             break;
           case "fixed_amount":
             payData.pay_override_type = "fixed_amount";
-            payData.holiday_fixed_amount = parseFloat(fixedAmount);
+            const fixedAmt = parseFloat(fixedAmount);
+            if (!isNaN(fixedAmt) && fixedAmt > 0) {
+              payData.holiday_fixed_amount = fixedAmt;
+            }
             break;
           case "default":
             // Use job default, but if multiplier is applied, still set override type
@@ -384,69 +433,55 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
 
         // Always set custom currency when customizing pay
         if (customCurrency) {
-          (payData as any).custom_currency = customCurrency;
+          payData.custom_currency = customCurrency;
         }
       } else {
         payData.pay_override_type = "default";
       }
 
-      result = await updateTimeEntry(entry.id, {
-        ...baseData,
-        entry_type: "work_shift",
-        job_id: selectedJobId && selectedJobId !== "none" ? selectedJobId : null,
-        template_id: selectedTemplateId && selectedTemplateId !== "none" ? selectedTemplateId : null,
-        start_time: startTime,
-        end_time: endTime,
-        scheduled_hours: scheduledHours,
-        actual_hours: actualHours,
-        is_overnight: endTime <= startTime,
-        ...payData,
+      // Strip seconds from times if present (database may return HH:MM:SS)
+      const cleanStartTime = startTime.substring(0, 5);
+      const cleanEndTime = endTime.substring(0, 5);
+
+      result = await updateMutation.mutateAsync({
+        id: entry.id,
+        data: {
+          ...baseData,
+          entry_type: "work_shift",
+          job_id: selectedJobId && selectedJobId !== "none" ? selectedJobId : null,
+          template_id: selectedTemplateId && selectedTemplateId !== "none" ? selectedTemplateId : null,
+          start_time: cleanStartTime,
+          end_time: cleanEndTime,
+          scheduled_hours: scheduledHours,
+          actual_hours: actualHours,
+          is_overnight: cleanEndTime <= cleanStartTime,
+          ...payData,
+        },
       });
     }
 
-    setLoading(false);
-
-    if (result.error) {
-      toast.error(t("error"), { description: result.error });
-    } else {
-      toast.success(t("savedSuccessfully"));
+    if (!result.error) {
       onOpenChange(false);
       onSuccess?.();
     }
   };
 
-  const handleDelete = async () => {
-    if (!entry) return;
+  const loading = updateMutation.isPending;
 
-    const confirmed = confirm(t("deleteShift"));
-    if (!confirmed) return;
-
-    setDeleting(true);
-
-    const result = await deleteTimeEntry(entry.id);
-
-    setDeleting(false);
-
-    if (result.error) {
-      toast.error(t("error"), { description: result.error });
-    } else {
-      toast.success(t("deletedSuccessfully"));
-      onOpenChange(false);
-      onSuccess?.();
-    }
-  };
+ 
 
   if (!entry) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh]">
+        <DialogHeader className="p-6 pb-0 flex-shrink-0">
           <DialogTitle>{t("editShift")}</DialogTitle>
           <DialogDescription>{t("workShift")} / {t("dayOff")}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="space-y-4 p-6 pt-4 overflow-y-auto flex-1">
           {/* Type Selector */}
           <div className="space-y-2">
             <Label>{t("type")}</Label>
@@ -476,7 +511,7 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">{t("none")}</SelectItem>
-                {jobs.map((job) => (
+                {activeJobs.map((job) => (
                   <SelectItem key={job.id} value={job.id}>
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded" style={{ backgroundColor: job.color || "#3B82F6" }} />
@@ -560,28 +595,12 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
                         <span className="text-xs font-normal text-muted-foreground ml-1">(overrides job default)</span>
                       )}
                     </Label>
-                    <Select value={customCurrency} onValueChange={setCustomCurrency}>
-                      <SelectTrigger id="custom-currency" className="w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="USD">$ USD</SelectItem>
-                        <SelectItem value="EUR">€ EUR</SelectItem>
-                        <SelectItem value="GBP">£ GBP</SelectItem>
-                        <SelectItem value="JPY">¥ JPY</SelectItem>
-                        <SelectItem value="CAD">$ CAD</SelectItem>
-                        <SelectItem value="AUD">$ AUD</SelectItem>
-                        <SelectItem value="CHF">CHF</SelectItem>
-                        <SelectItem value="CNY">¥ CNY</SelectItem>
-                        <SelectItem value="INR">₹ INR</SelectItem>
-                        <SelectItem value="MXN">$ MXN</SelectItem>
-                        <SelectItem value="BRL">R$ BRL</SelectItem>
-                        <SelectItem value="ZAR">R ZAR</SelectItem>
-                        <SelectItem value="RUB">₽ RUB</SelectItem>
-                        <SelectItem value="KRW">₩ KRW</SelectItem>
-                        <SelectItem value="SGD">$ SGD</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <CurrencySelect
+                      id="custom-currency"
+                      value={customCurrency}
+                      onValueChange={setCustomCurrency}
+                      className="w-40"
+                    />
                     <p className="text-xs text-muted-foreground mt-1">
                       {selectedJobId && selectedJobId !== "none"
                         ? "This currency will be used for this shift instead of the job default"
@@ -603,10 +622,10 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
                             className="h-4 w-4"
                           />
                           <Label htmlFor="pay-default" className="cursor-pointer font-normal">
-                            Use job default ({jobs.find(j => j.id === selectedJobId)?.pay_type === "hourly"
-                              ? `$${jobs.find(j => j.id === selectedJobId)?.hourly_rate}/hr`
-                              : jobs.find(j => j.id === selectedJobId)?.pay_type === "daily"
-                              ? `$${jobs.find(j => j.id === selectedJobId)?.daily_rate}/day`
+                            Use job default ({activeJobs.find(j => j.id === selectedJobId)?.pay_type === "hourly"
+                              ? `$${activeJobs.find(j => j.id === selectedJobId)?.hourly_rate}/hr`
+                              : activeJobs.find(j => j.id === selectedJobId)?.pay_type === "daily"
+                              ? `$${activeJobs.find(j => j.id === selectedJobId)?.daily_rate}/day`
                               : "N/A"})
                           </Label>
                         </div>
@@ -827,26 +846,12 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
             <Label htmlFor="notes">{t("notes")} ({t("optional")})</Label>
             <Input id="notes" placeholder="Add notes..." value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
+          </div>
 
           {/* Actions */}
-          <DialogFooter className="pt-4">
-            <Button type="button" variant="destructive" onClick={handleDelete} disabled={deleting} className="flex-shrink-0">
-              {deleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {t("deleting")}
-                </>
-              ) : (
-                <>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  {t("delete")}
-                </>
-              )}
-            </Button>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-              {t("cancel")}
-            </Button>
-            <Button type="submit" disabled={loading} className="flex-1">
+          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0 flex-col gap-2">
+            {/* Save button on top - full width */}
+            <Button type="submit" disabled={loading} className="w-full">
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -856,6 +861,24 @@ export function EditTimeEntryDialog({ open, onOpenChange, entry, onSuccess }: Ed
                 t("saveChanges")
               )}
             </Button>
+            {/* Delete and Cancel below - equal widths */}
+            <div className="flex gap-2 w-full">
+              <DeleteTimeEntryButton
+                entryId={entry.id}
+                className="flex-1"
+                onSuccess={() => {
+                  toast.success(t("deletedSuccessfully"));
+                  onOpenChange(false);
+                  onSuccess?.();
+                }}
+                onError={(error) => {
+                  toast.error(t("error"), { description: error });
+                }}
+              />
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+                {t("cancel")}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

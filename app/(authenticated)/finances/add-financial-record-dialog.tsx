@@ -1,18 +1,22 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/responsive-modal";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2 } from "lucide-react";
-import { createFinancialRecord, getCategories } from "./actions";
-import { getJobs } from "../jobs/actions";
+import { useCreateFinancialRecord } from "@/lib/hooks/use-financial-records";
+import { useActiveJobs } from "@/lib/hooks/use-jobs";
+import { useFinancialCategories } from "@/lib/hooks/use-financial-categories";
 import { toast } from "sonner";
+import { parseCurrency } from "@/lib/utils/currency";
+import { usePrimaryCurrency } from "@/lib/hooks/use-user-settings";
 
 interface AddFinancialRecordDialogProps {
   open: boolean;
@@ -30,15 +34,16 @@ export function AddFinancialRecordDialog({
   onSuccess,
 }: AddFinancialRecordDialogProps) {
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [jobs, setJobs] = useState<any[]>([]);
+  const primaryCurrency = usePrimaryCurrency();
+  const createMutation = useCreateFinancialRecord();
   const [type, setType] = useState<"income" | "expense">(defaultType);
+  const { data: categories = [] } = useFinancialCategories(type);
+  const { data: activeJobs = [] } = useActiveJobs();
 
   const [formData, setFormData] = useState({
     amount: "",
-    currency: "USD",
-    date: selectedDate?.toISOString().split("T")[0] || "",
+    currency: primaryCurrency,
+    date: selectedDate ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}` : "",
     category_id: "",
     description: "",
     notes: "",
@@ -51,17 +56,9 @@ export function AddFinancialRecordDialog({
     setType(defaultType);
   }, [defaultType, open]);
 
-  // Load categories when type changes
+  // Clear category selection when type changes so user picks appropriate category
   useEffect(() => {
-    async function loadCategories() {
-      const { categories: cats, error } = await getCategories(type);
-      if (!error && cats) {
-        setCategories(cats);
-        // Clear category selection when type changes so user picks appropriate category
-        setFormData((prev) => ({ ...prev, category_id: "", amount: "", currency: prev.currency }));
-      }
-    }
-    loadCategories();
+    setFormData((prev) => ({ ...prev, category_id: "", amount: "", currency: prev.currency }));
   }, [type]);
 
   // Auto-fill amount, currency, and description when category with defaults is selected
@@ -78,43 +75,28 @@ export function AddFinancialRecordDialog({
     }));
   };
 
-  // Load jobs once
-  useEffect(() => {
-    async function loadJobs() {
-      const { jobs: jobsList, error } = await getJobs();
-      if (!error && jobsList) {
-        // Filter to only show active jobs
-        setJobs(jobsList.filter(job => job.is_active));
-      }
-    }
-    loadJobs();
-  }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+
+    const amount = parseCurrency(formData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error(t("pleaseEnterValidAmount"));
+      return;
+    }
+
+    if (!formData.category_id) {
+      toast.error(t("selectCategory"));
+      return;
+    }
+
+    if (!formData.description) {
+      toast.error(t("descriptionRequired"));
+      return;
+    }
 
     try {
-      const amount = parseFloat(formData.amount);
-      if (isNaN(amount) || amount <= 0) {
-        toast.error(t("pleaseEnterValidAmount"));
-        setLoading(false);
-        return;
-      }
 
-      if (!formData.category_id) {
-        toast.error(t("selectCategory"));
-        setLoading(false);
-        return;
-      }
-
-      if (!formData.description) {
-        toast.error(t("description"));
-        setLoading(false);
-        return;
-      }
-
-      const result = await createFinancialRecord({
+      const result = await createMutation.mutateAsync({
         type,
         amount,
         currency: formData.currency,
@@ -126,17 +108,14 @@ export function AddFinancialRecordDialog({
         status: formData.status,
       });
 
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success(`${type === "income" ? t("income") : t("expense")} ${t("savedSuccessfully").toLowerCase()}`);
+      if (!result.error) {
         onOpenChange(false);
         onSuccess?.();
-        // Reset form
+        // Reset form with user's primary currency
         setFormData({
           amount: "",
-          currency: "USD",
-          date: selectedDate?.toISOString().split("T")[0] || "",
+          currency: primaryCurrency,
+          date: selectedDate ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}` : "",
           category_id: "",
           description: "",
           notes: "",
@@ -145,20 +124,21 @@ export function AddFinancialRecordDialog({
         });
       }
     } catch (error) {
-      toast.error(t("error"));
-    } finally {
-      setLoading(false);
+      // Error already handled by mutation hook
     }
   };
 
+  const loading = createMutation.isPending;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh]">
+        <DialogHeader className="p-6 pb-0 flex-shrink-0">
           <DialogTitle>{t("addFinancialRecord")}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="space-y-4 p-6 pt-4 overflow-y-auto flex-1">
           {/* Type */}
           <div className="space-y-2">
             <Label>{t("type")}</Label>
@@ -221,22 +201,11 @@ export function AddFinancialRecordDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="currency">{t("currency")}</Label>
-              <Select
+              <CurrencySelect
+                id="currency"
                 value={formData.currency}
                 onValueChange={(value) => setFormData({ ...formData, currency: value })}
-              >
-                <SelectTrigger id="currency">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USD">$ USD</SelectItem>
-                  <SelectItem value="EUR">€ EUR</SelectItem>
-                  <SelectItem value="GBP">£ GBP</SelectItem>
-                  <SelectItem value="UAH">₴ UAH</SelectItem>
-                  <SelectItem value="PLN">zł PLN</SelectItem>
-                  <SelectItem value="CZK">Kč CZK</SelectItem>
-                </SelectContent>
-              </Select>
+              />
             </div>
           </div>
 
@@ -281,6 +250,7 @@ export function AddFinancialRecordDialog({
               placeholder={t("whatWasThisFor")}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              required
             />
           </div>
 
@@ -308,7 +278,7 @@ export function AddFinancialRecordDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">{t("none")}</SelectItem>
-                {jobs.map((job) => (
+                {activeJobs.map((job) => (
                   <SelectItem key={job.id} value={job.id}>
                     {job.name}
                   </SelectItem>
@@ -316,9 +286,10 @@ export function AddFinancialRecordDialog({
               </SelectContent>
             </Select>
           </div>
+          </div>
 
           {/* Actions */}
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0">
             <Button
               type="button"
               variant="outline"

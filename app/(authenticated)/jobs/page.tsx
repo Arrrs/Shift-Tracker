@@ -1,22 +1,31 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, lazy } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AddJobDialog } from "./add-job-dialog";
-import { DeleteJobButton } from "./delete-job-button";
-import { EditJobDialog } from "./edit-job-dialog";
-import { JobDetailsDrawer } from "./job-details-drawer";
-import { JobsHelpDialog } from "./jobs-help-dialog";
-import { ArchiveJobButton } from "./archive-job-button";
-import { UnarchiveJobButton } from "./unarchive-job-button";
-import { getJobs } from "./actions";
+import { useJobs } from "@/lib/hooks/use-jobs";
+import { usePrefetch, createPrefetchHandlers } from "@/lib/hooks/use-prefetch";
 import { Briefcase, Clock, Info, Search } from "lucide-react";
-import { useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { getCurrencySymbol } from "@/lib/utils/time-format";
 import { useTranslation } from "@/lib/i18n/use-translation";
+
+// Code splitting: Lazy load dialogs and drawers
+const AddJobDialog = lazy(() => import("./add-job-dialog").then((mod) => ({ default: mod.AddJobDialog })));
+const EditJobDialog = lazy(() => import("./edit-job-dialog").then((mod) => ({ default: mod.EditJobDialog })));
+const JobDetailsDrawer = lazy(() => import("./job-details-drawer").then((mod) => ({ default: mod.JobDetailsDrawer })));
+const JobsHelpDialog = lazy(() => import("./jobs-help-dialog").then((mod) => ({ default: mod.JobsHelpDialog })));
+const DeleteJobButton = lazy(() => import("./delete-job-button").then((mod) => ({ default: mod.DeleteJobButton })));
+const ArchiveJobButton = lazy(() => import("./archive-job-button").then((mod) => ({ default: mod.ArchiveJobButton })));
+const UnarchiveJobButton = lazy(() => import("./unarchive-job-button").then((mod) => ({ default: mod.UnarchiveJobButton })));
+
+// Helper function to format currency values (removes trailing zeros)
+function formatCurrencyValue(value: number | null | undefined): string {
+  if (!value) return '0';
+  // Remove trailing zeros and unnecessary decimal point
+  return value.toFixed(2).replace(/\.?0+$/, '');
+}
 
 // Helper function to format job rate display
 function formatJobRate(job: any): string {
@@ -24,43 +33,21 @@ function formatJobRate(job: any): string {
 
   switch (job.pay_type) {
     case 'daily':
-      return `${symbol} ${job.daily_rate?.toFixed(2) || '0.00'}/day`;
+      return `${symbol} ${formatCurrencyValue(job.daily_rate)}/day`;
     case 'monthly':
-      return `${symbol} ${job.monthly_salary?.toFixed(2) || '0.00'}/mo`;
+      return `${symbol} ${formatCurrencyValue(job.monthly_salary)}/mo`;
     case 'salary':
-      return `${symbol} ${job.monthly_salary?.toFixed(0) || '0'}/yr`;
+      return `${symbol} ${Math.round(job.monthly_salary || 0)}/yr`;
     case 'hourly':
     default:
-      return `${symbol} ${job.hourly_rate?.toFixed(2) || '0.00'}/hr`;
+      return `${symbol} ${formatCurrencyValue(job.hourly_rate)}/hr`;
   }
 }
 
 function JobsList() {
   const { t } = useTranslation();
-  const [jobs, setJobs] = useState<any[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: jobs = [], error, isLoading: loading } = useJobs();
   const [searchQuery, setSearchQuery] = useState("");
-
-  const loadJobs = async () => {
-    setLoading(true);
-    const result = await getJobs();
-    setLoading(false);
-
-    if (result.error) {
-      setError(result.error);
-    } else if (result.jobs) {
-      setJobs(result.jobs);
-    }
-  };
-
-  const handleJobUpdate = () => {
-    loadJobs();
-  };
-
-  useEffect(() => {
-    loadJobs();
-  }, []);
 
   // Filter jobs based on search query
   const filteredJobs = jobs.filter((job) =>
@@ -69,7 +56,7 @@ function JobsList() {
   );
 
   if (error) {
-    return <div>{t("errorLoadingJobs")}: {error}</div>;
+    return <div>{t("errorLoadingJobs")}: {error.message}</div>;
   }
 
   if (loading) {
@@ -146,7 +133,7 @@ function JobsList() {
                 </ol>
               </div>
               <div>
-                <AddJobDialog onSuccess={handleJobUpdate} />
+                <AddJobDialog />
               </div>
             </>
           )}
@@ -170,7 +157,7 @@ function JobsList() {
             </thead>
             <tbody>
               {jobsList.map((job) => (
-                <JobDetailsDrawer key={job.id} job={job} variant="ghost" size="sm" onTemplateChange={handleJobUpdate}>
+                <JobDetailsDrawer key={job.id} job={job} variant="ghost" size="sm">
                   <tr className="border-b last:border-0 hover:bg-muted/50 cursor-pointer">
                     <td className="p-4">{job.name}</td>
                     <td className="p-4">
@@ -195,31 +182,27 @@ function JobsList() {
                           job={job}
                           variant="link"
                           size="sm"
-                          onSuccess={handleJobUpdate}
                         />
                         {job.is_active ? (
                           <ArchiveJobButton
                             jobId={job.id}
                             variant="link"
                             size="sm"
-                            onSuccess={handleJobUpdate}
                           />
                         ) : (
                           <UnarchiveJobButton
                             jobId={job.id}
                             variant="link"
                             size="sm"
-                            onSuccess={handleJobUpdate}
                           />
                         )}
                         <DeleteJobButton
                           jobId={job.id}
                           jobName={job.name}
-                          shiftCount={job.shift_count}
+                          shiftCount={job.entry_count}
                           isArchived={!job.is_active}
                           variant="link"
                           size="sm"
-                          onSuccess={handleJobUpdate}
                         />
                       </div>
                     </td>
@@ -233,7 +216,7 @@ function JobsList() {
         {/* Mobile card view */}
         <div className="block md:hidden space-y-4">
           {jobsList.map((job) => (
-            <JobDetailsDrawer key={job.id} job={job} variant="ghost" size="sm" onTemplateChange={handleJobUpdate}>
+            <JobDetailsDrawer key={job.id} job={job} variant="ghost" size="sm">
               <div className="border rounded-lg p-4 pb-2 space-y-3 cursor-pointer hover:bg-muted/50">
                 <div className="flex justify-between items-start">
                   <div className="space-y-1">
@@ -256,31 +239,27 @@ function JobsList() {
                     job={job}
                     variant="ghost"
                     size="sm"
-                    onSuccess={handleJobUpdate}
                   />
                   {job.is_active ? (
                     <ArchiveJobButton
                       jobId={job.id}
                       variant="ghost"
                       size="sm"
-                      onSuccess={handleJobUpdate}
                     />
                   ) : (
                     <UnarchiveJobButton
                       jobId={job.id}
                       variant="ghost"
                       size="sm"
-                      onSuccess={handleJobUpdate}
                     />
                   )}
                   <DeleteJobButton
                     jobId={job.id}
                     jobName={job.name}
-                    shiftCount={job.shift_count}
+                    shiftCount={job.entry_count}
                     isArchived={!job.is_active}
                     variant="ghost"
                     size="sm"
-                    onSuccess={handleJobUpdate}
                   />
                 </div>
               </div>
@@ -329,11 +308,6 @@ function JobsList() {
 
 export default function JobsPage() {
   const { t } = useTranslation();
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
-
-  const handleJobUpdate = () => {
-    setRefreshTrigger(prev => prev + 1);
-  };
 
   return (
     <div className="min-h-screen p-8">
@@ -341,13 +315,17 @@ export default function JobsPage() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">{t("jobs")}</h1>
         <div className="flex gap-2">
-          <JobsHelpDialog />
-          <AddJobDialog onSuccess={handleJobUpdate} />
+          <Suspense fallback={null}>
+            <JobsHelpDialog />
+          </Suspense>
+          <Suspense fallback={null}>
+            <AddJobDialog />
+          </Suspense>
         </div>
       </div>
 
       <Suspense fallback={<div className="text-center py-12">{t("loading")}...</div>}>
-        <JobsList key={refreshTrigger} />
+        <JobsList />
       </Suspense>
     </div>
   );

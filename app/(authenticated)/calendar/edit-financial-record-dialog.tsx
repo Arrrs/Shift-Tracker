@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/responsive-modal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,13 +17,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CurrencySelect } from "@/components/ui/currency-select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2, Trash2 } from "lucide-react";
-import { updateFinancialRecord, deleteFinancialRecord, getCategories } from "../finances/actions";
-import { getJobs } from "../jobs/actions";
+import { useUpdateFinancialRecord, useDeleteFinancialRecord } from "@/lib/hooks/use-financial-records";
+import { useActiveJobs } from "@/lib/hooks/use-jobs";
+import { useFinancialCategories } from "@/lib/hooks/use-financial-categories";
 import { toast } from "sonner";
 import { Database } from "@/lib/database.types";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { parseCurrency } from "@/lib/utils/currency";
 
 type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] & {
   financial_categories?: Database["public"]["Tables"]["financial_categories"]["Row"] | null;
@@ -44,12 +47,12 @@ export function EditFinancialRecordDialog({
   onSuccess,
 }: EditFinancialRecordDialogProps) {
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const updateMutation = useUpdateFinancialRecord();
+  const deleteMutation = useDeleteFinancialRecord();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [categories, setCategories] = useState<any[]>([]);
-  const [jobs, setJobs] = useState<any[]>([]);
   const [type, setType] = useState<"income" | "expense">("income");
+  const { data: categories = [] } = useFinancialCategories(type);
+  const { data: activeJobs = [] } = useActiveJobs();
 
   const [formData, setFormData] = useState({
     amount: "",
@@ -79,48 +82,20 @@ export function EditFinancialRecordDialog({
     }
   }, [record, open]);
 
-  // Load categories when type changes
-  useEffect(() => {
-    async function loadCategories() {
-      const { categories: cats, error } = await getCategories(type);
-      if (!error && cats) {
-        setCategories(cats);
-      }
-    }
-    if (open) {
-      loadCategories();
-    }
-  }, [type, open]);
-
-  // Load jobs once
-  useEffect(() => {
-    async function loadJobs() {
-      const { jobs: jobsList, error } = await getJobs();
-      if (!error && jobsList) {
-        setJobs(jobsList.filter(job => job.is_active));
-      }
-    }
-    if (open) {
-      loadJobs();
-    }
-  }, [open]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!record) return;
 
-    setLoading(true);
+    const amount = parseCurrency(formData.amount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error(t("pleaseEnterValidAmount"));
+      return;
+    }
 
-    try {
-      const amount = parseFloat(formData.amount);
-      if (isNaN(amount) || amount <= 0) {
-        toast.error(t("pleaseEnterValidAmount"));
-        setLoading(false);
-        return;
-      }
-
-      const result = await updateFinancialRecord(record.id, {
+    const result = await updateMutation.mutateAsync({
+      id: record.id,
+      data: {
         type,
         amount,
         currency: formData.currency,
@@ -130,19 +105,12 @@ export function EditFinancialRecordDialog({
         notes: formData.notes || null,
         job_id: formData.job_id || null,
         status: formData.status,
-      });
+      },
+    });
 
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success(type === "income" ? t("incomeUpdated") : t("expenseUpdated"));
-        onOpenChange(false);
-        onSuccess?.();
-      }
-    } catch (error) {
-      toast.error(t("failedToUpdateRecord"));
-    } finally {
-      setLoading(false);
+    if (!result.error) {
+      onOpenChange(false);
+      onSuccess?.();
     }
   };
 
@@ -153,16 +121,20 @@ export function EditFinancialRecordDialog({
   const handleDeleteConfirm = async () => {
     if (!record) return;
 
-    setDeleting(true);
+    const result = await deleteMutation.mutateAsync(record.id);
 
-    const result = await deleteFinancialRecord(record.id);
+    if (!result.error) {
+      setDeleteDialogOpen(false);
+      onOpenChange(false);
+      onSuccess?.();
+    }
+  };
 
-    setDeleting(false);
+  const loading = updateMutation.isPending;
+  const deleting = deleteMutation.isPending;
 
-    if (result.error) {
-      toast.error(t("failedToDeleteRecord"), { description: result.error });
-    } else {
-      toast.success(t("recordDeleted"));
+  const handleDeleteComplete = () => {
+    if (!deleting) {
       setDeleteDialogOpen(false);
       onOpenChange(false);
       onSuccess?.();
@@ -173,13 +145,14 @@ export function EditFinancialRecordDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto ">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh]">
+        <DialogHeader className="p-6 pb-0 flex-shrink-0">
           <DialogTitle>{t("editFinancialRecord")}</DialogTitle>
           <DialogDescription>{t("updateIncomeOrExpense")}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="space-y-4 p-6 pt-4 overflow-y-auto flex-1">
           {/* Type */}
           <div className="space-y-2">
             <Label>{t("type")}</Label>
@@ -242,31 +215,11 @@ export function EditFinancialRecordDialog({
             </div>
             <div className="space-y-2">
               <Label htmlFor="currency-edit">{t("currency")}</Label>
-              <Select
+              <CurrencySelect
+                id="currency-edit"
                 value={formData.currency}
                 onValueChange={(value) => setFormData({ ...formData, currency: value })}
-              >
-                <SelectTrigger id="currency-edit">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USD">$ USD</SelectItem>
-                  <SelectItem value="EUR">€ EUR</SelectItem>
-                  <SelectItem value="GBP">£ GBP</SelectItem>
-                  <SelectItem value="JPY">¥ JPY</SelectItem>
-                  <SelectItem value="CAD">$ CAD</SelectItem>
-                  <SelectItem value="AUD">$ AUD</SelectItem>
-                  <SelectItem value="CHF">CHF</SelectItem>
-                  <SelectItem value="CNY">¥ CNY</SelectItem>
-                  <SelectItem value="INR">₹ INR</SelectItem>
-                  <SelectItem value="MXN">$ MXN</SelectItem>
-                  <SelectItem value="BRL">R$ BRL</SelectItem>
-                  <SelectItem value="ZAR">R ZAR</SelectItem>
-                  <SelectItem value="RUB">₽ RUB</SelectItem>
-                  <SelectItem value="KRW">₩ KRW</SelectItem>
-                  <SelectItem value="SGD">$ SGD</SelectItem>
-                </SelectContent>
-              </Select>
+              />
             </div>
           </div>
 
@@ -339,7 +292,7 @@ export function EditFinancialRecordDialog({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">{t("none")}</SelectItem>
-                {jobs.map((job) => (
+                {activeJobs.map((job) => (
                   <SelectItem key={job.id} value={job.id}>
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded" style={{ backgroundColor: job.color || "#3B82F6" }} />
@@ -350,29 +303,12 @@ export function EditFinancialRecordDialog({
               </SelectContent>
             </Select>
           </div>
+          </div>
 
           {/* Actions */}
-          <DialogFooter className="pt-4">
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleDeleteClick}
-              disabled={loading || deleting}
-              className="flex-shrink-0"
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              {t("delete")}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={loading}
-              className="flex-1"
-            >
-              {t("cancel")}
-            </Button>
-            <Button type="submit" disabled={loading} className="flex-1">
+          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0 flex-col gap-2">
+            {/* Save button on top - full width */}
+            <Button type="submit" disabled={loading} className="w-full">
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -382,6 +318,28 @@ export function EditFinancialRecordDialog({
                 t("saveChanges")
               )}
             </Button>
+            {/* Delete and Cancel below - equal widths */}
+            <div className="flex gap-2 w-full">
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDeleteClick}
+                disabled={loading || deleting}
+                className="flex-1"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                {t("delete")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={loading}
+                className="flex-1"
+              >
+                {t("cancel")}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

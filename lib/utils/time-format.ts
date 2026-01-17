@@ -32,25 +32,12 @@ export function formatTimeFromTimestamp(timestamp: string | null | undefined): s
  * Get currency symbol from currency code
  * @param currency - Currency code (USD, EUR, UAH, etc.)
  * @returns Currency symbol ($, €, ₴, etc.)
+ * @deprecated Use getCurrencySymbol from @/lib/utils/currency instead
  */
 export function getCurrencySymbol(currency: string | null | undefined): string {
-  if (!currency) return "$";
-
-  const symbols: Record<string, string> = {
-    USD: "$",
-    EUR: "€",
-    GBP: "£",
-    UAH: "₴",
-    PLN: "zł",
-    CZK: "Kč",
-    JPY: "¥",
-    CNY: "¥",
-    RUB: "₽",
-    CAD: "CA$",
-    AUD: "A$",
-  };
-
-  return symbols[currency.toUpperCase()] || currency;
+  // Import inline to avoid circular dependency during transition
+  const { getCurrencySymbol: getSymbol } = require('@/lib/utils/currency');
+  return getSymbol(currency);
 }
 
 /**
@@ -105,6 +92,57 @@ export function getStatusInfo(status: string | null | undefined) {
   };
 
   return statusMap[status as keyof typeof statusMap] || statusMap.planned;
+}
+
+/**
+ * Get styling info for financial records (income/expense)
+ * @param type - 'income' or 'expense'
+ * @param status - 'completed', 'planned', or 'cancelled'
+ * @returns Object with border color and text color classes
+ */
+export function getFinancialRecordStyle(
+  type: 'income' | 'expense',
+  status: string | null | undefined
+) {
+  const isIncome = type === 'income';
+  const isCancelled = status === 'cancelled';
+  const isPlanned = status === 'planned';
+
+  // Border colors - semantic naming for easy theming
+  let borderColor: string;
+  if (isCancelled) {
+    borderColor = 'border-gray-300 dark:border-gray-700';
+  } else if (isPlanned) {
+    borderColor = 'border-amber-200 dark:border-amber-900';
+  } else {
+    borderColor = isIncome
+      ? 'border-green-200 dark:border-green-900'
+      : 'border-red-200 dark:border-red-900';
+  }
+
+  // Text colors for amounts
+  let textColor: string;
+  if (isCancelled) {
+    textColor = 'text-gray-400 dark:text-gray-600';
+  } else if (isPlanned) {
+    textColor = 'text-amber-600 dark:text-amber-400';
+  } else {
+    textColor = isIncome
+      ? 'text-green-600 dark:text-green-400'
+      : 'text-red-600 dark:text-red-400';
+  }
+
+  // Icon color
+  const iconColor = isIncome
+    ? 'text-green-600 dark:text-green-400'
+    : 'text-red-600 dark:text-red-400';
+
+  return {
+    borderColor,
+    textColor,
+    iconColor,
+    opacity: isCancelled ? 0.5 : 1,
+  };
 }
 
 /**

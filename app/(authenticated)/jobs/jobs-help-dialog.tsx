@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/responsive-modal";
 import { HelpCircle, Briefcase, Clock, Calendar } from "lucide-react";
 
 export function JobsHelpDialog() {

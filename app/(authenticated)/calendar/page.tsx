@@ -1,25 +1,37 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar, List, ChevronLeft, ChevronRight, Loader2, Plus, ChevronDown } from "lucide-react";
 import { MonthCalendar } from "./month-calendar";
 import { ListView } from "./list-view";
-import { AddTimeEntryDialog } from "./add-time-entry-dialog";
-import { AddFinancialRecordDialog } from "../finances/add-financial-record-dialog";
 import { GoToDateDialog } from "./go-to-date-dialog";
-import { DayShiftsDrawer } from "./day-shifts-drawer";
 import { IncomeStatsCards } from "./income-stats-cards";
 import { StatCardMobile } from "./stat-card";
-import { getTimeEntries, getIncomeRecords } from "../time-entries/actions";
-import { getFinancialRecords } from "../finances/actions";
+import { useTimeEntries } from "@/lib/hooks/use-time-entries";
+import { useIncomeRecords } from "@/lib/hooks/use-income-records";
+import { useFinancialRecords } from "@/lib/hooks/use-financial-records";
+import { usePrefetch } from "@/lib/hooks/use-prefetch";
 import { Database } from "@/lib/database.types";
 import { getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time-format";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { usePrimaryCurrency } from "@/lib/hooks/use-user-settings";
+
+// Code splitting: Lazy load heavy dialogs (~800 lines each)
+// These only load when user actually opens them, reducing initial bundle size
+const AddTimeEntryDialog = lazy(() =>
+  import("./add-time-entry-dialog").then((mod) => ({ default: mod.AddTimeEntryDialog }))
+);
+const AddFinancialRecordDialog = lazy(() =>
+  import("../finances/add-financial-record-dialog").then((mod) => ({ default: mod.AddFinancialRecordDialog }))
+);
+const DayShiftsDrawer = lazy(() =>
+  import("./day-shifts-drawer").then((mod) => ({ default: mod.DayShiftsDrawer }))
+);
 
 type ViewMode = "calendar" | "list";
 type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
@@ -33,28 +45,10 @@ type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] 
 };
 
 export default function CalendarPage() {
-  const { t } = useTranslation();
+  const { t, formatDate } = useTranslation();
+  const primaryCurrency = usePrimaryCurrency();
   const [viewMode, setViewMode] = useState<ViewMode>("calendar");
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
-  const [entries, setEntries] = useState<TimeEntry[]>([]);
-  const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>([]);
-  const [stats, setStats] = useState({
-    totalEarnings: 0,
-    totalHours: 0,
-    shiftCount: 0,
-    totalActualHours: 0,
-    totalScheduledHours: 0,
-    completedShifts: 0,
-    plannedShifts: 0,
-    inProgressShifts: 0,
-    earningsByCurrency: {} as Record<string, number>,
-    shiftIncomeByCurrency: {} as Record<string, number>,
-    shiftIncomeByJob: [] as Array<{jobId: string; jobName: string; amount: number; hours: number; shifts: number}>,
-    fixedIncomeJobIds: [] as string[],
-    fixedIncomeShiftCounts: {} as Record<string, number>,
-  });
-  const [loading, setLoading] = useState(true);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayDrawerOpen, setDayDrawerOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -67,170 +61,222 @@ export default function CalendarPage() {
     setCurrentDate(new Date());
   }, []);
 
-  // Navigate months
-  const goToPreviousMonth = () => {
-    if (!currentDate) return;
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1));
-  };
+  // Calculate date range for current month
+  const { startDate, endDate } = useMemo(() => {
+    if (!currentDate) return { startDate: "", endDate: "" };
 
-  const goToNextMonth = () => {
-    if (!currentDate) return;
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1));
-  };
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
 
-  const goToToday = () => {
+    return {
+      startDate: `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`,
+      endDate: `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`,
+    };
+  }, [currentDate]);
+
+  // Use React Query hooks for data fetching
+  const { data: entries = [], isLoading: isLoadingEntries } = useTimeEntries(startDate, endDate);
+  const { data: incomeRecords = [], isLoading: isLoadingIncome } = useIncomeRecords(startDate, endDate);
+  const { data: financialRecords = [], isLoading: isLoadingFinancial } = useFinancialRecords(startDate, endDate);
+
+  const loading = isLoadingEntries || isLoadingIncome || isLoadingFinancial;
+
+  const prefetch = usePrefetch();
+
+  // Navigate months - useCallback prevents re-creating these functions on every render
+  const goToPreviousMonth = useCallback(() => {
+    if (!currentDate) return;
+    const prevMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1);
+    setCurrentDate(prevMonth);
+
+    // Prefetch data for previous month for instant navigation
+    const year = prevMonth.getFullYear();
+    const month = prevMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const start = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`;
+    const end = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+
+    prefetch.timeEntries(start, end);
+    prefetch.incomeRecords(start, end);
+    prefetch.financialRecords(start, end);
+  }, [currentDate, prefetch]);
+
+  const goToNextMonth = useCallback(() => {
+    if (!currentDate) return;
+    const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1);
+    setCurrentDate(nextMonth);
+
+    // Prefetch data for next month
+    const year = nextMonth.getFullYear();
+    const month = nextMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const start = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`;
+    const end = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+
+    prefetch.timeEntries(start, end);
+    prefetch.incomeRecords(start, end);
+    prefetch.financialRecords(start, end);
+  }, [currentDate, prefetch]);
+
+  const goToToday = useCallback(() => {
     setCurrentDate(new Date());
-  };
+  }, []);
 
-  const goToDate = (date: Date) => {
+  const goToDate = useCallback((date: Date) => {
     setCurrentDate(date);
-  };
+  }, []);
 
-  const monthYear = currentDate?.toLocaleDateString("en-US", {
+  const monthYear = currentDate ? formatDate(currentDate, {
     month: "long",
-    year: "numeric",
-  }) || "";
+    year: true,
+  }) : "";
 
-  // Load shifts and stats for current month
-  useEffect(() => {
-    if (!currentDate) return;
+  // Calculate stats from loaded data using useMemo for performance
+  const stats = useMemo(() => {
+    const timeEntries = entries as TimeEntry[];
 
-    // Create AbortController to cancel previous requests
-    const abortController = new AbortController();
-    let isCancelled = false;
+    // Calculate hours
+    const completedEntries = timeEntries.filter(e => e.status === 'completed');
+    const totalActualHours = completedEntries.reduce((sum, e) => sum + (e.actual_hours || 0), 0);
+    const totalScheduledHours = timeEntries.filter(e => e.status !== 'cancelled').reduce((sum, e) => sum + (e.scheduled_hours || 0), 0);
+    const completedShifts = completedEntries.length;
+    const plannedShifts = timeEntries.filter(e => e.status === 'planned').length;
+    const inProgressShifts = timeEntries.filter(e => e.status === 'in_progress').length;
 
-    const loadData = async () => {
-      setLoading(true);
+    // Calculate shift income by currency from income_records (completed shifts)
+    const shiftIncomeByCurrency: Record<string, number> = {};
+    incomeRecords.forEach(record => {
+      // CRITICAL: Only add to aggregation if currency is set
+      if (!record.currency) {
+        console.warn('WARNING: Income record has no currency, skipping:', record.id);
+        return;
+      }
+      const currency = record.currency;
+      shiftIncomeByCurrency[currency] = (shiftIncomeByCurrency[currency] || 0) + record.amount;
+    });
 
-      try {
-        // Get first and last day of current month
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
+    // Calculate expected income from planned/in-progress shifts
+    const expectedShiftIncomeByCurrency: Record<string, number> = {};
+    timeEntries.filter(e => e.status === 'planned' || e.status === 'in_progress').forEach(entry => {
+      let currency: string | null = null;
+      let expectedIncome = 0;
 
-        // Format dates in local timezone to avoid UTC conversion issues
-        const startDate = `${firstDay.getFullYear()}-${String(firstDay.getMonth() + 1).padStart(2, '0')}-${String(firstDay.getDate()).padStart(2, '0')}`;
-        const endDate = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+      // Determine currency: custom_currency > job.currency > skip
+      if (entry.custom_currency) {
+        currency = entry.custom_currency;
+      } else if (entry.jobs?.currency) {
+        currency = entry.jobs.currency;
+      } else {
+        // No currency available, skip this entry
+        return;
+      }
 
-        // Load all data in parallel for better performance
-        const [entriesResult, financialResult, incomeResult] = await Promise.all([
-          getTimeEntries(startDate, endDate),
-          getFinancialRecords(startDate, endDate),
-          getIncomeRecords(startDate, endDate),
-        ]);
+      const job = entry.jobs;
 
-        // Check if request was cancelled before updating state
-        if (isCancelled) return;
-
-        if (entriesResult.entries) {
-          setEntries(entriesResult.entries as TimeEntry[]);
+      // Calculate expected income based on pay type and override
+      if (entry.pay_override_type && entry.pay_override_type !== 'default' && entry.pay_override_type !== 'none') {
+        // Use override values
+        if (entry.pay_override_type === 'custom_hourly' && entry.custom_hourly_rate) {
+          expectedIncome = entry.custom_hourly_rate * (entry.scheduled_hours || 0);
+        } else if (entry.pay_override_type === 'custom_daily' && entry.custom_daily_rate) {
+          expectedIncome = entry.custom_daily_rate;
+        } else if (entry.pay_override_type === 'fixed_amount' && entry.holiday_fixed_amount) {
+          expectedIncome = entry.holiday_fixed_amount;
+        } else if (entry.pay_override_type === 'holiday_multiplier' && entry.holiday_multiplier) {
+          // Calculate base amount from job rates, then apply multiplier
+          let baseAmount = 0;
+          if (job?.pay_type === 'hourly' && job.hourly_rate) {
+            baseAmount = job.hourly_rate * (entry.scheduled_hours || 0);
+          } else if (job?.pay_type === 'daily' && job.daily_rate) {
+            baseAmount = job.daily_rate;
+          }
+          expectedIncome = baseAmount * entry.holiday_multiplier;
         }
-
-        if (financialResult.records) {
-          setFinancialRecords(financialResult.records as FinancialRecord[]);
-        }
-
-        // Calculate stats from loaded data
-        if (entriesResult.entries && incomeResult.records) {
-          const timeEntries = entriesResult.entries as TimeEntry[];
-          const incomeRecords = incomeResult.records;
-          const financials = (financialResult.records || []) as FinancialRecord[];
-
-          // Calculate hours
-          const completedEntries = timeEntries.filter(e => e.status === 'completed');
-          const totalActualHours = completedEntries.reduce((sum, e) => sum + (e.actual_hours || 0), 0);
-          const totalScheduledHours = timeEntries.filter(e => e.status !== 'cancelled').reduce((sum, e) => sum + (e.scheduled_hours || 0), 0);
-          const completedShifts = completedEntries.length;
-          const plannedShifts = timeEntries.filter(e => e.status === 'planned').length;
-          const inProgressShifts = timeEntries.filter(e => e.status === 'in_progress').length;
-
-          // Calculate shift income by currency from income_records
-          const shiftIncomeByCurrency: Record<string, number> = {};
-          incomeRecords.forEach(record => {
-            const currency = record.currency || 'USD';
-            shiftIncomeByCurrency[currency] = (shiftIncomeByCurrency[currency] || 0) + record.amount;
-          });
-
-          // Calculate financial records income/expense by currency (completed only)
-          const financialIncomeByCurrency: Record<string, number> = {};
-          const financialExpenseByCurrency: Record<string, number> = {};
-          financials.forEach(record => {
-            if (record.status === 'completed') {
-              const currency = record.currency || 'USD';
-              if (record.type === 'income') {
-                financialIncomeByCurrency[currency] = (financialIncomeByCurrency[currency] || 0) + Number(record.amount);
-              } else if (record.type === 'expense') {
-                financialExpenseByCurrency[currency] = (financialExpenseByCurrency[currency] || 0) + Number(record.amount);
-              }
-            }
-          });
-
-          // Combine all earnings by currency (shifts + financial income - financial expenses)
-          const earningsByCurrency: Record<string, number> = {};
-
-          // Add shift income
-          Object.entries(shiftIncomeByCurrency).forEach(([currency, amount]) => {
-            earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) + amount;
-          });
-
-          // Add financial income
-          Object.entries(financialIncomeByCurrency).forEach(([currency, amount]) => {
-            earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) + amount;
-          });
-
-          // Subtract expenses
-          Object.entries(financialExpenseByCurrency).forEach(([currency, amount]) => {
-            earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) - amount;
-          });
-
-          // Calculate total earnings (sum all currencies - for legacy single value)
-          const totalEarnings = Object.values(earningsByCurrency).reduce((sum, amount) => sum + amount, 0);
-
-          setStats({
-            totalEarnings,
-            totalHours: totalActualHours,
-            shiftCount: timeEntries.length,
-            totalActualHours,
-            totalScheduledHours,
-            completedShifts,
-            plannedShifts,
-            inProgressShifts,
-            earningsByCurrency,
-            shiftIncomeByCurrency,
-            shiftIncomeByJob: [], // TODO: Calculate if needed
-            fixedIncomeJobIds: [],
-            fixedIncomeShiftCounts: {},
-          });
-        }
-      } catch (error) {
-        // Only log error if not cancelled
-        if (!isCancelled) {
-          console.error('Error loading calendar data:', error);
-        }
-      } finally {
-        // Only update loading state if not cancelled
-        if (!isCancelled) {
-          setLoading(false);
+      } else if (job) {
+        // Use job rates (only if job exists)
+        if (job.pay_type === 'hourly' && job.hourly_rate) {
+          expectedIncome = job.hourly_rate * (entry.scheduled_hours || 0);
+        } else if (job.pay_type === 'daily' && job.daily_rate) {
+          expectedIncome = job.daily_rate;
         }
       }
+
+      if (expectedIncome > 0 && currency) {
+        expectedShiftIncomeByCurrency[currency] = (expectedShiftIncomeByCurrency[currency] || 0) + expectedIncome;
+      }
+    });
+
+    // Calculate financial records income/expense by currency
+    const financialIncomeByCurrency: Record<string, number> = {};
+    const financialExpenseByCurrency: Record<string, number> = {};
+    const expectedFinancialIncomeByCurrency: Record<string, number> = {};
+    const expectedFinancialExpenseByCurrency: Record<string, number> = {};
+
+    financialRecords.forEach(record => {
+      // CRITICAL: Only add to aggregation if currency is set
+      if (!record.currency) {
+        console.warn('WARNING: Financial record has no currency, skipping:', record.id);
+        return;
+      }
+      const currency = record.currency;
+      const amount = Number(record.amount);
+
+      if (record.status === 'completed') {
+        if (record.type === 'income') {
+          financialIncomeByCurrency[currency] = (financialIncomeByCurrency[currency] || 0) + amount;
+        } else if (record.type === 'expense') {
+          financialExpenseByCurrency[currency] = (financialExpenseByCurrency[currency] || 0) + amount;
+        }
+      } else if (record.status === 'planned') {
+        if (record.type === 'income') {
+          expectedFinancialIncomeByCurrency[currency] = (expectedFinancialIncomeByCurrency[currency] || 0) + amount;
+        } else if (record.type === 'expense') {
+          expectedFinancialExpenseByCurrency[currency] = (expectedFinancialExpenseByCurrency[currency] || 0) + amount;
+        }
+      }
+    });
+
+    // Calculate net income (shift + other - expenses) by currency
+    const earningsByCurrency: Record<string, number> = {};
+    Object.entries(shiftIncomeByCurrency).forEach(([currency, amount]) => {
+      earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) + amount;
+    });
+    Object.entries(financialIncomeByCurrency).forEach(([currency, amount]) => {
+      earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) + amount;
+    });
+    Object.entries(financialExpenseByCurrency).forEach(([currency, amount]) => {
+      earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) - amount;
+    });
+
+    return {
+      totalHours: totalActualHours,
+      shiftCount: timeEntries.length,
+      totalActualHours,
+      totalScheduledHours,
+      completedShifts,
+      plannedShifts,
+      inProgressShifts,
+      shiftIncomeByCurrency,
+      expectedShiftIncomeByCurrency,
+      expectedFinancialIncomeByCurrency,
+      expectedFinancialExpenseByCurrency,
+      financialIncomeByCurrency,
+      financialExpenseByCurrency,
+      earningsByCurrency, // Net income (shift + other - expenses)
     };
+  }, [entries, incomeRecords, financialRecords]);
 
-    loadData();
-
-    // Cleanup function to cancel ongoing requests when month changes
-    return () => {
-      isCancelled = true;
-      abortController.abort();
-    };
-  }, [currentDate, refreshTrigger]);
-
+  // React Query automatically handles data refetching via cache invalidation
   const handleEntryChange = () => {
-    setRefreshTrigger((prev) => prev + 1);
+    // No manual refresh needed - mutations handle cache invalidation
   };
 
   const handleFinancialSuccess = () => {
-    setRefreshTrigger((prev) => prev + 1);
+    // No manual refresh needed - mutations handle cache invalidation
   };
 
   const handleDayClick = (date: Date) => {
@@ -291,82 +337,125 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Add Time Entry Dialog */}
-      <AddTimeEntryDialog
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        onSuccess={handleEntryChange}
-      />
+      {/* Add Time Entry Dialog - Lazy loaded */}
+      <Suspense fallback={null}>
+        <AddTimeEntryDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          onSuccess={handleEntryChange}
+        />
+      </Suspense>
 
-      {/* Add Financial Record Dialog */}
-      <AddFinancialRecordDialog
-        open={addFinancialDialogOpen}
-        onOpenChange={setAddFinancialDialogOpen}
-        selectedDate={currentDate || undefined}
-        defaultType={addFinancialType}
-        onSuccess={handleFinancialSuccess}
-      />
+      {/* Add Financial Record Dialog - Lazy loaded */}
+      <Suspense fallback={null}>
+        <AddFinancialRecordDialog
+          open={addFinancialDialogOpen}
+          onOpenChange={setAddFinancialDialogOpen}
+          selectedDate={currentDate || undefined}
+          defaultType={addFinancialType}
+          onSuccess={handleFinancialSuccess}
+        />
+      </Suspense>
 
       {/* Stats Cards - Mobile Only */}
       <div className="lg:hidden mb-0 flex-shrink-0">
         <div className="grid grid-cols-3 gap-2">
-          <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-lg p-2">
-            <p className="text-[10px] text-muted-foreground mb-0.5">{t("earnings")}</p>
+          {/* Net Income Card */}
+          <div className="bg-gradient-to-br from-gray-500/10 to-slate-500/10 border border-gray-500/20 rounded-lg p-2">
+            <p className="text-[10px] text-muted-foreground mb-0.5">💵 {t("netIncome")}</p>
             {loading ? (
               <div className="flex items-center justify-center py-1">
-                <Loader2 className="h-4 w-4 animate-spin text-green-600 dark:text-green-400" />
+                <Loader2 className="h-4 w-4 animate-spin text-gray-600 dark:text-gray-400" />
               </div>
             ) : Object.keys(stats.earningsByCurrency).length > 1 ? (
               <div className="space-y-0.5">
                 {Object.entries(stats.earningsByCurrency).map(([currency, amount]) => (
-                  <p key={currency} className="text-xs font-bold text-green-600 dark:text-green-400">
+                  <p key={currency} className="text-xs font-bold text-gray-900 dark:text-gray-100">
                     {getCurrencySymbol(currency)} {formatCurrency(amount)}
                   </p>
                 ))}
               </div>
+            ) : Object.keys(stats.earningsByCurrency).length === 1 ? (
+              <p className="text-base font-bold text-gray-900 dark:text-gray-100">
+                {(() => {
+                  const [currency, amount] = Object.entries(stats.earningsByCurrency)[0];
+                  return `${getCurrencySymbol(currency)} ${formatCurrency(amount)}`;
+                })()}
+              </p>
             ) : (
-              <p className="text-base font-bold text-green-600 dark:text-green-400">
-                {getCurrencySymbol(Object.keys(stats.earningsByCurrency)[0] || 'USD')} {formatCurrency(stats.totalEarnings)}
+              <p className="text-base font-bold text-gray-900 dark:text-gray-100">
+                {getCurrencySymbol(primaryCurrency)}{formatCurrency(0)}
               </p>
             )}
           </div>
-          <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg p-2">
-            <p className="text-[10px] text-muted-foreground mb-0.5">{t("hours")}</p>
+
+          {/* Expenses Card */}
+          <div className="bg-gradient-to-br from-red-500/10 to-orange-500/10 border border-red-500/20 rounded-lg p-2">
+            <p className="text-[10px] text-muted-foreground mb-0.5">💸 {t("expenses")}</p>
             {loading ? (
               <div className="flex items-center justify-center py-1">
-                <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
+                <Loader2 className="h-4 w-4 animate-spin text-red-600 dark:text-red-400" />
               </div>
-            ) : (
-              <>
-                <p className="text-base font-bold text-blue-600 dark:text-blue-400">
-                  {formatHours(stats.totalActualHours)}
-                </p>
-                {stats.totalScheduledHours > 0 && stats.totalScheduledHours !== stats.totalActualHours && (
-                  <p className="text-[8px] text-muted-foreground">
-                    of {formatHours(stats.totalScheduledHours)}
+            ) : Object.keys(stats.financialExpenseByCurrency).length > 1 ? (
+              <div className="space-y-0.5">
+                {Object.entries(stats.financialExpenseByCurrency).map(([currency, amount]) => (
+                  <p key={currency} className="text-xs font-bold text-red-600 dark:text-red-400">
+                    -{getCurrencySymbol(currency)} {formatCurrency(amount)}
                   </p>
-                )}
-              </>
+                ))}
+              </div>
+            ) : Object.keys(stats.financialExpenseByCurrency).length === 1 ? (
+              <p className="text-base font-bold text-red-600 dark:text-red-400">
+                {(() => {
+                  const [currency, amount] = Object.entries(stats.financialExpenseByCurrency)[0];
+                  return `-${getCurrencySymbol(currency)} ${formatCurrency(amount)}`;
+                })()}
+              </p>
+            ) : (
+              <p className="text-base font-bold text-red-600 dark:text-red-400">
+                -{getCurrencySymbol(primaryCurrency)}{formatCurrency(0)}
+              </p>
             )}
           </div>
-          <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-lg p-2">
-            <p className="text-[10px] text-muted-foreground mb-0.5">{t("shifts")}</p>
+
+          {/* Expected Income (Total from all sources) Card */}
+          <div className="bg-gradient-to-br from-amber-500/10 to-yellow-500/10 border border-amber-500/20 rounded-lg p-2">
+            <p className="text-[10px] text-muted-foreground mb-0.5">📅 {t("expectedIncome")}</p>
             {loading ? (
               <div className="flex items-center justify-center py-1">
-                <Loader2 className="h-4 w-4 animate-spin text-purple-600 dark:text-purple-400" />
+                <Loader2 className="h-4 w-4 animate-spin text-amber-600 dark:text-amber-400" />
               </div>
-            ) : (
-              <>
-                <p className="text-base font-bold text-purple-600 dark:text-purple-400">
-                  {stats.shiftCount}
+            ) : (() => {
+              // Calculate total expected income by combining shift + financial income
+              const totalExpectedByCurrency: Record<string, number> = {};
+              Object.entries(stats.expectedShiftIncomeByCurrency).forEach(([currency, amount]) => {
+                totalExpectedByCurrency[currency] = (totalExpectedByCurrency[currency] || 0) + amount;
+              });
+              Object.entries(stats.expectedFinancialIncomeByCurrency).forEach(([currency, amount]) => {
+                totalExpectedByCurrency[currency] = (totalExpectedByCurrency[currency] || 0) + amount;
+              });
+
+              return Object.keys(totalExpectedByCurrency).length > 1 ? (
+                <div className="space-y-0.5">
+                  {Object.entries(totalExpectedByCurrency).map(([currency, amount]) => (
+                    <p key={currency} className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                      {getCurrencySymbol(currency)} {formatCurrency(amount)}
+                    </p>
+                  ))}
+                </div>
+              ) : Object.keys(totalExpectedByCurrency).length === 1 ? (
+                <p className="text-base font-bold text-amber-600 dark:text-amber-400">
+                  {(() => {
+                    const [currency, amount] = Object.entries(totalExpectedByCurrency)[0];
+                    return `${getCurrencySymbol(currency)} ${formatCurrency(amount)}`;
+                  })()}
                 </p>
-                {stats.completedShifts > 0 && stats.shiftCount !== stats.completedShifts && (
-                  <p className="text-[8px] text-muted-foreground">
-                    {stats.completedShifts} {t("done")}
-                  </p>
-                )}
-              </>
-            )}
+              ) : (
+                <p className="text-base font-bold text-amber-600 dark:text-amber-400">
+                  {getCurrencySymbol(primaryCurrency)}{formatCurrency(0)}
+                </p>
+              );
+            })()}
           </div>
         </div>
 
@@ -432,11 +521,12 @@ export default function CalendarPage() {
         <div className="hidden lg:flex lg:flex-col gap-3 overflow-y-auto min-h-0">
           {currentDate && (
             <IncomeStatsCards
-              currentDate={currentDate}
               shiftIncomeByCurrency={stats.shiftIncomeByCurrency}
-              shiftIncomeByJob={stats.shiftIncomeByJob}
-              fixedIncomeJobIds={stats.fixedIncomeJobIds}
-              fixedIncomeShiftCounts={stats.fixedIncomeShiftCounts}
+              expectedShiftIncomeByCurrency={stats.expectedShiftIncomeByCurrency}
+              financialIncomeByCurrency={stats.financialIncomeByCurrency}
+              financialExpenseByCurrency={stats.financialExpenseByCurrency}
+              expectedFinancialIncomeByCurrency={stats.expectedFinancialIncomeByCurrency}
+              expectedFinancialExpenseByCurrency={stats.expectedFinancialExpenseByCurrency}
               loading={loading}
             />
           )}
@@ -505,14 +595,16 @@ export default function CalendarPage() {
         </div>
       </div>
 
-      {/* Day Shifts Drawer */}
-      <DayShiftsDrawer
-        date={selectedDate}
-        entries={entries}
-        open={dayDrawerOpen}
-        onOpenChange={setDayDrawerOpen}
-        onEntryChange={handleEntryChange}
-      />
+      {/* Day Shifts Drawer - Lazy loaded */}
+      <Suspense fallback={null}>
+        <DayShiftsDrawer
+          date={selectedDate}
+          entries={entries}
+          open={dayDrawerOpen}
+          onOpenChange={setDayDrawerOpen}
+          onEntryChange={handleEntryChange}
+        />
+      </Suspense>
 
       {/* Detailed Stats Drawer - Mobile Only */}
       <Drawer open={showDetailedStats} onOpenChange={setShowDetailedStats}>
@@ -522,17 +614,55 @@ export default function CalendarPage() {
           </DrawerHeader>
 
           <div className="overflow-y-auto p-4 space-y-3">
-            {/* Shift Income */}
+            {/* Shift Income (Completed) */}
             {Object.keys(stats.shiftIncomeByCurrency).length > 0 && (
               <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/20 rounded-lg p-4">
                 <p className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
-                  {t("shiftIncomeLabel")}
+                  💼 {t("shiftIncome")} ({t("completed")})
                 </p>
                 <div className="space-y-2">
                   {Object.entries(stats.shiftIncomeByCurrency).map(([currency, amount]) => (
                     <div key={currency} className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">{currency}</span>
                       <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                        {getCurrencySymbol(currency)}{formatCurrency(amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Expected Shift Income (Planned/In Progress) */}
+            {Object.keys(stats.expectedShiftIncomeByCurrency).length > 0 && (
+              <div className="bg-gradient-to-br from-amber-500/10 to-yellow-500/10 border border-amber-500/20 rounded-lg p-4">
+                <p className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                  📅 {t("expectedIncome")} ({t("planned")}/{t("inProgress")})
+                </p>
+                <div className="space-y-2">
+                  {Object.entries(stats.expectedShiftIncomeByCurrency).map(([currency, amount]) => (
+                    <div key={currency} className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{currency}</span>
+                      <span className="text-lg font-bold text-amber-600 dark:text-amber-400">
+                        {getCurrencySymbol(currency)}{formatCurrency(amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Expected Other Income (Planned) */}
+            {Object.keys(stats.expectedFinancialIncomeByCurrency).length > 0 && (
+              <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-lg p-4">
+                <p className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                  📊 {t("expectedOtherIncome")} ({t("planned")})
+                </p>
+                <div className="space-y-2">
+                  {Object.entries(stats.expectedFinancialIncomeByCurrency).map(([currency, amount]) => (
+                    <div key={currency} className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{currency}</span>
+                      <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
                         {getCurrencySymbol(currency)}{formatCurrency(amount)}
                       </span>
                     </div>
@@ -596,6 +726,25 @@ export default function CalendarPage() {
                 </div>
               ) : null;
             })()}
+
+            {/* Expected Expenses (Planned) */}
+            {Object.keys(stats.expectedFinancialExpenseByCurrency).length > 0 && (
+              <div className="bg-gradient-to-br from-orange-500/10 to-amber-500/10 border border-orange-500/20 rounded-lg p-4">
+                <p className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                  📉 {t("expectedExpenses")} ({t("planned")})
+                </p>
+                <div className="space-y-2">
+                  {Object.entries(stats.expectedFinancialExpenseByCurrency).map(([currency, amount]) => (
+                    <div key={currency} className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">{currency}</span>
+                      <span className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                        -{getCurrencySymbol(currency)}{formatCurrency(amount)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Net Income */}
             {Object.keys(stats.earningsByCurrency).length > 0 && (

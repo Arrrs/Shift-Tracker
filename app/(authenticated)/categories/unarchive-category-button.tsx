@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArchiveRestore } from "lucide-react";
-import { unarchiveCategory } from "./actions";
-import { toast } from "sonner";
+import { useUnarchiveCategory } from "@/lib/hooks/use-financial-categories";
 
 interface UnarchiveCategoryButtonProps {
   categoryId: string;
@@ -19,24 +17,17 @@ export function UnarchiveCategoryButton({
   size = "sm",
   onSuccess,
 }: UnarchiveCategoryButtonProps) {
-  const [loading, setLoading] = useState(false);
+  const unarchiveMutation = useUnarchiveCategory();
 
   const handleUnarchive = async () => {
-    setLoading(true);
-    const result = await unarchiveCategory(categoryId);
-    setLoading(false);
+    const result = await unarchiveMutation.mutateAsync(categoryId);
 
-    if (result.error) {
-      toast.error("Failed to unarchive category", {
-        description: result.error
-      });
-    } else {
-      toast.success("Category restored", {
-        description: "Moved to active categories"
-      });
+    if (!result.error) {
       onSuccess?.();
     }
   };
+
+  const loading = unarchiveMutation.isPending;
 
   return (
     <Button

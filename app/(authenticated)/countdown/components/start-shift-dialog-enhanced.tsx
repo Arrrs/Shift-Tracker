@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/responsive-modal";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { useActiveJobs } from "@/lib/hooks/use-jobs";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2, DollarSign, Clock } from "lucide-react";
 import { toast } from "sonner";
@@ -60,9 +61,10 @@ export function StartShiftDialogEnhanced({
 }: StartShiftDialogEnhancedProps) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const { data: activeJobs = [], isLoading: isLoadingJobs } = useActiveJobs();
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
+  const loadingData = isLoadingJobs;
+  const hasAutoSelectedRef = useRef(false);
 
   // Basic shift info
   const [selectedJobId, setSelectedJobId] = useState<string>("");
@@ -100,12 +102,16 @@ export function StartShiftDialogEnhanced({
     }
   }, [open, selectedTemplateId]);
 
-  // Load jobs when dialog opens
+  // Auto-select first job if only one exists (only once)
   useEffect(() => {
-    if (open) {
-      loadJobs();
+    if (open && activeJobs.length === 1 && !hasAutoSelectedRef.current && !selectedJobId) {
+      setSelectedJobId(activeJobs[0].id);
+      hasAutoSelectedRef.current = true;
     }
-  }, [open]);
+    if (!open) {
+      hasAutoSelectedRef.current = false;
+    }
+  }, [open, activeJobs, selectedJobId]);
 
   // Load templates when job is selected
   useEffect(() => {
@@ -145,37 +151,6 @@ export function StartShiftDialogEnhanced({
     }
   }, [selectedTemplateId, templates]);
 
-  const loadJobs = async () => {
-    setLoadingData(true);
-    try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("jobs")
-        .select("id, name, pay_type, hourly_rate, daily_rate, currency, currency_symbol")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .order("name");
-
-      if (error) throw error;
-      setJobs(data || []);
-
-      if (data && data.length === 1) {
-        setSelectedJobId(data[0].id);
-      }
-    } catch (error) {
-      console.error("Error loading jobs:", error);
-      toast.error("Failed to load jobs");
-    } finally {
-      setLoadingData(false);
-    }
-  };
-
   const loadTemplates = async (jobId: string) => {
     try {
       const supabase = createClient();
@@ -202,7 +177,7 @@ export function StartShiftDialogEnhanced({
   const calculateExpectedIncome = () => {
     if (!customizePay) return null;
 
-    const selectedJob = jobs.find(j => j.id === selectedJobId);
+    const selectedJob = activeJobs.find(j => j.id === selectedJobId);
     const currencySymbol = payType === "default" && selectedJob
       ? selectedJob.currency_symbol
       : "$";
@@ -335,7 +310,7 @@ export function StartShiftDialogEnhanced({
                     <SelectValue placeholder="Select a job" />
                   </SelectTrigger>
                   <SelectContent>
-                    {jobs.map((job) => (
+                    {activeJobs.map((job) => (
                       <SelectItem key={job.id} value={job.id}>
                         {job.name}
                       </SelectItem>

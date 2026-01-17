@@ -14,7 +14,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Trash } from "lucide-react";
-import { deleteShiftTemplate } from "./actions";
+import { useDeleteShiftTemplate } from "@/lib/hooks/use-shift-templates";
 
 interface DeleteShiftTemplateButtonProps {
   templateId: string;
@@ -32,20 +32,18 @@ export function DeleteShiftTemplateButton({
   onSuccess,
 }: DeleteShiftTemplateButtonProps) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const deleteMutation = useDeleteShiftTemplate();
 
   const handleDelete = async () => {
-    setLoading(true);
-    const result = await deleteShiftTemplate(templateId);
-    setLoading(false);
+    const result = await deleteMutation.mutateAsync(templateId);
 
-    if (result.error) {
-      alert("Error: " + result.error);
-    } else {
+    if (!result.error) {
       setOpen(false);
       onSuccess?.();
     }
   };
+
+  const loading = deleteMutation.isPending;
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>

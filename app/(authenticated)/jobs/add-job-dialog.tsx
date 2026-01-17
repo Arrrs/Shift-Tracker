@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/responsive-modal";
 import {
   Select,
   SelectContent,
@@ -21,26 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createJob } from "./actions";
+import { useCreateJob } from "@/lib/hooks/use-jobs";
 import { Plus } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
+import { getCurrencyOptions } from "@/lib/utils/currency";
+import { DialogErrorBoundary } from "@/components/error-boundary";
+import { usePrimaryCurrency } from "@/lib/hooks/use-user-settings";
 
-const CURRENCIES = [
-  { value: "USD", label: "USD - US Dollar" },
-  { value: "EUR", label: "EUR - Euro" },
-  { value: "UAH", label: "UAH - Ukrainian Hryvnia" },
-  { value: "CZK", label: "CZK - Czech Koruna" },
-  { value: "PLN", label: "PLN - Polish Złoty" },
-  { value: "CAD", label: "CAD - Canadian Dollar" },
-  { value: "CHF", label: "CHF - Swiss Franc" },
-  { value: "DKK", label: "DKK - Danish Krone" },
-  { value: "GBP", label: "GBP - British Pound" },
-  { value: "HUF", label: "HUF - Hungarian Forint" },
-  { value: "NOK", label: "NOK - Norwegian Krone" },
-  { value: "RON", label: "RON - Romanian Leu" },
-  { value: "SEK", label: "SEK - Swedish Krona" },
-];
+const CURRENCIES = getCurrencyOptions();
 
 interface AddJobDialogProps {
   onSuccess?: () => void;
@@ -48,8 +36,9 @@ interface AddJobDialogProps {
 
 export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
   const { t } = useTranslation();
+  const primaryCurrency = usePrimaryCurrency();
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const createJob = useCreateJob();
 
   const [formData, setFormData] = useState({
     name: "",
@@ -57,17 +46,19 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
     hourly_rate: "",
     daily_rate: "",
     monthly_salary: "",
-    currency: "USD",
+    currency: primaryCurrency,
     color: "#3b82f6",
     description: "",
+    pto_days_per_year: "",
+    sick_days_per_year: "",
+    personal_days_per_year: "",
     is_active: true,
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
-    const result = await createJob({
+    const result = await createJob.mutateAsync({
       name: formData.name,
       pay_type: formData.pay_type,
       hourly_rate:
@@ -86,36 +77,57 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
       currency: formData.currency,
       color: formData.color,
       description: formData.description || null,
+      pto_days_per_year: formData.pto_days_per_year ? parseInt(formData.pto_days_per_year) : null,
+      sick_days_per_year: formData.sick_days_per_year ? parseInt(formData.sick_days_per_year) : null,
+      personal_days_per_year: formData.personal_days_per_year ? parseInt(formData.personal_days_per_year) : null,
       is_active: formData.is_active,
     });
 
-    setLoading(false);
-
-    if (result.error) {
-      toast.error(t("failedToCreateJob"), {
-        description: result.error,
-      });
-    } else {
+    // Mutation hook handles toasts, we just handle success/error flow
+    if (result.success && !result.error) {
       setOpen(false);
-      toast.success(t("jobCreatedSuccessfully"));
-      // Reset form
+      // Reset form with user's primary currency
       setFormData({
         name: "",
         pay_type: "hourly",
         hourly_rate: "",
         daily_rate: "",
         monthly_salary: "",
-        currency: "USD",
+        currency: primaryCurrency,
         color: "#3b82f6",
         description: "",
+        pto_days_per_year: "",
+        sick_days_per_year: "",
+        personal_days_per_year: "",
         is_active: true,
       });
       onSuccess?.();
     }
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    // Reset form when opening dialog to ensure primary currency is current
+    if (newOpen) {
+      setFormData({
+        name: "",
+        pay_type: "hourly",
+        hourly_rate: "",
+        daily_rate: "",
+        monthly_salary: "",
+        currency: primaryCurrency,
+        color: "#3b82f6",
+        description: "",
+        pto_days_per_year: "",
+        sick_days_per_year: "",
+        personal_days_per_year: "",
+        is_active: true,
+      });
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button>
           <Plus />
@@ -123,14 +135,15 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-h-[80vh] overflow-y-auto">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>{t("addNewJob")}</DialogTitle>
-            <DialogDescription>{t("createNewJobToTrack")}</DialogDescription>
-          </DialogHeader>
+      <DialogContent className="p-0 flex flex-col max-h-[90vh]">
+        <DialogErrorBoundary>
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+            <DialogHeader className="p-6 pb-0 flex-shrink-0">
+              <DialogTitle>{t("addNewJob")}</DialogTitle>
+              <DialogDescription>{t("createNewJobToTrack")}</DialogDescription>
+            </DialogHeader>
 
-          <div className="grid gap-4 py-4">
+          <div className="grid gap-4 p-6 pt-4 overflow-y-auto flex-1">
             {/* Job Name */}
             <div className="grid gap-2">
               <Label htmlFor="name">{t("jobName")} *</Label>
@@ -174,6 +187,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
                   id="hourly_rate"
                   type="number"
                   step="0.01"
+                  min="0.01"
                   value={formData.hourly_rate}
                   onChange={(e) =>
                     setFormData({ ...formData, hourly_rate: e.target.value })
@@ -191,6 +205,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
                   id="daily_rate"
                   type="number"
                   step="0.01"
+                  min="0.01"
                   value={formData.daily_rate}
                   onChange={(e) =>
                     setFormData({ ...formData, daily_rate: e.target.value })
@@ -214,6 +229,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
                   id="monthly_salary"
                   type="number"
                   step="0.01"
+                  min="0.01"
                   value={formData.monthly_salary}
                   onChange={(e) =>
                     setFormData({ ...formData, monthly_salary: e.target.value })
@@ -261,6 +277,52 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
               />
             </div>
 
+            {/* Leave Days (Optional) */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-2">
+                <Label htmlFor="pto_days" className="text-xs">PTO Days/Year</Label>
+                <Input
+                  id="pto_days"
+                  type="number"
+                  min="0"
+                  max="365"
+                  value={formData.pto_days_per_year}
+                  onChange={(e) =>
+                    setFormData({ ...formData, pto_days_per_year: e.target.value })
+                  }
+                  placeholder="0"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="sick_days" className="text-xs">Sick Days/Year</Label>
+                <Input
+                  id="sick_days"
+                  type="number"
+                  min="0"
+                  max="365"
+                  value={formData.sick_days_per_year}
+                  onChange={(e) =>
+                    setFormData({ ...formData, sick_days_per_year: e.target.value })
+                  }
+                  placeholder="0"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="personal_days" className="text-xs">Personal/Year</Label>
+                <Input
+                  id="personal_days"
+                  type="number"
+                  min="0"
+                  max="365"
+                  value={formData.personal_days_per_year}
+                  onChange={(e) =>
+                    setFormData({ ...formData, personal_days_per_year: e.target.value })
+                  }
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
             {/* Color Picker */}
             <div className="grid gap-2">
               <Label htmlFor="color">{t("jobColor")}</Label>
@@ -298,7 +360,7 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
             </div>
           </div>
 
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0">
             <Button
               type="button"
               variant="outline"
@@ -306,11 +368,12 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
             >
               {t("cancel")}
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? t("creating") : t("createJob")}
+            <Button type="submit" disabled={createJob.isPending}>
+              {createJob.isPending ? t("creating") : t("createJob")}
             </Button>
           </DialogFooter>
-        </form>
+          </form>
+        </DialogErrorBoundary>
       </DialogContent>
     </Dialog>
   );

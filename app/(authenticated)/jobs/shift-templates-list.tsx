@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Info } from "lucide-react";
 import { Database } from "@/lib/database.types";
-import { getShiftTemplates } from "./actions";
+import { useShiftTemplates } from "@/lib/hooks/use-shift-templates";
 import { AddShiftTemplateDialog } from "./add-shift-template-dialog";
 import { EditShiftTemplateDialog } from "./edit-shift-template-dialog";
 import { DeleteShiftTemplateButton } from "./delete-shift-template-button";
@@ -18,41 +17,17 @@ interface ShiftTemplatesListProps {
 }
 
 export function ShiftTemplatesList({ jobId, onTemplateChange }: ShiftTemplatesListProps) {
-  const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadTemplates = async () => {
-    setLoading(true);
-    const result = await getShiftTemplates(jobId);
-    setLoading(false);
-
-    if (result.error) {
-      setError(result.error);
-    } else if (result.templates) {
-      setTemplates(result.templates);
-    }
-  };
-
-  const handleTemplateChange = () => {
-    loadTemplates();
-    onTemplateChange?.();
-  };
-
-  useEffect(() => {
-    loadTemplates();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobId]);
+  const { data: templates = [], isLoading: loading, error } = useShiftTemplates(jobId);
 
   if (error) {
-    return <div className="text-sm text-destructive">Error loading templates: {error}</div>;
+    return <div className="text-sm text-destructive">Error loading templates: {error.message}</div>;
   }
 
   return (
     <div className="border-t pt-6">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold">Shift Templates</h3>
-        <AddShiftTemplateDialog jobId={jobId} onSuccess={handleTemplateChange} />
+        <AddShiftTemplateDialog jobId={jobId} onSuccess={onTemplateChange} />
       </div>
 
       {loading ? (
@@ -124,14 +99,14 @@ export function ShiftTemplatesList({ jobId, onTemplateChange }: ShiftTemplatesLi
                   template={template}
                   variant="ghost"
                   size="sm"
-                  onSuccess={handleTemplateChange}
+                  onSuccess={onTemplateChange}
                 />
                 <DeleteShiftTemplateButton
                   templateId={template.id}
                   templateName={template.name}
                   variant="ghost"
                   size="sm"
-                  onSuccess={handleTemplateChange}
+                  onSuccess={onTemplateChange}
                 />
               </div>
             </div>

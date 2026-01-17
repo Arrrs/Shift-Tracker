@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, TrendingUp, Clock, Calendar, DollarSign } from "lucide-react";
-import { getTimeEntries, getIncomeRecords } from "../time-entries/actions";
-import { getFinancialRecords } from "../finances/actions";
+import { useTimeEntries } from "@/lib/hooks/use-time-entries";
+import { useFinancialRecords } from "@/lib/hooks/use-financial-records";
+import { useIncomeRecords } from "@/lib/hooks/use-income-records";
 import { Database } from "@/lib/database.types";
 import { getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time-format";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { usePrimaryCurrency } from "@/lib/hooks/use-user-settings";
 
 type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"] & {
   jobs: Database["public"]["Tables"]["jobs"]["Row"] | null;
@@ -20,199 +22,228 @@ type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] 
 };
 
 export default function DashboardPage() {
-  const { t } = useTranslation();
+  const { t, formatDate } = useTranslation();
+  const primaryCurrency = usePrimaryCurrency();
   const [currentDate] = useState(new Date());
-  const [stats, setStats] = useState({
-    totalActualHours: 0,
-    totalScheduledHours: 0,
-    completedShifts: 0,
-    plannedShifts: 0,
-    inProgressShifts: 0,
-    earningsByCurrency: {} as Record<string, number>,
-    shiftIncomeByCurrency: {} as Record<string, number>,
-  });
-  const [yearlyData, setYearlyData] = useState<Array<{month: string, earningsByCurrency: Record<string, number>}>>([]);
-  const [yearlyTotalByCurrency, setYearlyTotalByCurrency] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(true);
 
-  // Load data for current month and last 12 months
-  useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
+  // Calculate date ranges
+  const { startDate, endDate, threeMonthsStartDate, threeMonthsEndDate, year, month } = useMemo(() => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
 
-      try {
-        // Get first and last day of current month
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const firstDay = new Date(year, month, 1);
-        const lastDay = new Date(year, month + 1, 0);
+    const startDate = firstDay.toISOString().split("T")[0];
+    const endDate = lastDay.toISOString().split("T")[0];
 
-        const startDate = firstDay.toISOString().split("T")[0];
-        const endDate = lastDay.toISOString().split("T")[0];
+    // Get data for last 3 months (for chart)
+    const threeMonthsAgo = new Date(year, month - 2, 1);
+    const threeMonthsStartDate = threeMonthsAgo.toISOString().split("T")[0];
+    const threeMonthsEndDate = lastDay.toISOString().split("T")[0];
 
-        // Get data for last 3 months (for chart)
-        const threeMonthsAgo = new Date(year, month - 2, 1);
-        const threeMonthsStartDate = threeMonthsAgo.toISOString().split("T")[0];
-        const threeMonthsEndDate = lastDay.toISOString().split("T")[0];
-
-        // Load all data in parallel for better performance
-        const [entriesResult, financialResult, incomeResult, threeMonthIncomeResult, threeMonthFinancialResult] = await Promise.all([
-          getTimeEntries(startDate, endDate),
-          getFinancialRecords(startDate, endDate),
-          getIncomeRecords(startDate, endDate),
-          getIncomeRecords(threeMonthsStartDate, threeMonthsEndDate),
-          getFinancialRecords(threeMonthsStartDate, threeMonthsEndDate),
-        ]);
-
-        if (entriesResult.entries && incomeResult.records) {
-          const timeEntries = entriesResult.entries as TimeEntry[];
-          const incomeRecords = incomeResult.records;
-          const financials = (financialResult.records || []) as FinancialRecord[];
-
-          // Calculate hours
-          const completedEntries = timeEntries.filter(e => e.status === 'completed');
-          const totalActualHours = completedEntries.reduce((sum, e) => sum + (e.actual_hours || 0), 0);
-          const totalScheduledHours = timeEntries.filter(e => e.status !== 'cancelled').reduce((sum, e) => sum + (e.scheduled_hours || 0), 0);
-          const completedShifts = completedEntries.length;
-          const plannedShifts = timeEntries.filter(e => e.status === 'planned').length;
-          const inProgressShifts = timeEntries.filter(e => e.status === 'in_progress').length;
-
-          // Calculate shift income by currency from income_records
-          const shiftIncomeByCurrency: Record<string, number> = {};
-          incomeRecords.forEach(record => {
-            const currency = record.currency || 'USD';
-            shiftIncomeByCurrency[currency] = (shiftIncomeByCurrency[currency] || 0) + record.amount;
-          });
-
-          // Calculate financial records income/expense by currency (completed only)
-          const financialIncomeByCurrency: Record<string, number> = {};
-          const financialExpenseByCurrency: Record<string, number> = {};
-          financials.forEach(record => {
-            if (record.status === 'completed') {
-              const currency = record.currency || 'USD';
-              if (record.type === 'income') {
-                financialIncomeByCurrency[currency] = (financialIncomeByCurrency[currency] || 0) + Number(record.amount);
-              } else if (record.type === 'expense') {
-                financialExpenseByCurrency[currency] = (financialExpenseByCurrency[currency] || 0) + Number(record.amount);
-              }
-            }
-          });
-
-          // Combine all earnings by currency (shifts + financial income - financial expenses)
-          const earningsByCurrency: Record<string, number> = {};
-
-          // Add shift income
-          Object.entries(shiftIncomeByCurrency).forEach(([currency, amount]) => {
-            earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) + amount;
-          });
-
-          // Add financial income
-          Object.entries(financialIncomeByCurrency).forEach(([currency, amount]) => {
-            earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) + amount;
-          });
-
-          // Subtract expenses
-          Object.entries(financialExpenseByCurrency).forEach(([currency, amount]) => {
-            earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) - amount;
-          });
-
-          setStats({
-            totalActualHours,
-            totalScheduledHours,
-            completedShifts,
-            plannedShifts,
-            inProgressShifts,
-            earningsByCurrency,
-            shiftIncomeByCurrency,
-          });
-        }
-
-        // Process last 3 months data for the bar chart (keep currencies separate)
-        if (threeMonthIncomeResult.records && threeMonthFinancialResult.records) {
-          const threeMonthIncome = threeMonthIncomeResult.records;
-          const threeMonthFinancials = threeMonthFinancialResult.records as FinancialRecord[];
-
-          // Group by month and currency
-          const monthlyEarnings: Record<string, Record<string, number>> = {};
-
-          // Add shift income by currency
-          threeMonthIncome.forEach(record => {
-            const date = new Date(record.date);
-            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            const currency = record.currency || 'USD';
-
-            if (!monthlyEarnings[monthKey]) {
-              monthlyEarnings[monthKey] = {};
-            }
-            monthlyEarnings[monthKey][currency] = (monthlyEarnings[monthKey][currency] || 0) + record.amount;
-          });
-
-          // Add/subtract financial records by currency
-          threeMonthFinancials.forEach(record => {
-            if (record.status === 'completed') {
-              const date = new Date(record.date);
-              const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-              const currency = record.currency || 'USD';
-
-              if (!monthlyEarnings[monthKey]) {
-                monthlyEarnings[monthKey] = {};
-              }
-
-              const amount = Number(record.amount);
-              if (record.type === 'income') {
-                monthlyEarnings[monthKey][currency] = (monthlyEarnings[monthKey][currency] || 0) + amount;
-              } else if (record.type === 'expense') {
-                monthlyEarnings[monthKey][currency] = (monthlyEarnings[monthKey][currency] || 0) - amount;
-              }
-            }
-          });
-
-          // Generate chart data for last 3 months
-          const chartData: Array<{month: string, earningsByCurrency: Record<string, number>}> = [];
-          const totalByCurrency: Record<string, number> = {};
-
-          for (let i = 2; i >= 0; i--) {
-            const targetDate = new Date(year, month - i, 1);
-            const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
-            const monthName = targetDate.toLocaleDateString('en-US', { month: 'short' });
-
-            const earningsByCurrency = monthlyEarnings[monthKey] || {};
-
-            // Round each currency amount
-            const roundedEarnings: Record<string, number> = {};
-            Object.entries(earningsByCurrency).forEach(([currency, amount]) => {
-              const rounded = Math.round(amount * 100) / 100;
-              roundedEarnings[currency] = rounded;
-              totalByCurrency[currency] = (totalByCurrency[currency] || 0) + rounded;
-            });
-
-            chartData.push({
-              month: monthName,
-              earningsByCurrency: roundedEarnings,
-            });
-          }
-
-          // Round totals
-          Object.keys(totalByCurrency).forEach(currency => {
-            totalByCurrency[currency] = Math.round(totalByCurrency[currency] * 100) / 100;
-          });
-
-          setYearlyData(chartData);
-          setYearlyTotalByCurrency(totalByCurrency);
-        }
-      } catch (error) {
-        console.error('Error loading dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadData();
+    return { startDate, endDate, threeMonthsStartDate, threeMonthsEndDate, year, month };
   }, [currentDate]);
 
-  const monthYear = currentDate.toLocaleDateString("en-US", {
+  // Use React Query hooks to fetch data
+  const { data: currentMonthEntries = [], isLoading: isLoadingEntries } = useTimeEntries(startDate, endDate);
+  const { data: currentMonthFinancials = [], isLoading: isLoadingFinancials } = useFinancialRecords(startDate, endDate);
+  const { data: currentMonthIncome = [], isLoading: isLoadingIncome } = useIncomeRecords(startDate, endDate);
+  const { data: threeMonthIncome = [], isLoading: isLoadingThreeMonthIncome } = useIncomeRecords(threeMonthsStartDate, threeMonthsEndDate);
+  const { data: threeMonthFinancials = [], isLoading: isLoadingThreeMonthFinancials } = useFinancialRecords(threeMonthsStartDate, threeMonthsEndDate);
+
+  const loading = isLoadingEntries || isLoadingFinancials || isLoadingIncome || isLoadingThreeMonthIncome || isLoadingThreeMonthFinancials;
+
+  // Calculate stats using useMemo
+  const stats = useMemo(() => {
+    const timeEntries = currentMonthEntries as TimeEntry[];
+    const incomeRecords = currentMonthIncome;
+    const financials = currentMonthFinancials as FinancialRecord[];
+
+    // Calculate hours
+    const completedEntries = timeEntries.filter(e => e.status === 'completed');
+    const totalActualHours = completedEntries.reduce((sum, e) => sum + (e.actual_hours || 0), 0);
+    const totalScheduledHours = timeEntries.filter(e => e.status !== 'cancelled').reduce((sum, e) => sum + (e.scheduled_hours || 0), 0);
+    const completedShifts = completedEntries.length;
+    const plannedShifts = timeEntries.filter(e => e.status === 'planned').length;
+    const inProgressShifts = timeEntries.filter(e => e.status === 'in_progress').length;
+
+    // Calculate shift income by currency from income_records
+    const shiftIncomeByCurrency: Record<string, number> = {};
+    incomeRecords.forEach(record => {
+      // CRITICAL: Only add to aggregation if currency is set
+      if (!record.currency) {
+        console.warn('WARNING: Income record has no currency, skipping:', record.id);
+        return;
+      }
+      const currency = record.currency;
+      shiftIncomeByCurrency[currency] = (shiftIncomeByCurrency[currency] || 0) + record.amount;
+    });
+
+    // Calculate expected income (from planned/in_progress shifts)
+    const expectedIncomeByCurrency: Record<string, number> = {};
+    const plannedOrInProgressEntries = timeEntries.filter(e =>
+      e.entry_type === 'work_shift' &&
+      (e.status === 'planned' || e.status === 'in_progress') &&
+      e.jobs
+    );
+
+    plannedOrInProgressEntries.forEach(entry => {
+      const job = entry.jobs;
+      if (!job) return;
+
+      // CRITICAL: Must have currency to add to aggregation
+      if (!job.currency) {
+        console.warn('WARNING: Job has no currency for expected income calc, skipping entry:', entry.id);
+        return;
+      }
+      const currency = job.currency;
+      let estimatedAmount = 0;
+
+      // Calculate expected income based on rate type
+      if (entry.custom_rate_type === 'fixed') {
+        estimatedAmount = entry.custom_rate_amount || 0;
+      } else if (job.rate_type === 'hourly') {
+        const hours = entry.actual_hours || entry.scheduled_hours || 0;
+        const rate = entry.custom_rate_type === 'hourly'
+          ? (entry.custom_rate_amount || job.hourly_rate || 0)
+          : (job.hourly_rate || 0);
+        const multiplier = entry.multiplier || 1;
+        estimatedAmount = hours * rate * multiplier;
+      } else if (job.rate_type === 'daily') {
+        const rate = entry.custom_rate_type === 'daily'
+          ? (entry.custom_rate_amount || job.daily_rate || 0)
+          : (job.daily_rate || 0);
+        const multiplier = entry.multiplier || 1;
+        estimatedAmount = rate * multiplier;
+      }
+
+      if (estimatedAmount > 0) {
+        expectedIncomeByCurrency[currency] = (expectedIncomeByCurrency[currency] || 0) + estimatedAmount;
+      }
+    });
+
+    // Calculate financial records income/expense by currency (completed only)
+    const financialIncomeByCurrency: Record<string, number> = {};
+    const financialExpenseByCurrency: Record<string, number> = {};
+    financials.forEach(record => {
+      if (record.status === 'completed') {
+        // CRITICAL: Only add to aggregation if currency is set
+        if (!record.currency) {
+          console.warn('WARNING: Financial record has no currency, skipping:', record.id);
+          return;
+        }
+        const currency = record.currency;
+        if (record.type === 'income') {
+          financialIncomeByCurrency[currency] = (financialIncomeByCurrency[currency] || 0) + Number(record.amount);
+        } else if (record.type === 'expense') {
+          financialExpenseByCurrency[currency] = (financialExpenseByCurrency[currency] || 0) + Number(record.amount);
+        }
+      }
+    });
+
+    // Combine all earnings by currency (shifts + financial income - financial expenses)
+    const earningsByCurrency: Record<string, number> = {};
+
+    // Add shift income
+    Object.entries(shiftIncomeByCurrency).forEach(([currency, amount]) => {
+      earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) + amount;
+    });
+
+    // Add financial income
+    Object.entries(financialIncomeByCurrency).forEach(([currency, amount]) => {
+      earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) + amount;
+    });
+
+    // Subtract expenses
+    Object.entries(financialExpenseByCurrency).forEach(([currency, amount]) => {
+      earningsByCurrency[currency] = (earningsByCurrency[currency] || 0) - amount;
+    });
+
+    return {
+      totalActualHours,
+      totalScheduledHours,
+      completedShifts,
+      plannedShifts,
+      inProgressShifts,
+      earningsByCurrency,
+      shiftIncomeByCurrency,
+      expectedIncomeByCurrency,
+    };
+  }, [currentMonthEntries, currentMonthIncome, currentMonthFinancials]);
+
+  // Calculate yearly data for chart using useMemo
+  const { yearlyData, yearlyTotalByCurrency } = useMemo(() => {
+    // Group by month and currency
+    const monthlyEarnings: Record<string, Record<string, number>> = {};
+
+    // Add shift income by currency
+    threeMonthIncome.forEach(record => {
+      const date = new Date(record.date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const currency = record.currency || 'USD';
+
+      if (!monthlyEarnings[monthKey]) {
+        monthlyEarnings[monthKey] = {};
+      }
+      monthlyEarnings[monthKey][currency] = (monthlyEarnings[monthKey][currency] || 0) + record.amount;
+    });
+
+    // Add/subtract financial records by currency
+    (threeMonthFinancials as FinancialRecord[]).forEach(record => {
+      if (record.status === 'completed') {
+        const date = new Date(record.date);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const currency = record.currency || 'USD';
+
+        if (!monthlyEarnings[monthKey]) {
+          monthlyEarnings[monthKey] = {};
+        }
+
+        const amount = Number(record.amount);
+        if (record.type === 'income') {
+          monthlyEarnings[monthKey][currency] = (monthlyEarnings[monthKey][currency] || 0) + amount;
+        } else if (record.type === 'expense') {
+          monthlyEarnings[monthKey][currency] = (monthlyEarnings[monthKey][currency] || 0) - amount;
+        }
+      }
+    });
+
+    // Generate chart data for last 3 months
+    const chartData: Array<{month: string, earningsByCurrency: Record<string, number>}> = [];
+    const totalByCurrency: Record<string, number> = {};
+
+    for (let i = 2; i >= 0; i--) {
+      const targetDate = new Date(year, month - i, 1);
+      const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+      const monthName = formatDate(targetDate, { month: 'short' });
+
+      const earningsByCurrency = monthlyEarnings[monthKey] || {};
+
+      // Round each currency amount
+      const roundedEarnings: Record<string, number> = {};
+      Object.entries(earningsByCurrency).forEach(([currency, amount]) => {
+        const rounded = Math.round(amount * 100) / 100;
+        roundedEarnings[currency] = rounded;
+        totalByCurrency[currency] = (totalByCurrency[currency] || 0) + rounded;
+      });
+
+      chartData.push({
+        month: monthName,
+        earningsByCurrency: roundedEarnings,
+      });
+    }
+
+    // Round totals
+    Object.keys(totalByCurrency).forEach(currency => {
+      totalByCurrency[currency] = Math.round(totalByCurrency[currency] * 100) / 100;
+    });
+
+    return { yearlyData: chartData, yearlyTotalByCurrency: totalByCurrency };
+  }, [threeMonthIncome, threeMonthFinancials, year, month]);
+
+  const monthYear = formatDate(currentDate, {
     month: "long",
-    year: "numeric",
+    year: true,
   });
 
   const totalShifts = stats.completedShifts + stats.plannedShifts + stats.inProgressShifts;
@@ -361,7 +392,7 @@ export default function DashboardPage() {
           <CardContent>
             {Object.keys(stats.earningsByCurrency).length === 0 ? (
               <div className="text-2xl font-bold">
-                {getCurrencySymbol('USD')}0.00
+                {getCurrencySymbol(primaryCurrency)}{formatCurrency(0)}
               </div>
             ) : (
               <div className="space-y-1">
@@ -433,6 +464,30 @@ export default function DashboardPage() {
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {t("of")} {stats.completedShifts} {t("completed")} shift{stats.completedShifts !== 1 ? 's' : ''}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Expected Income Card */}
+        {Object.keys(stats.expectedIncomeByCurrency).length > 0 && (
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Expected Income</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1">
+                {Object.entries(stats.expectedIncomeByCurrency).map(([currency, amount]) => (
+                  <div key={currency} className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                      {getCurrencySymbol(currency)}{formatCurrency(amount)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {stats.plannedShifts + stats.inProgressShifts} planned/in-progress shift{(stats.plannedShifts + stats.inProgressShifts) !== 1 ? 's' : ''}
               </p>
             </CardContent>
           </Card>

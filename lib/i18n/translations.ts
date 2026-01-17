@@ -42,6 +42,7 @@ export const translations = {
     orContinueWith: "Or continue with",
     continueWithGoogle: "Continue with Google",
     passwordsDoNotMatch: "Passwords do not match",
+    backToHome: "Back to home",
 
     // Navigation
     navigation: "Navigation",
@@ -121,8 +122,12 @@ export const translations = {
     expectedPlannedShifts: "📅 Expected (Planned Shifts)",
     otherIncome: "Other Income",
     expenses: "Expenses",
+    noData: "No data",
+    expectedIncome: "Expected Income",
     expectedIncomePlanned: "Expected Income (Planned)",
     expectedExpensesPlanned: "Expected Expenses (Planned)",
+    expectedOtherIncome: "Expected Other Income",
+    expectedExpenses: "Expected Expenses",
     earned: "Earned",
     fullDay: "Full day",
     partialDay: "Partial day",
@@ -131,6 +136,8 @@ export const translations = {
     financialRecords: "Financial Records",
     cancelled: "Cancelled",
     cancelledLower: "cancelled",
+    deleteTimeEntry: "Delete Time Entry",
+    deleteTimeEntryConfirmation: "Are you sure you want to delete this time entry? This action cannot be undone.",
 
     // Shift/Entry types
     workShift: "Work Shift",
@@ -179,6 +186,7 @@ export const translations = {
     failedToUpdateRecord: "Failed to update record",
     failedToDeleteRecord: "Failed to delete record",
     pleaseEnterValidAmount: "Please enter a valid amount",
+    descriptionRequired: "Description is required",
 
     // Settings
     general: "General",
@@ -194,6 +202,14 @@ export const translations = {
     chooseYourPreferredTheme: "Choose your preferred theme",
     selectYourPreferredLanguage: "Select your preferred language",
     customizeYourPreferences: "Customize your preferences",
+    // currency: "Currency",
+    primaryCurrency: "Primary Currency",
+    selectPrimaryCurrency: "Select your primary currency",
+    primaryCurrencyDescription: "This currency will be used as default for new jobs, shifts, and financial records.",
+    multiCurrencySupport: "Multi-Currency Support",
+    multiCurrencyDescription: "You can use different currencies for different jobs and records. Each currency will be displayed separately in totals.",
+    currencyUpdated: "Currency updated successfully",
+    errorUpdatingSettings: "Failed to update settings",
 
     // Validation
     requiredField: "This field is required",
@@ -217,6 +233,52 @@ export const translations = {
     today: "Today",
     yesterday: "Yesterday",
     tomorrow: "Tomorrow",
+
+    // Weekdays (full)
+    weekdaySunday: "Sunday",
+    weekdayMonday: "Monday",
+    weekdayTuesday: "Tuesday",
+    weekdayWednesday: "Wednesday",
+    weekdayThursday: "Thursday",
+    weekdayFriday: "Friday",
+    weekdaySaturday: "Saturday",
+
+    // Weekdays (short)
+    weekdaySundayShort: "Sun",
+    weekdayMondayShort: "Mon",
+    weekdayTuesdayShort: "Tue",
+    weekdayWednesdayShort: "Wed",
+    weekdayThursdayShort: "Thu",
+    weekdayFridayShort: "Fri",
+    weekdaySaturdayShort: "Sat",
+
+    // Months (full)
+    monthJanuary: "January",
+    monthFebruary: "February",
+    monthMarch: "March",
+    monthApril: "April",
+    monthMay: "May",
+    monthJune: "June",
+    monthJuly: "July",
+    monthAugust: "August",
+    monthSeptember: "September",
+    monthOctober: "October",
+    monthNovember: "November",
+    monthDecember: "December",
+
+    // Months (short)
+    monthJanuaryShort: "Jan",
+    monthFebruaryShort: "Feb",
+    monthMarchShort: "Mar",
+    monthAprilShort: "Apr",
+    monthMayShort: "May",
+    monthJuneShort: "Jun",
+    monthJulyShort: "Jul",
+    monthAugustShort: "Aug",
+    monthSeptemberShort: "Sep",
+    monthOctoberShort: "Oct",
+    monthNovemberShort: "Nov",
+    monthDecemberShort: "Dec",
 
     // Jobs
     job: "Job",
@@ -362,10 +424,11 @@ export const translations = {
     orContinueWith: "Або продовжте з",
     continueWithGoogle: "Продовжити з Google",
     passwordsDoNotMatch: "Паролі не збігаються",
+    backToHome: "На головну",
 
     // Navigation
     navigation: "Навігація",
-    dashboard: "Панель управління",
+    dashboard: "Статистика",
     calendar: "Календар",
     finances: "Фінанси",
     settings: "Налаштування",
@@ -430,7 +493,7 @@ export const translations = {
     entry: "запис",
     entries: "записи",
     noEntriesForThisDay: "Немає записів на цей день",
-    addEntry: "Додати запис111111111111111",
+    addEntry: "Додати запис",
     hours: "годин",
     hoursCompleted: "Години (Виконано)",
     expected: "Очікується",
@@ -441,8 +504,12 @@ export const translations = {
     expectedPlannedShifts: "📅 Очікується (Заплановані зміни)",
     otherIncome: "Інший дохід",
     expenses: "Витрати",
+    noData: "Немає даних",
+    expectedIncome: "Очікуваний дохід",
     expectedIncomePlanned: "Очікуваний дохід (Запланований)",
     expectedExpensesPlanned: "Очікувані витрати (Заплановані)",
+    expectedOtherIncome: "Очікуваний інший дохід",
+    expectedExpenses: "Очікувані витрати",
     earned: "Зароблено",
     fullDay: "Повний день",
     partialDay: "Частковий день",
@@ -451,6 +518,9 @@ export const translations = {
     financialRecords: "Фінансові записи",
     cancelled: "Скасовано",
     cancelledLower: "скасовано",
+    deleteTimeEntry: "Видалити запис часу",
+    deleteTimeEntryConfirmation: "Ви впевнені, що хочете видалити цей запис часу? Цю дію неможливо скасувати.",
+    
 
     // Shift/Entry types
     workShift: "Робоча зміна",
@@ -499,6 +569,7 @@ export const translations = {
     failedToUpdateRecord: "Не вдалося оновити запис",
     failedToDeleteRecord: "Не вдалося видалити запис",
     pleaseEnterValidAmount: "Будь ласка, введіть дійсну суму",
+    descriptionRequired: "Опис обов'язковий",
 
     // Settings
     general: "Загальні",
@@ -514,6 +585,14 @@ export const translations = {
     chooseYourPreferredTheme: "Виберіть бажану тему",
     selectYourPreferredLanguage: "Виберіть бажану мову",
     customizeYourPreferences: "Налаштуйте свої переваги",
+    // currency: "Валюта",
+    primaryCurrency: "Основна валюта",
+    selectPrimaryCurrency: "Виберіть свою основну валюту",
+    primaryCurrencyDescription: "Ця валюта буде використовуватися за замовчуванням для нових робіт, змін та фінансових записів.",
+    multiCurrencySupport: "Підтримка кількох валют",
+    multiCurrencyDescription: "Ви можете використовувати різні валюти для різних робіт і записів. Кожна валюта буде відображатися окремо в підсумках.",
+    currencyUpdated: "Валюту успішно оновлено",
+    errorUpdatingSettings: "Не вдалося оновити налаштування",
 
     // Validation
     requiredField: "Це поле обов'язкове",
@@ -537,6 +616,52 @@ export const translations = {
     today: "Сьогодні",
     yesterday: "Вчора",
     tomorrow: "Завтра",
+
+    // Weekdays (full)
+    weekdaySunday: "Неділя",
+    weekdayMonday: "Понеділок",
+    weekdayTuesday: "Вівторок",
+    weekdayWednesday: "Середа",
+    weekdayThursday: "Четвер",
+    weekdayFriday: "П'ятниця",
+    weekdaySaturday: "Субота",
+
+    // Weekdays (short)
+    weekdaySundayShort: "Нд",
+    weekdayMondayShort: "Пн",
+    weekdayTuesdayShort: "Вт",
+    weekdayWednesdayShort: "Ср",
+    weekdayThursdayShort: "Чт",
+    weekdayFridayShort: "Пт",
+    weekdaySaturdayShort: "Сб",
+
+    // Months (full)
+    monthJanuary: "Січень",
+    monthFebruary: "Лютий",
+    monthMarch: "Березень",
+    monthApril: "Квітень",
+    monthMay: "Травень",
+    monthJune: "Червень",
+    monthJuly: "Липень",
+    monthAugust: "Серпень",
+    monthSeptember: "Вересень",
+    monthOctober: "Жовтень",
+    monthNovember: "Листопад",
+    monthDecember: "Грудень",
+
+    // Months (short)
+    monthJanuaryShort: "Січ",
+    monthFebruaryShort: "Лют",
+    monthMarchShort: "Бер",
+    monthAprilShort: "Кві",
+    monthMayShort: "Тра",
+    monthJuneShort: "Чер",
+    monthJulyShort: "Лип",
+    monthAugustShort: "Сер",
+    monthSeptemberShort: "Вер",
+    monthOctoberShort: "Жов",
+    monthNovemberShort: "Лис",
+    monthDecemberShort: "Гру",
 
     // Jobs
     job: "Робота",

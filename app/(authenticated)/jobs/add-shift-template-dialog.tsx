@@ -10,11 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/responsive-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
-import { createShiftTemplate } from "./actions";
+import { useCreateShiftTemplate } from "@/lib/hooks/use-shift-templates";
 
 interface AddShiftTemplateDialogProps {
   jobId: string;
@@ -23,7 +23,7 @@ interface AddShiftTemplateDialogProps {
 
 export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDialogProps) {
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const createMutation = useCreateShiftTemplate();
   const [formData, setFormData] = useState({
     name: "",
     short_code: "",
@@ -67,14 +67,10 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
-    const result = await createShiftTemplate(jobId, formData);
-    setLoading(false);
+    const result = await createMutation.mutateAsync({ jobId, data: formData });
 
-    if (result.error) {
-      alert("Error: " + result.error);
-    } else {
+    if (!result.error) {
       setOpen(false);
       // Reset form
       setFormData({
@@ -85,10 +81,11 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
         expected_hours: 8,
         color: "#3B82F6",
       });
-      // Trigger reload
       onSuccess?.();
     }
   };
+
+  const loading = createMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -99,16 +96,16 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh]">
+        <DialogHeader className="p-6 pb-0 flex-shrink-0">
           <DialogTitle>Add Shift Template</DialogTitle>
           <DialogDescription>
             Create a reusable shift template for this job
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="grid gap-4 p-6 pt-4 overflow-y-auto flex-1">
             {/* Name */}
             <div className="grid gap-2">
               <Label htmlFor="name">Template Name</Label>
@@ -205,7 +202,7 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
             </div>
           </div>
 
-          <DialogFooter className="pt-4">
+          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0">
             <Button
               type="button"
               variant="outline"

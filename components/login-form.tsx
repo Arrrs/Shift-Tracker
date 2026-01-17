@@ -116,7 +116,7 @@ export function LoginForm({
                   <span className="w-full border-t" />
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
+                  <span className="bg-card px-2 text-muted-foreground">
                     {t("orContinueWith")}
                   </span>
                 </div>
@@ -155,6 +155,14 @@ export function LoginForm({
                 className="underline underline-offset-4"
               >
                 {t("signUp")}
+              </Link>
+            </div>
+            <div className="mt-3 text-center">
+              <Link
+                href="/"
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← {t("backToHome")}
               </Link>
             </div>
           </form>

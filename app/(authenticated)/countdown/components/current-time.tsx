@@ -11,7 +11,7 @@ interface CurrentTimeProps {
 }
 
 export function CurrentTime({ use24Hour = true, showSeconds = true, className = "" }: CurrentTimeProps) {
-  const { t } = useTranslation();
+  const { t, formatDate } = useTranslation();
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export function CurrentTime({ use24Hour = true, showSeconds = true, className = 
         {formatTime(time, showSeconds, use24Hour)}
       </div>
       <div className="text-sm text-muted-foreground mt-2">
-        {time.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+        {formatDate(time, { weekday: 'long', month: 'long', day: true })}
       </div>
     </div>
   );

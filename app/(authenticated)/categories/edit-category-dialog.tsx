@@ -10,13 +10,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/responsive-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { updateFinancialCategory } from "./actions";
+import { useUpdateFinancialCategory } from "@/lib/hooks/use-financial-categories";
 import type { FinancialCategory } from "./actions";
-import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { parseCurrency } from "@/lib/utils/currency";
 
 // Common emoji suggestions
 const INCOME_EMOJIS = ["💰", "💵", "💸", "🎁", "💼", "🎉", "📈", "🏆", "⭐", "✨"];
@@ -53,7 +53,7 @@ interface EditCategoryDialogProps {
 
 export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: EditCategoryDialogProps) {
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
+  const updateCategory = useUpdateFinancialCategory();
   const [formData, setFormData] = useState({
     name: category.name,
     icon: category.icon || "",
@@ -77,26 +77,22 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
-    const result = await updateFinancialCategory(category.id, {
-      name: formData.name,
-      type: category.type,
-      icon: formData.icon,
-      color: formData.color,
-      default_amount: formData.default_amount ? parseFloat(formData.default_amount) : undefined,
-      default_currency: formData.default_amount ? formData.default_currency : undefined,
-      default_description: formData.default_description || undefined,
+    const result = await updateCategory.mutateAsync({
+      id: category.id,
+      data: {
+        name: formData.name,
+        type: category.type,
+        icon: formData.icon,
+        color: formData.color,
+        default_amount: formData.default_amount ? parseCurrency(formData.default_amount) : undefined,
+        default_currency: formData.default_amount ? formData.default_currency : undefined,
+        default_description: formData.default_description || undefined,
+      },
     });
 
-    setLoading(false);
-
-    if (result.error) {
-      toast.error(t("error"), {
-        description: result.error,
-      });
-    } else {
-      toast.success(`${t("category")} "${formData.name}" ${t("savedSuccessfully").toLowerCase()}`);
+    // Mutation hook handles toasts
+    if (result.category && !result.error) {
       onSuccess();
       onOpenChange(false);
     }
@@ -107,16 +103,16 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh]">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <DialogHeader className="p-6 pb-0 flex-shrink-0">
             <DialogTitle>{t("editCategory")} - {category.type === "income" ? t("income") : t("expense")}</DialogTitle>
             <DialogDescription>
               {category.name}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 p-6 pt-4 overflow-y-auto flex-1">
             {/* Category Name */}
             <div className="space-y-2">
               <Label htmlFor="name">
@@ -244,12 +240,12 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
             </div>
           </div>
 
-          <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={updateCategory.isPending}>
               {t("cancel")}
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={updateCategory.isPending}>
+              {updateCategory.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t("saveChanges")}
             </Button>
           </DialogFooter>

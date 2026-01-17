@@ -8,7 +8,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/responsive-modal";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { useActiveJobs } from "@/lib/hooks/use-jobs";
 import { createClient } from "@/lib/supabase/client";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -52,9 +53,9 @@ export function StartShiftDialog({
 }: StartShiftDialogProps) {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
+  const { data: activeJobs = [], isLoading: isLoadingJobs } = useActiveJobs();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [templates, setTemplates] = useState<ShiftTemplate[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
 
   const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
@@ -62,12 +63,16 @@ export function StartShiftDialog({
   const [endTime, setEndTime] = useState("");
   const [notes, setNotes] = useState("");
 
-  // Load jobs when dialog opens
+  // Update local jobs state when React Query data changes
   useEffect(() => {
-    if (open) {
-      loadJobs();
+    if (activeJobs.length > 0) {
+      setJobs(activeJobs);
+      // Auto-select first job if only one exists
+      if (activeJobs.length === 1) {
+        setSelectedJobId(activeJobs[0].id);
+      }
     }
-  }, [open]);
+  }, [activeJobs]);
 
   // Load templates when job is selected
   useEffect(() => {
@@ -89,38 +94,6 @@ export function StartShiftDialog({
       }
     }
   }, [selectedTemplateId, templates]);
-
-  const loadJobs = async () => {
-    setLoadingData(true);
-    try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from("jobs")
-        .select("id, name")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .order("name");
-
-      if (error) throw error;
-      setJobs(data || []);
-
-      // Auto-select first job if only one exists
-      if (data && data.length === 1) {
-        setSelectedJobId(data[0].id);
-      }
-    } catch (error) {
-      console.error("Error loading jobs:", error);
-      toast.error("Failed to load jobs");
-    } finally {
-      setLoadingData(false);
-    }
-  };
 
   const loadTemplates = async (jobId: string) => {
     try {
@@ -206,7 +179,7 @@ export function StartShiftDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {loadingData ? (
+        {isLoadingJobs ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
@@ -297,7 +270,7 @@ export function StartShiftDialog({
           >
             {t("cancel")}
           </Button>
-          <Button onClick={handleSubmit} disabled={loading || loadingData}>
+          <Button onClick={handleSubmit} disabled={loading || isLoadingJobs}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {t("startShiftNow")}
           </Button>

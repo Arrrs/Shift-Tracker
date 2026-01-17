@@ -27,6 +27,7 @@ import { Eye } from "lucide-react";
 import { Database } from "@/lib/database.types";
 import { ShiftTemplatesList } from "./shift-templates-list";
 import { getCurrencySymbol } from "@/lib/utils/time-format";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 
@@ -45,6 +46,7 @@ export function JobDetailsDrawer({
   children,
   onTemplateChange,
 }: JobDetailsDrawerProps) {
+  const { formatDate } = useTranslation();
   const [open, setOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(false);
 
@@ -55,6 +57,13 @@ export function JobDetailsDrawer({
     return () => window.removeEventListener("resize", checkDesktop);
   }, []);
 
+  // Helper function to format currency values (removes trailing zeros)
+  const formatCurrencyValue = (value: number | null | undefined): string => {
+    if (!value) return '0';
+    // Remove trailing zeros and unnecessary decimal point
+    return value.toFixed(2).replace(/\.?0+$/, '');
+  };
+
   // Format rate display based on pay_type
   const getRateDisplay = () => {
     const symbol = getCurrencySymbol(job.currency || 'USD');
@@ -63,23 +72,23 @@ export function JobDetailsDrawer({
       case 'daily':
         return {
           label: 'Daily Rate',
-          value: `${symbol} ${job.daily_rate?.toFixed(2) || '0.00'} ${job.currency || 'USD'}`
+          value: `${symbol} ${formatCurrencyValue(job.daily_rate)} ${job.currency || 'USD'}`
         };
       case 'monthly':
         return {
           label: 'Monthly Salary',
-          value: `${symbol} ${job.monthly_salary?.toFixed(2) || '0.00'} ${job.currency || 'USD'}`
+          value: `${symbol} ${formatCurrencyValue(job.monthly_salary)} ${job.currency || 'USD'}`
         };
       case 'salary':
         return {
           label: 'Annual Salary',
-          value: `${symbol} ${job.monthly_salary?.toFixed(0) || '0'} ${job.currency || 'USD'}`
+          value: `${symbol} ${Math.round(job.monthly_salary || 0)} ${job.currency || 'USD'}`
         };
       case 'hourly':
       default:
         return {
           label: 'Hourly Rate',
-          value: `${symbol} ${job.hourly_rate?.toFixed(2) || '0.00'} ${job.currency || 'USD'}`
+          value: `${symbol} ${formatCurrencyValue(job.hourly_rate)} ${job.currency || 'USD'}`
         };
     }
   };
@@ -138,10 +147,10 @@ export function JobDetailsDrawer({
               Created
             </h3>
             <p className="text-sm">
-              {job.created_at && new Date(job.created_at).toLocaleDateString("en-US", {
-                year: "numeric",
+              {job.created_at && formatDate(new Date(job.created_at), {
+                year: true,
                 month: "long",
-                day: "numeric",
+                day: true,
               })}
             </p>
           </div>

@@ -10,12 +10,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
+} from "@/components/ui/responsive-modal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createFinancialCategory } from "./actions";
-import { toast } from "sonner";
+import { useCreateFinancialCategory } from "@/lib/hooks/use-financial-categories";
 import { Loader2 } from "lucide-react";
+import { parseCurrency } from "@/lib/utils/currency";
 
 // Common emoji suggestions
 const INCOME_EMOJIS = ["💰", "💵", "💸", "🎁", "💼", "🎉", "📈", "🏆", "⭐", "✨"];
@@ -52,7 +52,7 @@ interface AddCategoryDialogProps {
 
 export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCategoryDialogProps) {
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
+  const createCategory = useCreateFinancialCategory();
   const [formData, setFormData] = useState({
     name: "",
     icon: type === "income" ? "💰" : "💸",
@@ -64,26 +64,19 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
 
-    const result = await createFinancialCategory({
+    const result = await createCategory.mutateAsync({
       name: formData.name,
       type,
       icon: formData.icon,
       color: formData.color,
-      default_amount: formData.default_amount ? parseFloat(formData.default_amount) : undefined,
+      default_amount: formData.default_amount ? parseCurrency(formData.default_amount) : undefined,
       default_currency: formData.default_amount ? formData.default_currency : undefined,
       default_description: formData.default_description || undefined,
     });
 
-    setLoading(false);
-
-    if (result.error) {
-      toast.error(t("error"), {
-        description: result.error,
-      });
-    } else {
-      toast.success(`${t("category")} "${formData.name}" ${t("savedSuccessfully").toLowerCase()}`);
+    // Mutation hook handles toasts, we just handle success/error flow
+    if (result.category && !result.error) {
       setFormData({
         name: "",
         icon: type === "income" ? "💰" : "💸",
@@ -101,16 +94,16 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh]">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <DialogHeader className="p-6 pb-0 flex-shrink-0">
             <DialogTitle>{type === "income" ? t("addIncome") : t("addExpense")} {t("category")}</DialogTitle>
             <DialogDescription>
               {type === "income" ? t("income") : t("expense")} {t("category").toLowerCase()}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 p-6 pt-4 overflow-y-auto flex-1">
             {/* Category Name */}
             <div className="space-y-2">
               <Label htmlFor="name">
@@ -232,12 +225,12 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
             </div>
           </div>
 
-          <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={createCategory.isPending}>
               {t("cancel")}
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={createCategory.isPending}>
+              {createCategory.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {t("addCategory")}
             </Button>
           </DialogFooter>

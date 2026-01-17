@@ -4,6 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { Database } from '@/lib/database.types'
 import { redirect } from 'next/navigation'
+import { ZodError } from 'zod'
+import { createJobSchema, updateJobSchema, deleteJobSchema } from '@/lib/validations'
+import { formatZodError } from '@/lib/utils/validation-errors'
 
 type JobInsert = Database['public']['Tables']['jobs']['Insert']
 type ShiftTemplateInsert = Database['public']['Tables']['shift_templates']['Insert']
@@ -19,27 +22,37 @@ export async function getAuthenticatedUser() {
   return { user, supabase }
 }
 
-export async function createJob(data: Omit<JobInsert, 'user_id'>) {
-  const { user, supabase } = await getAuthenticatedUser()
-  
-  // Insert job with user_id
-  const { data: job, error } = await supabase
-    .from('jobs')
-    .insert({
-      ...data,
-      user_id: user.id
-    })
-    .select()
-    .single()
-  
-  if (error) {
-    return { error: error.message }
-  }
-  
-  // Revalidate the jobs page to show new data
-  revalidatePath('/jobs')
+export async function createJob(data: unknown) {
+  try {
+    // Validate input data
+    const validated = createJobSchema.parse(data)
 
-  return { success: true, job }
+    const { user, supabase } = await getAuthenticatedUser()
+
+    // Insert job with user_id
+    const { data: job, error } = await supabase
+      .from('jobs')
+      .insert({
+        ...validated,
+        user_id: user.id
+      })
+      .select()
+      .single()
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    // Revalidate the jobs page to show new data
+    revalidatePath('/jobs')
+
+    return { success: true, job }
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { error: formatZodError(error) }
+    }
+    return { error: 'Invalid input data' }
+  }
 }
 
 export async function archiveJob(jobId: string) {
@@ -81,57 +94,77 @@ export async function unarchiveJob(jobId: string) {
 }
 
 export async function deleteJob(jobId: string, deleteEntries: boolean = false) {
-  const { user, supabase } = await getAuthenticatedUser()
+  try {
+    // Validate input
+    const validated = deleteJobSchema.parse({ deleteEntries })
 
-  // If deleteEntries is true, we need to manually delete time entries first
-  // (since we changed CASCADE to SET NULL)
-  if (deleteEntries) {
-    const { error: entriesError } = await supabase
-      .from('time_entries')
+    const { user, supabase } = await getAuthenticatedUser()
+
+    // If deleteEntries is true, we need to manually delete time entries first
+    // (since we changed CASCADE to SET NULL)
+    if (validated.deleteEntries) {
+      const { error: entriesError } = await supabase
+        .from('time_entries')
+        .delete()
+        .eq('job_id', jobId)
+        .eq('user_id', user.id)
+
+      if (entriesError) {
+        return { error: entriesError.message }
+      }
+    }
+
+    // Delete job (templates will CASCADE, time_entries will SET NULL if not deleted above)
+    const { error } = await supabase
+      .from('jobs')
       .delete()
-      .eq('job_id', jobId)
+      .eq('id', jobId)
       .eq('user_id', user.id)
 
-    if (entriesError) {
-      return { error: entriesError.message }
+    if (error) {
+      return { error: error.message }
     }
+
+    revalidatePath('/jobs')
+
+    return { success: true }
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { error: formatZodError(error) }
+    }
+    return { error: 'Invalid input data' }
   }
-
-  // Delete job (templates will CASCADE, time_entries will SET NULL if not deleted above)
-  const { error } = await supabase
-    .from('jobs')
-    .delete()
-    .eq('id', jobId)
-    .eq('user_id', user.id)
-
-  if (error) {
-    return { error: error.message }
-  }
-
-  revalidatePath('/jobs')
-
-  return { success: true }
 }
 
-export async function updateJob(jobId: string, data: Omit<JobInsert, 'user_id'>) {
-  const { user, supabase } = await getAuthenticatedUser()
+export async function updateJob(jobId: string, data: unknown) {
+  try {
+    // Validate input data
+    const validated = updateJobSchema.parse(data)
 
-  // Update job (RLS ensures user can only update their own jobs)
-  const { data: job, error } = await supabase
-    .from('jobs')
-    .update(data)
-    .eq('id', jobId)
-    .eq('user_id', user.id)
-    .select()
-    .single()
+    const { user, supabase } = await getAuthenticatedUser()
 
-  if (error) {
-    return { error: error.message }
+    // Update job (RLS ensures user can only update their own jobs)
+    const { data: job, error } = await supabase
+      .from('jobs')
+      .update(validated)
+      .eq('id', jobId)
+      .eq('user_id', user.id)
+      .select()
+      .single()
+
+    if (error) {
+      return { error: error.message }
+    }
+
+    revalidatePath('/jobs')
+
+    return { success: true, job }
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return { error: formatZodError(error) }
+    }
+    return { error: 'Invalid input data' }
   }
-
-  revalidatePath('/jobs')
-
-  return { success: true, job }
 }
 
 export async function getJobs() {

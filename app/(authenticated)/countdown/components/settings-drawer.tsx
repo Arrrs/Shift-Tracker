@@ -41,7 +41,7 @@ export function SettingsDrawer({
         <SheetHeader className="space-y-1 pb-2">
           <SheetTitle className="text-xl">{t("settings")}</SheetTitle>
           <SheetDescription>
-            Customize your countdown page display and behavior
+            Customize your countdown display
           </SheetDescription>
         </SheetHeader>
 
@@ -109,7 +109,7 @@ export function SettingsDrawer({
                       </Label>
                       <Select
                         value={settings.countdownStyle}
-                        onValueChange={(value: any) =>
+                        onValueChange={(value: "digital" | "cards" | "compact") =>
                           onSettingsChange({ countdownStyle: value })
                         }
                       >
@@ -171,36 +171,6 @@ export function SettingsDrawer({
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="h-px bg-border" />
-
-          {/* Shift Detection */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Shift Detection</h3>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between py-1">
-                <Label htmlFor="auto-detect" className="text-sm font-medium cursor-pointer">
-                  Auto-detect active shift
-                </Label>
-                <Switch
-                  id="auto-detect"
-                  checked={settings.autoDetectShift}
-                  onCheckedChange={(checked) =>
-                    onSettingsChange({ autoDetectShift: checked })
-                  }
-                />
-              </div>
-
-              {!settings.autoDetectShift && (
-                <div className="ml-6 pl-3 border-l-2 border-border">
-                  <p className="text-sm text-muted-foreground">
-                    Manual shift selection will be available in the main page
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
       </SheetContent>
     </Sheet>

@@ -22,11 +22,12 @@ import { EditFinancialRecordDialog } from "./edit-financial-record-dialog";
 import { AddFinancialRecordDialog } from "../finances/add-financial-record-dialog";
 import { Clock, Coins, TrendingUp, TrendingDown, Plus, ChevronDown } from "lucide-react";
 import { formatTimeFromTimestamp, getStatusInfo, getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time-format";
-import { getIncomeRecords } from "@/app/(authenticated)/time-entries/actions";
-import { getFinancialRecords } from "@/app/(authenticated)/finances/actions";
+import { useIncomeRecords } from "@/lib/hooks/use-income-records";
+import { useFinancialRecords } from "@/lib/hooks/use-financial-records";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import { add as addCurrency } from "@/lib/utils/currency";
 
 // Helper to format date in local timezone without UTC conversion
 const formatLocalDate = (date: Date): string => {
@@ -63,21 +64,22 @@ export function DayShiftsDrawer({
   onOpenChange,
   onEntryChange,
 }: DayShiftsDrawerProps) {
-  const { t } = useTranslation();
+  const { t, formatDate } = useTranslation();
   const [selectedEntry, setSelectedEntry] = useState<TimeEntry | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [incomeRecords, setIncomeRecords] = useState<IncomeRecord[]>([]);
-  const [loadingIncome, setLoadingIncome] = useState(false);
-
-  // Financial records state
-  const [financialRecords, setFinancialRecords] = useState<FinancialRecord[]>([]);
-  const [loadingFinancial, setLoadingFinancial] = useState(false);
   const [selectedFinancialRecord, setSelectedFinancialRecord] = useState<FinancialRecord | null>(null);
   const [editFinancialDialogOpen, setEditFinancialDialogOpen] = useState(false);
   const [addFinancialDialogOpen, setAddFinancialDialogOpen] = useState(false);
   const [addFinancialType, setAddFinancialType] = useState<"income" | "expense">("income");
+
+  // Format date for React Query hooks (empty string will disable query via built-in enabled check)
+  const dateStr = (date && open) ? formatLocalDate(date) : "";
+
+  // Use React Query hooks for data fetching
+  const { data: incomeRecords = [], isLoading: loadingIncome } = useIncomeRecords(dateStr, dateStr);
+  const { data: financialRecords = [], isLoading: loadingFinancial } = useFinancialRecords(dateStr, dateStr);
 
   // Detect mobile on mount (client-side only to avoid hydration mismatch)
   useEffect(() => {
@@ -87,68 +89,14 @@ export function DayShiftsDrawer({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Reset state when drawer closes or date changes
-  useEffect(() => {
-    if (!open) {
-      setIncomeRecords([]);
-      setFinancialRecords([]);
-      setLoadingIncome(false);
-      setLoadingFinancial(false);
-    }
-  }, [open]);
-
-  // Reset state immediately when date changes (before fetching new data)
-  useEffect(() => {
-    if (date && open) {
-      setIncomeRecords([]);
-      setFinancialRecords([]);
-    }
-  }, [date, open]);
-
-  // Fetch income records for the selected day
-  useEffect(() => {
-    if (!date || !open) return;
-
-    const fetchIncome = async () => {
-      setLoadingIncome(true);
-      const dateStr = formatLocalDate(date);
-      const result = await getIncomeRecords(dateStr, dateStr);
-      if (result.records) {
-        setIncomeRecords(result.records);
-      }
-      setLoadingIncome(false);
-    };
-
-    fetchIncome();
-  }, [date, open, entries]);
-
-  // Fetch financial records for the selected day
-  useEffect(() => {
-    if (!date || !open) return;
-
-    const fetchFinancial = async () => {
-      setLoadingFinancial(true);
-      const dateStr = formatLocalDate(date);
-      const result = await getFinancialRecords(dateStr, dateStr);
-      if (result.records) {
-        setFinancialRecords(result.records);
-      }
-      setLoadingFinancial(false);
-    };
-
-    fetchFinancial();
-  }, [date, open]);
-
   if (!date) return null;
-
-  const dateStr = formatLocalDate(date);
   const dayEntries = entries.filter((entry) => entry.date === dateStr);
 
-  const formattedDate = date.toLocaleDateString("en-US", {
+  const formattedDate = formatDate(date, {
     weekday: "long",
     month: "long",
-    day: "numeric",
-    year: "numeric",
+    day: true,
+    year: true,
   });
 
   // Calculate total hours - only count completed entries
@@ -178,8 +126,13 @@ export function DayShiftsDrawer({
       currency: record.currency,
       date: record.date,
     });
-    const currency = record.currency || 'USD';
-    shiftIncomeByCurrency[currency] = (shiftIncomeByCurrency[currency] || 0) + record.amount;
+    // CRITICAL: Only add to aggregation if currency is set
+    if (!record.currency) {
+      console.warn('  WARNING: Income record has no currency, skipping:', record.id);
+      return;
+    }
+    const currency = record.currency;
+    shiftIncomeByCurrency[currency] = addCurrency(shiftIncomeByCurrency[currency] || 0, record.amount);
   });
   console.log('DEBUG - Shift income by currency:', shiftIncomeByCurrency);
 
@@ -190,19 +143,24 @@ export function DayShiftsDrawer({
   const plannedFinancialExpenseByCurrency: Record<string, number> = {};
 
   financialRecords.forEach((record) => {
-    const currency = record.currency || 'USD';
+    // CRITICAL: Only add to aggregation if currency is set
+    if (!record.currency) {
+      console.warn('WARNING: Financial record has no currency, skipping:', record.id);
+      return;
+    }
+    const currency = record.currency;
     const isCompleted = record.status === 'completed';
     const isPlanned = record.status === 'planned';
 
     // Only include completed and planned records in totals (exclude cancelled)
     if (record.type === 'income' && isCompleted) {
-      financialIncomeByCurrency[currency] = (financialIncomeByCurrency[currency] || 0) + Number(record.amount);
+      financialIncomeByCurrency[currency] = addCurrency(financialIncomeByCurrency[currency] || 0, Number(record.amount));
     } else if (record.type === 'expense' && isCompleted) {
-      financialExpenseByCurrency[currency] = (financialExpenseByCurrency[currency] || 0) + Number(record.amount);
+      financialExpenseByCurrency[currency] = addCurrency(financialExpenseByCurrency[currency] || 0, Number(record.amount));
     } else if (record.type === 'income' && isPlanned) {
-      plannedFinancialIncomeByCurrency[currency] = (plannedFinancialIncomeByCurrency[currency] || 0) + Number(record.amount);
+      plannedFinancialIncomeByCurrency[currency] = addCurrency(plannedFinancialIncomeByCurrency[currency] || 0, Number(record.amount));
     } else if (record.type === 'expense' && isPlanned) {
-      plannedFinancialExpenseByCurrency[currency] = (plannedFinancialExpenseByCurrency[currency] || 0) + Number(record.amount);
+      plannedFinancialExpenseByCurrency[currency] = addCurrency(plannedFinancialExpenseByCurrency[currency] || 0, Number(record.amount));
     }
   });
 
@@ -213,8 +171,13 @@ export function DayShiftsDrawer({
 
   // First, add all completed shift income from income records
   incomeRecords.forEach((record) => {
-    const currency = record.currency || 'USD';
-    expectedIncomeByCurrency[currency] = (expectedIncomeByCurrency[currency] || 0) + record.amount;
+    // CRITICAL: Only add to aggregation if currency is set
+    if (!record.currency) {
+      console.warn('WARNING: Income record has no currency for expected calc, skipping:', record.id);
+      return;
+    }
+    const currency = record.currency;
+    expectedIncomeByCurrency[currency] = addCurrency(expectedIncomeByCurrency[currency] || 0, record.amount);
   });
 
   // Backwards compatibility - keep incomeByCurrency for existing code
@@ -231,7 +194,13 @@ export function DayShiftsDrawer({
         entry.status !== 'completed' &&
         entry.status !== 'cancelled') {
 
-      const currency = entry.custom_currency || entry.jobs?.currency || 'USD';
+      // CRITICAL: Must have currency to add to aggregation
+      const currency = entry.custom_currency || entry.jobs?.currency;
+      if (!currency) {
+        console.warn('WARNING: Planned shift has no currency (no job and no custom currency), skipping expected income calc:', entry.id);
+        return;
+      }
+
       let estimatedAmount = 0;
       const hours = entry.actual_hours || entry.scheduled_hours || 0;
 
@@ -285,7 +254,7 @@ export function DayShiftsDrawer({
 
       // Add estimated income for planned shifts
       if (estimatedAmount > 0) {
-        expectedIncomeByCurrency[currency] = (expectedIncomeByCurrency[currency] || 0) + estimatedAmount;
+        expectedIncomeByCurrency[currency] = addCurrency(expectedIncomeByCurrency[currency] || 0, estimatedAmount);
         console.log('  → Added to expected total:', { currency, amount: estimatedAmount, newTotal: expectedIncomeByCurrency[currency] });
       }
     }
@@ -296,27 +265,13 @@ export function DayShiftsDrawer({
     setEditDialogOpen(true);
   };
 
-  const handleEditSuccess = async () => {
-    // Refetch income records after edit/delete
-    if (date) {
-      const dateStr = formatLocalDate(date);
-      const result = await getIncomeRecords(dateStr, dateStr);
-      if (result.records) {
-        setIncomeRecords(result.records);
-      }
-    }
+  const handleEditSuccess = () => {
+    // React Query automatically refetches after mutations via cache invalidation
     onEntryChange?.();
   };
 
-  const handleFinancialSuccess = async () => {
-    // Refetch financial records after edit/delete/add
-    if (date) {
-      const dateStr = formatLocalDate(date);
-      const result = await getFinancialRecords(dateStr, dateStr);
-      if (result.records) {
-        setFinancialRecords(result.records);
-      }
-    }
+  const handleFinancialSuccess = () => {
+    // React Query automatically refetches after mutations via cache invalidation
     onEntryChange?.();
   };
 
