@@ -13,7 +13,7 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Countdown - Shift Tracker",
+  title: "Shift Tracker",
   description: "Track your work shifts, earnings, and manage your schedule",
   manifest: "/manifest.json",
   appleWebApp: {
