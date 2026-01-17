@@ -156,7 +156,7 @@ export default function SettingsPage() {
       <Link href="/changes" className="flex mt-6">
         <Button variant="ghost" className="w-full justify-start">
           <History className="mr-2 h-4 w-4" />
-          Version 1.0.0
+          Version 1.0.1
         </Button>
       </Link>
     </div>
