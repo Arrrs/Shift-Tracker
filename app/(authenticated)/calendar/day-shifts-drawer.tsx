@@ -20,12 +20,18 @@ import { EditTimeEntryDialog } from "./edit-time-entry-dialog";
 import { AddTimeEntryDialog } from "./add-time-entry-dialog";
 import { EditFinancialRecordDialog } from "./edit-financial-record-dialog";
 import { AddFinancialRecordDialog } from "../finances/add-financial-record-dialog";
-import { Clock, Coins, TrendingUp, TrendingDown, Plus, ChevronDown } from "lucide-react";
+import { Clock, Coins, TrendingUp, TrendingDown, Plus } from "lucide-react";
 import { formatTimeFromTimestamp, getStatusInfo, getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time-format";
 import { useIncomeRecords } from "@/lib/hooks/use-income-records";
 import { useFinancialRecords } from "@/lib/hooks/use-financial-records";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog as AddMenuDialog,
+  DialogContent as AddMenuDialogContent,
+  DialogDescription as AddMenuDialogDescription,
+  DialogHeader as AddMenuDialogHeader,
+  DialogTitle as AddMenuDialogTitle,
+} from "@/components/ui/dialog";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { add as addCurrency } from "@/lib/utils/currency";
 
@@ -73,6 +79,7 @@ export function DayShiftsDrawer({
   const [editFinancialDialogOpen, setEditFinancialDialogOpen] = useState(false);
   const [addFinancialDialogOpen, setAddFinancialDialogOpen] = useState(false);
   const [addFinancialType, setAddFinancialType] = useState<"income" | "expense">("income");
+  const [showAddMenu, setShowAddMenu] = useState(false);
 
   // Format date for React Query hooks (empty string will disable query via built-in enabled check)
   const dateStr = (date && open) ? formatLocalDate(date) : "";
@@ -429,32 +436,10 @@ export function DayShiftsDrawer({
             <p className="text-muted-foreground mb-4">
               {t("noEntriesForThisDay")}
             </p>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="gap-1">
-                  <Plus className="h-4 w-4" />
-                  {t("addEntry")}
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setAddDialogOpen(true)}>
-                  💼 {t("addShift")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  setAddFinancialType('income');
-                  setAddFinancialDialogOpen(true);
-                }}>
-                  💰 {t("addIncome")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  setAddFinancialType('expense');
-                  setAddFinancialDialogOpen(true);
-                }}>
-                  💸 {t("addExpense")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button className="gap-1" onClick={() => setShowAddMenu(true)}>
+              <Plus className="h-4 w-4" />
+              {t("addEntry")}
+            </Button>
           </div>
         ) : (dayEntries.length > 0 || financialRecords.length > 0) && (
           <div className="space-y-3">
@@ -744,34 +729,12 @@ export function DayShiftsDrawer({
               </div>
             )}
 
-            {/* Add Button with Dropdown */}
+            {/* Add Button */}
             <div className="pt-2 border-t flex justify-end pt-3">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button className="gap-1">
-                    <Plus className="h-4 w-4" />
-                    {t("add")}
-                    <ChevronDown className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => setAddDialogOpen(true)}>
-                    💼 {t("addShift")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    setAddFinancialType('income');
-                    setAddFinancialDialogOpen(true);
-                  }}>
-                    💰 {t("addIncome")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    setAddFinancialType('expense');
-                    setAddFinancialDialogOpen(true);
-                  }}>
-                    💸 {t("addExpense")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button className="gap-1" onClick={() => setShowAddMenu(true)}>
+                <Plus className="h-4 w-4" />
+                {t("add")}
+              </Button>
             </div>
           </div>
         )}
@@ -805,6 +768,61 @@ export function DayShiftsDrawer({
         defaultType={addFinancialType}
         onSuccess={handleFinancialSuccess}
       />
+
+      {/* Add Menu Dialog */}
+      <AddMenuDialog open={showAddMenu} onOpenChange={setShowAddMenu}>
+        <AddMenuDialogContent className="sm:max-w-[400px] p-0 overflow-hidden w-full">
+          <AddMenuDialogHeader className="p-4 sm:p-6 pb-2">
+            <AddMenuDialogTitle>{t("addNew")}</AddMenuDialogTitle>
+            <AddMenuDialogDescription>{t("whatWouldYouLikeToAdd")}</AddMenuDialogDescription>
+          </AddMenuDialogHeader>
+          <div className="p-4 sm:p-6 pt-2 space-y-3">
+            <button
+              onClick={() => {
+                setShowAddMenu(false);
+                setAddDialogOpen(true);
+              }}
+              className="w-full flex items-center gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors text-left"
+            >
+              <div className="text-3xl">💼</div>
+              <div>
+                <p className="font-semibold">{t("addShift")}</p>
+                <p className="text-sm text-muted-foreground">{t("logWorkShiftOrDayOff")}</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                setShowAddMenu(false);
+                setAddFinancialType('income');
+                setAddFinancialDialogOpen(true);
+              }}
+              className="w-full flex items-center gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors text-left"
+            >
+              <div className="text-3xl">💰</div>
+              <div>
+                <p className="font-semibold">{t("addIncome")}</p>
+                <p className="text-sm text-muted-foreground">{t("recordIncomePayment")}</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => {
+                setShowAddMenu(false);
+                setAddFinancialType('expense');
+                setAddFinancialDialogOpen(true);
+              }}
+              className="w-full flex items-center gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors text-left"
+            >
+              <div className="text-3xl">💸</div>
+              <div>
+                <p className="font-semibold">{t("addExpense")}</p>
+                <p className="text-sm text-muted-foreground">{t("trackSpendingExpense")}</p>
+              </div>
+            </button>
+          </div>
+        </AddMenuDialogContent>
+      </AddMenuDialog>
     </>
   );
 
