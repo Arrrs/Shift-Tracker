@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, TrendingUp, Clock, Calendar, DollarSign, Briefcase, Sparkles, ChevronRight, HelpCircle } from "lucide-react";
+import { Loader2, TrendingUp, Clock, Calendar, DollarSign, Briefcase, Sparkles, ChevronRight, HelpCircle, ChevronLeft } from "lucide-react";
 import { useTimeEntries } from "@/lib/hooks/use-time-entries";
 import { useActiveJobs } from "@/lib/hooks/use-jobs";
 import Link from "next/link";
@@ -27,12 +27,29 @@ type FinancialRecord = Database["public"]["Tables"]["financial_records"]["Row"] 
 export default function DashboardPage() {
   const { t, formatDate } = useTranslation();
   const primaryCurrency = usePrimaryCurrency();
-  const [currentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
-  // Calculate date ranges
+  // Navigation helpers
+  const goToPreviousMonth = () => {
+    setSelectedDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const goToNextMonth = () => {
+    const next = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 1);
+    const now = new Date();
+    // Don't go beyond current month
+    if (next <= new Date(now.getFullYear(), now.getMonth() + 1, 0)) {
+      setSelectedDate(next);
+    }
+  };
+
+  const isCurrentMonth = selectedDate.getMonth() === new Date().getMonth() &&
+                         selectedDate.getFullYear() === new Date().getFullYear();
+
+  // Calculate date ranges based on selected date
   const { startDate, endDate, threeMonthsStartDate, threeMonthsEndDate, year, month } = useMemo(() => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
+    const year = selectedDate.getFullYear();
+    const month = selectedDate.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
 
@@ -45,7 +62,7 @@ export default function DashboardPage() {
     const threeMonthsEndDate = lastDay.toISOString().split("T")[0];
 
     return { startDate, endDate, threeMonthsStartDate, threeMonthsEndDate, year, month };
-  }, [currentDate]);
+  }, [selectedDate]);
 
   // Use React Query hooks to fetch data
   const { data: currentMonthEntries = [], isLoading: isLoadingEntries } = useTimeEntries(startDate, endDate);
@@ -244,7 +261,7 @@ export default function DashboardPage() {
     return { yearlyData: chartData, yearlyTotalByCurrency: totalByCurrency };
   }, [threeMonthIncome, threeMonthFinancials, year, month]);
 
-  const monthYear = formatDate(currentDate, {
+  const monthYear = formatDate(selectedDate, {
     month: "long",
     year: true,
   });
@@ -266,13 +283,6 @@ export default function DashboardPage() {
   // Add 10% padding at the top for cleaner look
   const maxEarnings = maxValue * 1.1;
 
-  console.log('Chart Debug:', {
-    yearlyData,
-    allCurrencies,
-    allValues,
-    maxValue,
-    maxEarnings
-  });
 
   // Define colors for different currencies
   const currencyColors: Record<string, string> = {
@@ -367,106 +377,37 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen p-4 sm:p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">{t("dashboard")}</h1>
-        <p className="text-muted-foreground">
-          {t("overviewFor")} {monthYear}
-        </p>
+      {/* Header with Month Selector */}
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h1 className="text-3xl font-bold">{t("dashboard")}</h1>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={goToPreviousMonth}
+              className="h-8 w-8"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm font-medium min-w-[140px] text-center">
+              {monthYear}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={goToNextMonth}
+              disabled={isCurrentMonth}
+              className="h-8 w-8"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* Last 3 Months Income Chart */}
-      {yearlyData.length > 0 && (
-        <Card className="mb-6">
-          <CardHeader>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <CardTitle>{t("lastThreeMonths")}</CardTitle>
-                  <CardDescription>{t("incomeByCurrency")}</CardDescription>
-                </div>
-                <div className="sm:text-right">
-                  <div className="space-y-1">
-                    {Object.entries(yearlyTotalByCurrency).map(([currency, total]) => (
-                      <div key={currency} className="flex items-center gap-2 sm:justify-end">
-                        <span className="text-lg font-bold">
-                          {getCurrencySymbol(currency)}{formatCurrency(total)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">{t("total")} (3 {t("months")})</p>
-                </div>
-              </div>
-              {/* Currency Legend */}
-              {allCurrencies.length > 1 && (
-                <div className="flex flex-wrap gap-3">
-                  {allCurrencies.map(currency => (
-                    <div key={currency} className="flex items-center gap-2">
-                      <div className={`w-3 h-3 rounded ${currencyColors[currency] || 'bg-primary/80'}`} />
-                      <span className="text-xs text-muted-foreground">{currency}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            {/* Chart container */}
-            <div className="w-full overflow-x-auto -mx-2 px-2">
-              <div className="min-w-[50px]">
-                {/* Chart area with fixed height */}
-                <div className="h-64 flex items-end justify-center gap-8 mb-4">
-                  {yearlyData.map((data, index) => (
-                    <div key={index} className="flex-1 flex items-end justify-center gap-2">
-                      {allCurrencies.map(currency => {
-                        const earnings = data.earningsByCurrency[currency] || 0;
-                        const colorClass = currencyColors[currency] || 'bg-primary/80 hover:bg-primary';
-                        const heightPx = maxEarnings > 0 ? Math.floor((Math.abs(earnings) / maxEarnings) * 240) : 0;
-
-                        console.log(`${data.month} ${currency}:`, earnings, 'heightPx:', heightPx);
-
-                        return (
-                          <div
-                            key={currency}
-                            className="flex-1 max-w-[30px] md:max-w-[50px] relative group cursor-pointer"
-                          >
-                            {earnings !== 0 && (
-                              <div
-                                className={`w-full ${earnings > 0 ? colorClass : 'bg-red-500/80 hover:bg-red-500'} rounded-t transition-all duration-300`}
-                                style={{
-                                  height: Math.max(heightPx, 12) + 'px'
-                                }}
-                              >
-                                {/* Tooltip */}
-                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-popover text-popover-foreground text-xs font-medium rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 border">
-                                  {getCurrencySymbol(currency)}{formatCurrency(earnings)}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Month labels */}
-                <div className="flex items-center justify-center gap-8">
-                  {yearlyData.map((data, index) => (
-                    <div key={index} className="flex-1 text-center">
-                      <div className="text-sm text-muted-foreground font-medium">
-                        {data.month}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+      {/* Stats Cards - Show first for current month context */}
+      <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 mb-6">
         {/* Net Income Card */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -613,6 +554,96 @@ export default function DashboardPage() {
           </Card>
         )}
       </div>
+
+      {/* Income Trend Chart - Last 3 Months */}
+      {yearlyData.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <CardTitle>{t("incomeTrend")}</CardTitle>
+                  <CardDescription>{t("lastThreeMonthsEnding")} {monthYear}</CardDescription>
+                </div>
+                <div className="sm:text-right">
+                  <div className="space-y-1">
+                    {Object.entries(yearlyTotalByCurrency).map(([currency, total]) => (
+                      <div key={currency} className="flex items-center gap-2 sm:justify-end">
+                        <span className="text-lg font-bold">
+                          {getCurrencySymbol(currency)}{formatCurrency(total)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{t("total")} (3 {t("months")})</p>
+                </div>
+              </div>
+              {/* Currency Legend */}
+              {allCurrencies.length > 1 && (
+                <div className="flex flex-wrap gap-3">
+                  {allCurrencies.map(currency => (
+                    <div key={currency} className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded ${currencyColors[currency] || 'bg-primary/80'}`} />
+                      <span className="text-xs text-muted-foreground">{currency}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Chart container */}
+            <div className="w-full overflow-x-auto -mx-2 px-2">
+              <div className="min-w-[50px]">
+                {/* Chart area with fixed height */}
+                <div className="h-48 flex items-end justify-center gap-8 mb-4">
+                  {yearlyData.map((data, index) => (
+                    <div key={index} className="flex-1 flex items-end justify-center gap-2">
+                      {allCurrencies.map(currency => {
+                        const earnings = data.earningsByCurrency[currency] || 0;
+                        const colorClass = currencyColors[currency] || 'bg-primary/80 hover:bg-primary';
+                        const heightPx = maxEarnings > 0 ? Math.floor((Math.abs(earnings) / maxEarnings) * 180) : 0;
+
+                        return (
+                          <div
+                            key={currency}
+                            className="flex-1 max-w-[30px] md:max-w-[50px] relative group cursor-pointer"
+                          >
+                            {earnings !== 0 && (
+                              <div
+                                className={`w-full ${earnings > 0 ? colorClass : 'bg-red-500/80 hover:bg-red-500'} rounded-t transition-all duration-300`}
+                                style={{
+                                  height: Math.max(heightPx, 12) + 'px'
+                                }}
+                              >
+                                {/* Tooltip */}
+                                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-popover text-popover-foreground text-xs font-medium rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-10 border">
+                                  {getCurrencySymbol(currency)}{formatCurrency(earnings)}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Month labels */}
+                <div className="flex items-center justify-center gap-8">
+                  {yearlyData.map((data, index) => (
+                    <div key={index} className="flex-1 text-center">
+                      <div className="text-sm text-muted-foreground font-medium">
+                        {data.month}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
