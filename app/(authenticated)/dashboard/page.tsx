@@ -2,8 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, TrendingUp, Clock, Calendar, DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, TrendingUp, Clock, Calendar, DollarSign, Briefcase, Sparkles, ChevronRight, HelpCircle } from "lucide-react";
 import { useTimeEntries } from "@/lib/hooks/use-time-entries";
+import { useActiveJobs } from "@/lib/hooks/use-jobs";
+import Link from "next/link";
 import { useFinancialRecords } from "@/lib/hooks/use-financial-records";
 import { useIncomeRecords } from "@/lib/hooks/use-income-records";
 import { Database } from "@/lib/database.types";
@@ -50,8 +53,12 @@ export default function DashboardPage() {
   const { data: currentMonthIncome = [], isLoading: isLoadingIncome } = useIncomeRecords(startDate, endDate);
   const { data: threeMonthIncome = [], isLoading: isLoadingThreeMonthIncome } = useIncomeRecords(threeMonthsStartDate, threeMonthsEndDate);
   const { data: threeMonthFinancials = [], isLoading: isLoadingThreeMonthFinancials } = useFinancialRecords(threeMonthsStartDate, threeMonthsEndDate);
+  const { data: activeJobs = [], isLoading: isLoadingJobs } = useActiveJobs();
 
-  const loading = isLoadingEntries || isLoadingFinancials || isLoadingIncome || isLoadingThreeMonthIncome || isLoadingThreeMonthFinancials;
+  const loading = isLoadingEntries || isLoadingFinancials || isLoadingIncome || isLoadingThreeMonthIncome || isLoadingThreeMonthFinancials || isLoadingJobs;
+
+  // Check if user has no data yet (new user)
+  const isNewUser = !loading && activeJobs.length === 0 && currentMonthEntries.length === 0;
 
   // Calculate stats using useMemo
   const stats = useMemo(() => {
@@ -276,6 +283,87 @@ export default function DashboardPage() {
     'PLN': 'bg-pink-500/80 hover:bg-pink-500',
     'CZK': 'bg-orange-500/80 hover:bg-orange-500',
   };
+
+  // Show welcome screen for new users
+  if (isNewUser) {
+    return (
+      <div className="min-h-screen p-4 sm:p-8">
+        <div className="max-w-2xl mx-auto">
+          {/* Welcome Header */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+              <Sparkles className="h-8 w-8 text-primary" />
+            </div>
+            <h1 className="text-3xl font-bold mb-2">{t("welcomeToShiftTracker")}</h1>
+            <p className="text-muted-foreground">
+              {t("welcomeDescription")}
+            </p>
+          </div>
+
+          {/* Quick Start Steps */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                {t("quickStartGuide")}
+              </CardTitle>
+              <CardDescription>{t("quickStartDescription")}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Step 1 */}
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-sm">
+                  1
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold">{t("step1Title")}</h4>
+                  <p className="text-sm text-muted-foreground mb-2">{t("step1Description")}</p>
+                  <Link href="/jobs">
+                    <Button size="sm" className="gap-1">
+                      <Briefcase className="h-4 w-4" />
+                      {t("goToJobs")} <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center font-bold text-sm">
+                  2
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-muted-foreground">{t("step2Title")}</h4>
+                  <p className="text-sm text-muted-foreground">{t("step2Description")}</p>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex gap-4">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted text-muted-foreground flex items-center justify-center font-bold text-sm">
+                  3
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-muted-foreground">{t("step3Title")}</h4>
+                  <p className="text-sm text-muted-foreground">{t("step3Description")}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Help Link */}
+          <div className="text-center">
+            <Link href="/help">
+              <Button variant="outline" className="gap-2">
+                <HelpCircle className="h-4 w-4" />
+                {t("viewFullGuide")}
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-4 sm:p-8">

@@ -63,15 +63,15 @@ export function GoToDateDialog({ currentDate, onDateChange }: GoToDateDialogProp
           {/* Go to Date */}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh] overflow-hidden w-full">
+        <DialogHeader className="p-4 sm:p-6 pb-0 flex-shrink-0">
           <DialogTitle>Go to Date</DialogTitle>
           <DialogDescription>
             Jump to a specific month and year
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 pt-4">
+        <div className="space-y-4 p-4 sm:p-6 pt-4 overflow-y-auto flex-1">
           {/* Month Selection */}
           <div className="space-y-2">
             <label className="text-sm font-medium">Month</label>

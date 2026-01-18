@@ -24,15 +24,15 @@ export function JobsHelpDialog() {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[600px] p-0 flex flex-col max-h-[90vh] overflow-hidden w-full">
+        <DialogHeader className="p-4 sm:p-6 pb-0 flex-shrink-0">
           <DialogTitle>How Jobs & Shift Templates Work</DialogTitle>
           <DialogDescription>
             A quick guide to help you get started
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 py-4 overflow-y-auto">
+        <div className="space-y-6 p-4 sm:p-6 pt-4 overflow-y-auto flex-1">
           {/* Jobs Section */}
           <div className="space-y-2">
             <div className="flex items-center gap-2">

@@ -15,8 +15,8 @@ import { useFinancialRecords } from "@/lib/hooks/use-financial-records";
 import { usePrefetch } from "@/lib/hooks/use-prefetch";
 import { Database } from "@/lib/database.types";
 import { getCurrencySymbol, formatHours, formatCurrency } from "@/lib/utils/time-format";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription } from "@/components/ui/drawer";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { TrendingUp, TrendingDown } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/use-translation";
 import { usePrimaryCurrency } from "@/lib/hooks/use-user-settings";
@@ -55,6 +55,7 @@ export default function CalendarPage() {
   const [addFinancialDialogOpen, setAddFinancialDialogOpen] = useState(false);
   const [addFinancialType, setAddFinancialType] = useState<"income" | "expense">("income");
   const [showDetailedStats, setShowDetailedStats] = useState(false);
+  const [showAddMenu, setShowAddMenu] = useState(false);
 
   // Initialize current date on client side only
   useEffect(() => {
@@ -308,32 +309,10 @@ export default function CalendarPage() {
             <List className="h-4 w-4 md:mr-2" />
             <span className="hidden md:inline">{t("list")}</span>
           </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" className="gap-1">
-                <Plus className="h-4 w-4" />
-                <span className="hidden md:inline">{t("add")}</span>
-                <ChevronDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setAddDialogOpen(true)}>
-                💼 {t("addShift")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {
-                setAddFinancialType('income');
-                setAddFinancialDialogOpen(true);
-              }}>
-                💰 {t("addIncome")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {
-                setAddFinancialType('expense');
-                setAddFinancialDialogOpen(true);
-              }}>
-                💸 {t("addExpense")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button size="sm" className="gap-1" onClick={() => setShowAddMenu(true)}>
+            <Plus className="h-4 w-4" />
+            <span className="hidden md:inline">{t("add")}</span>
+          </Button>
         </div>
       </div>
 
@@ -356,6 +335,59 @@ export default function CalendarPage() {
           onSuccess={handleFinancialSuccess}
         />
       </Suspense>
+
+      {/* Add Menu Dialog */}
+      <Dialog open={showAddMenu} onOpenChange={setShowAddMenu}>
+        <DialogContent className="sm:max-w-[400px] p-0">
+          <DialogHeader className="p-4 sm:p-6 pb-2">
+            <DialogTitle>{t("addNew")}</DialogTitle>
+            <DialogDescription>{t("whatWouldYouLikeToAdd")}</DialogDescription>
+          </DialogHeader>
+          <div className="p-4 sm:p-6 pt-2 space-y-3">
+            <button
+              onClick={() => {
+                setShowAddMenu(false);
+                setAddDialogOpen(true);
+              }}
+              className="w-full flex items-center gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors text-left"
+            >
+              <div className="text-3xl">💼</div>
+              <div>
+                <p className="font-semibold">{t("addShift")}</p>
+                <p className="text-sm text-muted-foreground">{t("logWorkShiftOrDayOff")}</p>
+              </div>
+            </button>
+            <button
+              onClick={() => {
+                setShowAddMenu(false);
+                setAddFinancialType('income');
+                setAddFinancialDialogOpen(true);
+              }}
+              className="w-full flex items-center gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors text-left"
+            >
+              <div className="text-3xl">💰</div>
+              <div>
+                <p className="font-semibold">{t("addIncome")}</p>
+                <p className="text-sm text-muted-foreground">{t("recordIncomePayment")}</p>
+              </div>
+            </button>
+            <button
+              onClick={() => {
+                setShowAddMenu(false);
+                setAddFinancialType('expense');
+                setAddFinancialDialogOpen(true);
+              }}
+              className="w-full flex items-center gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors text-left"
+            >
+              <div className="text-3xl">💸</div>
+              <div>
+                <p className="font-semibold">{t("addExpense")}</p>
+                <p className="text-sm text-muted-foreground">{t("trackSpendingExpense")}</p>
+              </div>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Stats Cards - Mobile Only */}
       <div className="lg:hidden mb-0 flex-shrink-0">

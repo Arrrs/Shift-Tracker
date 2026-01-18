@@ -132,13 +132,13 @@ export function AddFinancialRecordDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh]">
-        <DialogHeader className="p-6 pb-0 flex-shrink-0">
+      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh] overflow-hidden w-full">
+        <DialogHeader className="p-4 sm:p-6 pb-0 flex-shrink-0">
           <DialogTitle>{t("addFinancialRecord")}</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          <div className="space-y-4 p-6 pt-4 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="space-y-4 p-4 sm:p-6 pt-4 overflow-y-auto flex-1">
           {/* Type */}
           <div className="space-y-2">
             <Label>{t("type")}</Label>

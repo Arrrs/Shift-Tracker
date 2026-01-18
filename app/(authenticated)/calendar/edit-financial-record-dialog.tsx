@@ -145,14 +145,14 @@ export function EditFinancialRecordDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh]">
-        <DialogHeader className="p-6 pb-0 flex-shrink-0">
+      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh] overflow-hidden w-full">
+        <DialogHeader className="p-4 sm:p-6 pb-0 flex-shrink-0">
           <DialogTitle>{t("editFinancialRecord")}</DialogTitle>
           <DialogDescription>{t("updateIncomeOrExpense")}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          <div className="space-y-4 p-6 pt-4 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="space-y-4 p-4 sm:p-6 pt-4 overflow-y-auto flex-1">
           {/* Type */}
           <div className="space-y-2">
             <Label>{t("type")}</Label>
@@ -306,7 +306,7 @@ export function EditFinancialRecordDialog({
           </div>
 
           {/* Actions */}
-          <DialogFooter className="pt-4 px-6 pb-6 mt-0 border-t flex-shrink-0 flex-col gap-2">
+          <DialogFooter className="pt-4 px-4 sm:px-6 pb-4 sm:pb-6 mt-0 border-t flex-shrink-0 flex-col gap-2">
             {/* Save button on top - full width */}
             <Button type="submit" disabled={loading} className="w-full">
               {loading ? (
