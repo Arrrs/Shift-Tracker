@@ -18,6 +18,56 @@ export type FinancialCategory = {
 };
 
 /**
+ * Ensure default categories exist for a user
+ * This is a fallback in case the database trigger didn't run
+ */
+async function ensureDefaultCategoriesExist(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+  // Check if user has the mandatory "Other Income" category
+  const { data: incomeCategory } = await supabase
+    .from("financial_categories")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("name", "Other Income")
+    .eq("type", "income")
+    .single();
+
+  // Create if missing
+  if (!incomeCategory) {
+    await supabase
+      .from("financial_categories")
+      .insert({
+        user_id: userId,
+        name: "Other Income",
+        type: "income",
+        icon: "💰",
+        color: "#6366f1",
+      });
+  }
+
+  // Check if user has the mandatory "Other Expense" category
+  const { data: expenseCategory } = await supabase
+    .from("financial_categories")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("name", "Other Expense")
+    .eq("type", "expense")
+    .single();
+
+  // Create if missing
+  if (!expenseCategory) {
+    await supabase
+      .from("financial_categories")
+      .insert({
+        user_id: userId,
+        name: "Other Expense",
+        type: "expense",
+        icon: "💸",
+        color: "#64748b",
+      });
+  }
+}
+
+/**
  * Get all financial categories for the current user
  */
 export async function getFinancialCategories() {
@@ -30,6 +80,9 @@ export async function getFinancialCategories() {
   if (!user) {
     return { error: "Unauthorized", categories: null };
   }
+
+  // Ensure default categories exist (fallback for users without them)
+  await ensureDefaultCategoriesExist(supabase, user.id);
 
   const { data, error } = await supabase
     .from("financial_categories")

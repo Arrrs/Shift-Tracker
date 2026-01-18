@@ -305,60 +305,6 @@ export type Database = {
           },
         ]
       }
-      income_records_cleanup_backup_20260113: {
-        Row: {
-          amount: number | null
-          backed_up_at: string | null
-          calculation_basis: Json | null
-          created_at: string | null
-          currency: string | null
-          date: string | null
-          id: string | null
-          is_manual: boolean | null
-          job_id: string | null
-          notes: string | null
-          source_type: string | null
-          time_entry_id: string | null
-          time_entry_status: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          amount?: number | null
-          backed_up_at?: string | null
-          calculation_basis?: Json | null
-          created_at?: string | null
-          currency?: string | null
-          date?: string | null
-          id?: string | null
-          is_manual?: boolean | null
-          job_id?: string | null
-          notes?: string | null
-          source_type?: string | null
-          time_entry_id?: string | null
-          time_entry_status?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          amount?: number | null
-          backed_up_at?: string | null
-          calculation_basis?: Json | null
-          created_at?: string | null
-          currency?: string | null
-          date?: string | null
-          id?: string | null
-          is_manual?: boolean | null
-          job_id?: string | null
-          notes?: string | null
-          source_type?: string | null
-          time_entry_id?: string | null
-          time_entry_status?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       jobs: {
         Row: {
           color: string | null

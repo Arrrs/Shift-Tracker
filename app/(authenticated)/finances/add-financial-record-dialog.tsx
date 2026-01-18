@@ -61,6 +61,13 @@ export function AddFinancialRecordDialog({
     setFormData((prev) => ({ ...prev, category_id: "", amount: "", currency: prev.currency }));
   }, [type]);
 
+  // Auto-select category when there's only one option
+  useEffect(() => {
+    if (categories.length === 1 && !formData.category_id) {
+      handleCategoryChange(categories[0].id);
+    }
+  }, [categories, formData.category_id]);
+
   // Auto-fill amount, currency, and description when category with defaults is selected
   const handleCategoryChange = (categoryId: string) => {
     const selectedCategory = categories.find(cat => cat.id === categoryId);
