@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Home, Briefcase, Calendar, Settings, Menu, Hourglass, Tags, LogOut } from "lucide-react";
+import { Home, Briefcase, Calendar, Settings, Menu, Hourglass, Tags, LogOut, HelpCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/i18n/use-translation";
@@ -71,6 +71,12 @@ export function Sidebar() {
             <Button variant="ghost" className="w-full justify-start">
               <Settings className="mr-2 h-4 w-4" />
               {t("settings")}
+            </Button>
+          </Link>
+          <Link href="/help" onClick={() => setOpen(false)}>
+            <Button variant="ghost" className="w-full justify-start">
+              <HelpCircle className="mr-2 h-4 w-4" />
+              {t("help")}
             </Button>
           </Link>
         </nav>

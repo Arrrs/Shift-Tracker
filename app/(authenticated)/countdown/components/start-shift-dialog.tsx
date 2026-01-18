@@ -171,8 +171,8 @@ export function StartShiftDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md p-0 flex flex-col max-h-[90vh] overflow-hidden w-full">
+        <DialogHeader className="p-4 sm:p-6 pb-0 flex-shrink-0">
           <DialogTitle>{t("startShiftNow")}</DialogTitle>
           <DialogDescription>
             Create and start tracking a new shift immediately
@@ -180,11 +180,11 @@ export function StartShiftDialog({
         </DialogHeader>
 
         {isLoadingJobs ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex items-center justify-center py-8 p-4 sm:p-6">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 p-4 sm:p-6 pt-4 overflow-y-auto flex-1">
             {/* Job Selection */}
             <div className="space-y-2">
               <Label htmlFor="job">{t("job")} *</Label>
@@ -262,7 +262,7 @@ export function StartShiftDialog({
           </div>
         )}
 
-        <DialogFooter className="pt-4">
+        <DialogFooter className="pt-4 px-4 sm:px-6 pb-4 sm:pb-6 mt-0 border-t flex-shrink-0">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}

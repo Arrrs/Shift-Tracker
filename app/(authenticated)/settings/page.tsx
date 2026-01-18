@@ -57,7 +57,7 @@ export default function SettingsPage() {
         {t("customizeYourPreferences")}
       </p>
 
-      <div className="max-w-2xl space-y-6">
+      <div className="max-w-2xl space-y-6 mx-auto">
         <Card>
           <CardHeader>
             <CardTitle>{t("appearance")}</CardTitle>
@@ -154,7 +154,7 @@ export default function SettingsPage() {
         </Card>
       </div>
       <Link href="/changes" className="flex mt-6">
-        <Button variant="ghost" className="w-full justify-start">
+        <Button variant="ghost" className="w-full  mx-auto">
           <History className="mr-2 h-4 w-4" />
           Version 1.0.1
         </Button>

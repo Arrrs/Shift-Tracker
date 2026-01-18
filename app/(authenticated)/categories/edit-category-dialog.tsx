@@ -103,16 +103,16 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh]">
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
-          <DialogHeader className="p-6 pb-0 flex-shrink-0">
+      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh] overflow-hidden w-full">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <DialogHeader className="p-4 sm:p-6 pb-0 flex-shrink-0">
             <DialogTitle>{t("editCategory")} - {category.type === "income" ? t("income") : t("expense")}</DialogTitle>
             <DialogDescription>
               {category.name}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 p-6 pt-4 overflow-y-auto flex-1">
+          <div className="space-y-4 p-4 sm:p-6 pt-4 overflow-y-auto flex-1">
             {/* Category Name */}
             <div className="space-y-2">
               <Label htmlFor="name">

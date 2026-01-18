@@ -34,6 +34,37 @@ export default function CountdownPage() {
 
   const { activeShift, loading, refresh } = useCurrentShift();
 
+  // Track if we pushed a history state for settings
+  const [historyStatePushed, setHistoryStatePushed] = useState(false);
+
+  // Handle browser back button for settings drawer
+  useEffect(() => {
+    const handlePopState = () => {
+      // If settings is open and we pushed a history state, close the drawer
+      if (settingsOpen && historyStatePushed) {
+        setSettingsOpen(false);
+        setHistoryStatePushed(false);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [settingsOpen, historyStatePushed]);
+
+  // Handle settings open/close with history management
+  const handleSettingsOpenChange = (open: boolean) => {
+    if (open) {
+      // Push a new history state when opening settings
+      window.history.pushState({ settingsOpen: true }, '');
+      setHistoryStatePushed(true);
+    } else if (historyStatePushed) {
+      // If closing via UI (not back button), go back in history
+      window.history.back();
+      setHistoryStatePushed(false);
+    }
+    setSettingsOpen(open);
+  };
+
   // Load settings from database and localStorage
   useEffect(() => {
     const loadSettings = async () => {
@@ -150,7 +181,7 @@ export default function CountdownPage() {
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setSettingsOpen(true)}
+            onClick={() => handleSettingsOpenChange(true)}
           >
             <Settings className="h-4 w-4" />
           </Button>
@@ -192,7 +223,7 @@ export default function CountdownPage() {
       {/* Settings Drawer */}
       <SettingsDrawer
         open={settingsOpen}
-        onOpenChange={setSettingsOpen}
+        onOpenChange={handleSettingsOpenChange}
         settings={settings}
         onSettingsChange={updateSettings}
       />

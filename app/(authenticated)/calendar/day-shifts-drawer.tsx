@@ -811,14 +811,14 @@ export function DayShiftsDrawer({
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[80vh]">
-          <DrawerHeader>
+        <DrawerContent className="max-h-[80vh] overflow-hidden flex flex-col">
+          <DrawerHeader className="flex-shrink-0">
             <DrawerTitle>{formattedDate}</DrawerTitle>
             <DrawerDescription>
               {dayEntries.length} {dayEntries.length === 1 ? t("entry") : t("entries")}
             </DrawerDescription>
           </DrawerHeader>
-          <div className="px-4 pb-4 overflow-y-auto">{content}</div>
+          <div className="px-4 pb-4 overflow-y-auto flex-1">{content}</div>
         </DrawerContent>
       </Drawer>
     );
@@ -826,7 +826,7 @@ export function DayShiftsDrawer({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-md max-h-[80vh] overflow-hidden flex flex-col w-full">
         <DialogHeader>
           <DialogTitle>{formattedDate}</DialogTitle>
           <DialogDescription>
