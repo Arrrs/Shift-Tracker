@@ -41,7 +41,7 @@ export function SettingsDrawer({
         <SheetHeader className="space-y-1 pb-2">
           <SheetTitle className="text-xl">{t("settings")}</SheetTitle>
           <SheetDescription>
-            Customize your countdown display
+            {t("customizeCountdownDisplay")}
           </SheetDescription>
         </SheetHeader>
 
@@ -50,7 +50,7 @@ export function SettingsDrawer({
         <div className="space-y-6 px-4 pb-6">
           {/* Display Settings */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Display</h3>
+            <h3 className="text-sm font-semibold text-foreground">{t("display")}</h3>
 
             <div className="space-y-4">
               {/* Current Time Toggle */}
@@ -72,7 +72,7 @@ export function SettingsDrawer({
                   <div className="ml-6 pl-3 border-l-2 border-border space-y-3">
                     <div className="flex items-center justify-between py-1">
                       <Label htmlFor="24-hour" className="text-sm cursor-pointer">
-                        24-Hour Format
+                        {t("twentyFourHourFormat")}
                       </Label>
                       <Switch
                         id="24-hour"
@@ -105,7 +105,7 @@ export function SettingsDrawer({
                   <div className="ml-6 pl-3 border-l-2 border-border space-y-3">
                     <div className="space-y-2">
                       <Label htmlFor="countdown-style" className="text-sm">
-                        Countdown Style
+                        {t("countdownStyle")}
                       </Label>
                       <Select
                         value={settings.countdownStyle}
@@ -117,9 +117,9 @@ export function SettingsDrawer({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="digital">Digital</SelectItem>
-                          <SelectItem value="cards">Cards</SelectItem>
-                          <SelectItem value="compact">Compact</SelectItem>
+                          <SelectItem value="digital">{t("digital")}</SelectItem>
+                          <SelectItem value="cards">{t("cards")}</SelectItem>
+                          <SelectItem value="compact">{t("compact")}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -131,7 +131,7 @@ export function SettingsDrawer({
               <div className="space-y-3">
                 <div className="flex items-center justify-between py-1">
                   <Label htmlFor="show-counter" className="text-sm font-medium cursor-pointer">
-                    Counter
+                    {t("counter")}
                   </Label>
                   <Switch
                     id="show-counter"
@@ -146,7 +146,7 @@ export function SettingsDrawer({
                   <div className="ml-6 pl-3 border-l-2 border-border">
                     <div className="space-y-2">
                       <Label htmlFor="counter-default" className="text-sm">
-                        Default Value
+                        {t("defaultValue")}
                       </Label>
                       <Input
                         id="counter-default"
@@ -162,7 +162,7 @@ export function SettingsDrawer({
                         }
                       />
                       <p className="text-xs text-muted-foreground">
-                        Starting value for the manual counter
+                        {t("startingValueForCounter")}
                       </p>
                     </div>
                   </div>

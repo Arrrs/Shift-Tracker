@@ -8,6 +8,7 @@ import { AddShiftTemplateDialog } from "./add-shift-template-dialog";
 import { EditShiftTemplateDialog } from "./edit-shift-template-dialog";
 import { DeleteShiftTemplateButton } from "./delete-shift-template-button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
 
@@ -17,16 +18,17 @@ interface ShiftTemplatesListProps {
 }
 
 export function ShiftTemplatesList({ jobId, onTemplateChange }: ShiftTemplatesListProps) {
+  const { t } = useTranslation();
   const { data: templates = [], isLoading: loading, error } = useShiftTemplates(jobId);
 
   if (error) {
-    return <div className="text-sm text-destructive">Error loading templates: {error.message}</div>;
+    return <div className="text-sm text-destructive">{t("errorLoadingTemplates")}: {error.message}</div>;
   }
 
   return (
     <div className="border-t pt-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">Shift Templates</h3>
+        <h3 className="text-lg font-semibold">{t("shiftTemplates")}</h3>
         <AddShiftTemplateDialog jobId={jobId} onSuccess={onTemplateChange} />
       </div>
 
@@ -53,10 +55,9 @@ export function ShiftTemplatesList({ jobId, onTemplateChange }: ShiftTemplatesLi
           <div className="flex items-start gap-2">
             <Info className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
             <div className="space-y-2">
-              <p className="text-sm font-medium">What are shift templates?</p>
+              <p className="text-sm font-medium">{t("whatAreShiftTemplates")}</p>
               <p className="text-sm text-muted-foreground">
-                Templates are reusable shift patterns (e.g., "Morning 9-5", "Night 10-6").
-                Click "Add Template" above to quickly log shifts without entering times repeatedly.
+                {t("shiftTemplatesExplanation")}
               </p>
             </div>
           </div>

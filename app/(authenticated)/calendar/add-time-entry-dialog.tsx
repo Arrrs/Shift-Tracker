@@ -460,13 +460,13 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
               {/* Template (Optional) */}
               {selectedJobId && selectedJobId !== "none" && templates.length > 0 && (
                 <div className="space-y-2">
-                  <Label>Template (Optional)</Label>
+                  <Label>{t("templateOptional")}</Label>
                   <Select value={selectedTemplateId} onValueChange={applyTemplate}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Choose template or enter manually" />
+                      <SelectValue placeholder={t("chooseTemplateOrManual")} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Manual Entry</SelectItem>
+                      <SelectItem value="none">{t("manualEntry")}</SelectItem>
                       {templates.map((template) => (
                         <SelectItem key={template.id} value={template.id}>
                           {template.short_code ? `${template.name} (${template.short_code})` : template.name} -{" "}
@@ -514,7 +514,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                   className="h-4 w-4"
                 />
                 <Label htmlFor="customize-pay" className="cursor-pointer font-medium">
-                  Customize pay for this shift
+                  {t("customizePayForShift")}
                 </Label>
               </div>
 
@@ -523,8 +523,8 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                   {/* Currency Selection - Always show when customizing pay */}
                   <div>
                     <Label htmlFor="custom-currency" className="text-sm font-medium mb-2 block">
-                      Currency {selectedJobId && selectedJobId !== "none" && payType === "default" && (
-                        <span className="text-xs font-normal text-muted-foreground ml-1">(overrides job default)</span>
+                      {t("currencyLabel")} {selectedJobId && selectedJobId !== "none" && payType === "default" && (
+                        <span className="text-xs font-normal text-muted-foreground ml-1">({t("overridesJobDefault")})</span>
                       )}
                     </Label>
                     <CurrencySelect
@@ -535,14 +535,14 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                     />
                     <p className="text-xs text-muted-foreground mt-1">
                       {selectedJobId && selectedJobId !== "none"
-                        ? "This currency will be used for this shift instead of the job default"
-                        : "Currency for this freelance work"}
+                        ? t("currencyForThisShift")
+                        : t("currencyForFreelance")}
                     </p>
                   </div>
 
                   {/* Base Rate Selection */}
                   <div>
-                    <Label className="text-sm font-medium mb-3 block">Base Rate</Label>
+                    <Label className="text-sm font-medium mb-3 block">{t("baseRate")}</Label>
                     <div className="space-y-2.5">
                       {selectedJobId && selectedJobId !== "none" && (
                         <div className="flex items-center space-x-2">
@@ -554,10 +554,10 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                             className="h-4 w-4"
                           />
                           <Label htmlFor="pay-default" className="cursor-pointer font-normal">
-                            Use job default ({activeJobs.find(j => j.id === selectedJobId)?.pay_type === "hourly"
-                              ? `$${activeJobs.find(j => j.id === selectedJobId)?.hourly_rate}/hr`
+                            {t("useJobDefault")} ({activeJobs.find(j => j.id === selectedJobId)?.pay_type === "hourly"
+                              ? `$${activeJobs.find(j => j.id === selectedJobId)?.hourly_rate}${t("perHour")}`
                               : activeJobs.find(j => j.id === selectedJobId)?.pay_type === "daily"
-                              ? `$${activeJobs.find(j => j.id === selectedJobId)?.daily_rate}/day`
+                              ? `$${activeJobs.find(j => j.id === selectedJobId)?.daily_rate}${t("perDay")}`
                               : "N/A"})
                           </Label>
                         </div>
@@ -571,7 +571,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                           onChange={() => setPayType("custom_hourly")}
                           className="h-4 w-4"
                         />
-                        <Label htmlFor="pay-hourly" className="cursor-pointer font-normal flex-shrink-0">Custom hourly</Label>
+                        <Label htmlFor="pay-hourly" className="cursor-pointer font-normal flex-shrink-0">{t("customHourly")}</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -582,7 +582,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                           disabled={payType !== "custom_hourly"}
                           className="w-24 h-8"
                         />
-                        <span className="text-sm text-muted-foreground">$/hr</span>
+                        <span className="text-sm text-muted-foreground">{t("perHourShort")}</span>
                       </div>
 
                       <div className="flex items-center space-x-2">
@@ -593,7 +593,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                           onChange={() => setPayType("custom_daily")}
                           className="h-4 w-4"
                         />
-                        <Label htmlFor="pay-daily" className="cursor-pointer font-normal flex-shrink-0">Custom daily</Label>
+                        <Label htmlFor="pay-daily" className="cursor-pointer font-normal flex-shrink-0">{t("customDaily")}</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -604,7 +604,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                           disabled={payType !== "custom_daily"}
                           className="w-24 h-8"
                         />
-                        <span className="text-sm text-muted-foreground">$/day</span>
+                        <span className="text-sm text-muted-foreground">{t("perDayShort")}</span>
                       </div>
 
                       <div className="flex items-center space-x-2">
@@ -615,7 +615,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                           onChange={() => setPayType("fixed_amount")}
                           className="h-4 w-4"
                         />
-                        <Label htmlFor="pay-fixed" className="cursor-pointer font-normal flex-shrink-0">Fixed amount</Label>
+                        <Label htmlFor="pay-fixed" className="cursor-pointer font-normal flex-shrink-0">{t("fixedAmount")}</Label>
                         <Input
                           type="number"
                           step="0.01"
@@ -626,7 +626,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                           disabled={payType !== "fixed_amount"}
                           className="w-24 h-8"
                         />
-                        <span className="text-sm text-muted-foreground">$ total</span>
+                        <span className="text-sm text-muted-foreground">{t("totalShort")}</span>
                       </div>
                     </div>
                   </div>
@@ -643,7 +643,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                           className="h-4 w-4"
                         />
                         <Label htmlFor="apply-multiplier" className="cursor-pointer font-normal">
-                          Apply holiday/overtime multiplier
+                          {t("applyHolidayMultiplier")}
                         </Label>
                       </div>
                       {applyMultiplier && (
@@ -654,12 +654,12 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="1.25">1.25x</SelectItem>
-                              <SelectItem value="1.5">1.5x (Time and a half)</SelectItem>
+                              <SelectItem value="1.5">1.5x ({t("timeAndHalf")})</SelectItem>
                               <SelectItem value="1.75">1.75x</SelectItem>
-                              <SelectItem value="2.0">2.0x (Double time)</SelectItem>
+                              <SelectItem value="2.0">2.0x ({t("doubleTime")})</SelectItem>
                               <SelectItem value="2.5">2.5x</SelectItem>
-                              <SelectItem value="3.0">3.0x (Triple time)</SelectItem>
-                              <SelectItem value="custom">Custom...</SelectItem>
+                              <SelectItem value="3.0">3.0x ({t("tripleTime")})</SelectItem>
+                              <SelectItem value="custom">{t("customMultiplier")}</SelectItem>
                             </SelectContent>
                           </Select>
                           {holidayMultiplier === "custom" && (
@@ -684,7 +684,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                     const preview = calculateExpectedIncome();
                     return preview ? (
                       <div className="bg-emerald-50 dark:bg-emerald-950 p-3 rounded-md border border-emerald-200 dark:border-emerald-800">
-                        <div className="text-xs font-medium text-emerald-900 dark:text-emerald-100 mb-1">Expected Income</div>
+                        <div className="text-xs font-medium text-emerald-900 dark:text-emerald-100 mb-1">{t("expectedIncomeLabel")}</div>
                         <div className="flex items-baseline gap-1">
                           <div className="text-xl font-bold text-emerald-700 dark:text-emerald-300">{preview.symbol}{preview.amount.toFixed(2)}</div>
                           <div className="text-xs text-emerald-600 dark:text-emerald-400">{preview.currency}</div>
@@ -704,7 +704,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                       className="h-4 w-4"
                     />
                     <Label htmlFor="is-holiday" className="cursor-pointer font-normal">
-                      Mark as holiday/overtime shift
+                      {t("markAsHolidayShift")}
                     </Label>
                   </div>
                 </div>
@@ -714,16 +714,16 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
             <>
               {/* Day Off Type */}
               <div className="space-y-2">
-                <Label>Day Off Type</Label>
+                <Label>{t("dayOffTypeLabel")}</Label>
                 <Select value={dayOffType} onValueChange={setDayOffType}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pto">🏖️ PTO / Vacation</SelectItem>
-                    <SelectItem value="sick">🤒 Sick Day</SelectItem>
-                    <SelectItem value="personal">👤 Personal Day</SelectItem>
-                    <SelectItem value="unpaid">⛔ Unpaid Leave</SelectItem>
+                    <SelectItem value="pto">{t("ptovacation")}</SelectItem>
+                    <SelectItem value="sick">{t("sickDay")}</SelectItem>
+                    <SelectItem value="personal">{t("personalDay")}</SelectItem>
+                    <SelectItem value="unpaid">{t("unpaidLeave")}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -737,12 +737,12 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
                   onChange={(e) => setIsFullDay(e.target.checked)}
                   className="h-4 w-4"
                 />
-                <Label htmlFor="fullDay">Full day ({dayOffHours}h)</Label>
+                <Label htmlFor="fullDay">{t("fullDayLabel")} ({dayOffHours}h)</Label>
               </div>
 
               {!isFullDay && (
                 <div className="space-y-2">
-                  <Label htmlFor="dayOffHours">Hours</Label>
+                  <Label htmlFor="dayOffHours">{t("hoursLabel")}</Label>
                   <Input
                     id="dayOffHours"
                     type="number"
@@ -776,7 +776,7 @@ export function AddTimeEntryDialog({ open, onOpenChange, initialDate, onSuccess 
           {/* Notes */}
           <div className="space-y-2">
             <Label htmlFor="notes">{t("notes")} ({t("optional")})</Label>
-            <Input id="notes" placeholder="Add notes..." value={notes} onChange={(e) => setNotes(e.target.value)} />
+            <Input id="notes" placeholder={t("addNotesPlaceholder")} value={notes} onChange={(e) => setNotes(e.target.value)} />
           </div>
           </div>
 

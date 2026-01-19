@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { getCurrencySymbol } from "@/lib/utils/time-format";
 import { useTranslation } from "@/lib/i18n/use-translation";
+import type { TranslationKey } from "@/lib/i18n/translations";
 
 // Code splitting: Lazy load dialogs and drawers
 const AddJobDialog = lazy(() => import("./add-job-dialog").then((mod) => ({ default: mod.AddJobDialog })));
@@ -28,19 +29,19 @@ function formatCurrencyValue(value: number | null | undefined): string {
 }
 
 // Helper function to format job rate display
-function formatJobRate(job: any): string {
+function formatJobRate(job: any, t: (key: TranslationKey) => string): string {
   const symbol = getCurrencySymbol(job.currency || 'USD');
 
   switch (job.pay_type) {
     case 'daily':
-      return `${symbol} ${formatCurrencyValue(job.daily_rate)}/day`;
+      return `${symbol} ${formatCurrencyValue(job.daily_rate)}${t("perDay")}`;
     case 'monthly':
-      return `${symbol} ${formatCurrencyValue(job.monthly_salary)}/mo`;
+      return `${symbol} ${formatCurrencyValue(job.monthly_salary)}${t("perMonth")}`;
     case 'salary':
-      return `${symbol} ${Math.round(job.monthly_salary || 0)}/yr`;
+      return `${symbol} ${Math.round(job.monthly_salary || 0)}${t("perYear")}`;
     case 'hourly':
     default:
-      return `${symbol} ${formatCurrencyValue(job.hourly_rate)}/hr`;
+      return `${symbol} ${formatCurrencyValue(job.hourly_rate)}${t("perHour")}`;
   }
 }
 
@@ -161,7 +162,7 @@ function JobsList() {
                   <tr className="border-b last:border-0 hover:bg-muted/50 cursor-pointer">
                     <td className="p-4">{job.name}</td>
                     <td className="p-4">
-                      {formatJobRate(job)}
+                      {formatJobRate(job, t)}
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
@@ -222,11 +223,11 @@ function JobsList() {
                   <div className="space-y-1">
                     <h3 className="font-semibold">{job.name}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {formatJobRate(job)}
+                      {formatJobRate(job, t)}
                     </p>
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
-                      <span>{job.template_count || 0} template{job.template_count !== 1 ? 's' : ''}</span>
+                      <span>{job.template_count || 0} {job.template_count === 1 ? t("template") : t("templatesCount")}</span>
                     </div>
                   </div>
                   <Badge variant={job.is_active ? "default" : "secondary"}>

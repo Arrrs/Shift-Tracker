@@ -11,8 +11,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/responsive-modal";
 import { HelpCircle, Briefcase, Clock, Calendar } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 export function JobsHelpDialog() {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   return (
@@ -20,15 +22,15 @@ export function JobsHelpDialog() {
       <DialogTrigger asChild>
         <Button variant="outline">
           <HelpCircle className="h-4 w-4 md:mr-2" />
-          <div className="hidden md:block">Help</div>
+          <div className="hidden md:block">{t("help")}</div>
         </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[600px] p-0 flex flex-col max-h-[90vh] overflow-hidden w-full">
         <DialogHeader className="p-4 sm:p-6 pb-0 flex-shrink-0">
-          <DialogTitle>How Jobs & Shift Templates Work</DialogTitle>
+          <DialogTitle>{t("howJobsWork")}</DialogTitle>
           <DialogDescription>
-            A quick guide to help you get started
+            {t("quickGuideToGetStarted")}
           </DialogDescription>
         </DialogHeader>
 
@@ -37,12 +39,10 @@ export function JobsHelpDialog() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Briefcase className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">1. Jobs</h3>
+              <h3 className="font-semibold">1. {t("jobsSection")}</h3>
             </div>
             <p className="text-sm text-muted-foreground pl-7">
-              Jobs represent different positions or roles you work (e.g.,
-              "Barista at Cafe A", "Server at Restaurant B"). Each job has its
-              own hourly rate and can be marked as active or inactive.
+              {t("jobsSectionDescription")}
             </p>
           </div>
 
@@ -50,13 +50,10 @@ export function JobsHelpDialog() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">2. Shift Templates</h3>
+              <h3 className="font-semibold">2. {t("shiftTemplatesSection")}</h3>
             </div>
             <p className="text-sm text-muted-foreground pl-7">
-              Templates are reusable shift patterns for each job (e.g., "Morning
-              Shift 9-5", "Night Shift 10-6"). Click on a job's eye icon to view
-              details and add templates. Templates save time when logging
-              shifts.
+              {t("shiftTemplatesSectionDescription")}
             </p>
           </div>
 
@@ -64,23 +61,21 @@ export function JobsHelpDialog() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">3. Logging Shifts (Coming Soon)</h3>
+              <h3 className="font-semibold">3. {t("loggingShiftsSection")}</h3>
             </div>
             <p className="text-sm text-muted-foreground pl-7">
-              Once you have templates set up, you'll be able to quickly log
-              shifts in your calendar by selecting a template instead of
-              manually entering times each time.
+              {t("loggingShiftsSectionDescription")}
             </p>
           </div>
 
           {/* Workflow Example */}
           <div className="border-t pt-4 space-y-2">
-            <h3 className="font-semibold text-sm">Example Workflow:</h3>
+            <h3 className="font-semibold text-sm">{t("exampleWorkflow")}</h3>
             <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside pl-2">
-              <li>Create a job "Barista" with $15/hour rate</li>
-              <li>Add templates: "Opening 6-2", "Closing 2-10"</li>
-              <li>When you work, quickly log shifts using these templates</li>
-              <li>Track your hours and earnings automatically</li>
+              <li>{t("exampleStep1")}</li>
+              <li>{t("exampleStep2")}</li>
+              <li>{t("exampleStep3")}</li>
+              <li>{t("exampleStep4")}</li>
             </ol>
           </div>
         </div>

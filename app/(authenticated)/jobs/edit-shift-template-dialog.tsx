@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Pencil } from "lucide-react";
 import { useUpdateShiftTemplate } from "@/lib/hooks/use-shift-templates";
 import { Database } from "@/lib/database.types";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 type ShiftTemplate = Database["public"]["Tables"]["shift_templates"]["Row"];
 
@@ -32,6 +33,7 @@ export function EditShiftTemplateDialog({
   size,
   onSuccess,
 }: EditShiftTemplateDialogProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const updateMutation = useUpdateShiftTemplate();
   const [formData, setFormData] = useState({
@@ -104,9 +106,9 @@ export function EditShiftTemplateDialog({
 
       <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh]">
         <DialogHeader className="p-6 pb-0 flex-shrink-0">
-          <DialogTitle>Edit Shift Template</DialogTitle>
+          <DialogTitle>{t("editShiftTemplate")}</DialogTitle>
           <DialogDescription>
-            Update the shift template details
+            {t("updateTemplateDetails")}
           </DialogDescription>
         </DialogHeader>
 
@@ -114,10 +116,10 @@ export function EditShiftTemplateDialog({
           <div className="grid gap-4 p-6 pt-4 overflow-y-auto flex-1">
             {/* Name */}
             <div className="grid gap-2">
-              <Label htmlFor="name">Template Name</Label>
+              <Label htmlFor="name">{t("templateName")}</Label>
               <Input
                 id="name"
-                placeholder="e.g., Morning Shift, Night Shift"
+                placeholder={t("templateNamePlaceholder")}
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
@@ -128,10 +130,10 @@ export function EditShiftTemplateDialog({
 
             {/* Short Code */}
             <div className="grid gap-2">
-              <Label htmlFor="short_code">Short Code (optional)</Label>
+              <Label htmlFor="short_code">{t("shortCodeOptional")}</Label>
               <Input
                 id="short_code"
-                placeholder="e.g., M, N, E"
+                placeholder={t("shortCodePlaceholder")}
                 maxLength={3}
                 value={formData.short_code}
                 onChange={(e) =>
@@ -139,14 +141,14 @@ export function EditShiftTemplateDialog({
                 }
               />
               <p className="text-sm text-muted-foreground">
-                Max 3 characters for calendar display
+                {t("shortCodeHint")}
               </p>
             </div>
 
             {/* Time Range */}
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="start_time">Start Time</Label>
+                <Label htmlFor="start_time">{t("startTime")}</Label>
                 <Input
                   id="start_time"
                   type="time"
@@ -157,7 +159,7 @@ export function EditShiftTemplateDialog({
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="end_time">End Time</Label>
+                <Label htmlFor="end_time">{t("endTime")}</Label>
                 <Input
                   id="end_time"
                   type="time"
@@ -170,7 +172,7 @@ export function EditShiftTemplateDialog({
 
             {/* Expected Hours */}
             <div className="grid gap-2">
-              <Label htmlFor="expected_hours">Expected Hours</Label>
+              <Label htmlFor="expected_hours">{t("expectedHours")}</Label>
               <Input
                 id="expected_hours"
                 type="number"
@@ -190,7 +192,7 @@ export function EditShiftTemplateDialog({
 
             {/* Color Picker */}
             <div className="grid gap-2">
-              <Label htmlFor="color">Template Color</Label>
+              <Label htmlFor="color">{t("templateColor")}</Label>
               <div className="flex items-center gap-2">
                 <Input
                   id="color"
@@ -215,10 +217,10 @@ export function EditShiftTemplateDialog({
               onClick={() => setOpen(false)}
               disabled={loading}
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : "Save Changes"}
+              {loading ? t("savingTemplate") : t("saveChanges")}
             </Button>
           </DialogFooter>
         </form>

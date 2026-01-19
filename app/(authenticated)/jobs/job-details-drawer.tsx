@@ -64,6 +64,8 @@ export function JobDetailsDrawer({
     return value.toFixed(2).replace(/\.?0+$/, '');
   };
 
+  const { t } = useTranslation();
+
   // Format rate display based on pay_type
   const getRateDisplay = () => {
     const symbol = getCurrencySymbol(job.currency || 'USD');
@@ -71,23 +73,23 @@ export function JobDetailsDrawer({
     switch (job.pay_type) {
       case 'daily':
         return {
-          label: 'Daily Rate',
+          label: t("dailyRateLabel"),
           value: `${symbol} ${formatCurrencyValue(job.daily_rate)} ${job.currency || 'USD'}`
         };
       case 'monthly':
         return {
-          label: 'Monthly Salary',
+          label: t("monthlyRateLabel"),
           value: `${symbol} ${formatCurrencyValue(job.monthly_salary)} ${job.currency || 'USD'}`
         };
       case 'salary':
         return {
-          label: 'Annual Salary',
+          label: t("annualRateLabel"),
           value: `${symbol} ${Math.round(job.monthly_salary || 0)} ${job.currency || 'USD'}`
         };
       case 'hourly':
       default:
         return {
-          label: 'Hourly Rate',
+          label: t("hourlyRateLabel"),
           value: `${symbol} ${formatCurrencyValue(job.hourly_rate)} ${job.currency || 'USD'}`
         };
     }
@@ -100,10 +102,10 @@ export function JobDetailsDrawer({
           {/* Status */}
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-2">
-              Status
+              {t("status")}
             </h3>
             <Badge variant={job.is_active ? "default" : "secondary"}>
-              {job.is_active ? "Active" : "Inactive"}
+              {job.is_active ? t("active") : t("archived")}
             </Badge>
           </div>
 
@@ -121,7 +123,7 @@ export function JobDetailsDrawer({
           {job.description && (
             <div>
               <h3 className="text-sm font-medium text-muted-foreground mb-2">
-                Description
+                {t("description")}
               </h3>
               <p className="text-sm">{job.description}</p>
             </div>
@@ -130,7 +132,7 @@ export function JobDetailsDrawer({
           {/* Color */}
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-2">
-              Color
+              {t("color")}
             </h3>
             <div className="flex items-center gap-2">
               <div
@@ -144,7 +146,7 @@ export function JobDetailsDrawer({
           {/* Created Date */}
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-2">
-              Created
+              {t("created")}
             </h3>
             <p className="text-sm">
               {job.created_at && formatDate(new Date(job.created_at), {
@@ -165,7 +167,7 @@ export function JobDetailsDrawer({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           {children || (
-            <Button variant={variant} size={size} title="View details and manage templates">
+            <Button variant={variant} size={size} title={t("viewDetailsAndManageTemplates")}>
               <Eye className="h-4 w-4" />
             </Button>
           )}
@@ -174,7 +176,7 @@ export function JobDetailsDrawer({
         <DialogContent className="max-h-[80vh] overflow-hidden flex flex-col w-full">
           <DialogHeader>
             <DialogTitle>{job.name}</DialogTitle>
-            <DialogDescription>Job details and information</DialogDescription>
+            <DialogDescription>{t("jobDetailsAndInfo")}</DialogDescription>
           </DialogHeader>
 
           <div className="overflow-y-auto flex-1">
@@ -183,7 +185,7 @@ export function JobDetailsDrawer({
 
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Close</Button>
+              <Button variant="outline">{t("close")}</Button>
             </DialogClose>
           </DialogFooter>
         </DialogContent>
@@ -195,7 +197,7 @@ export function JobDetailsDrawer({
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
         {children || (
-          <Button variant={variant} size={size} title="View details and manage templates">
+          <Button variant={variant} size={size} title={t("viewDetailsAndManageTemplates")}>
             <Eye className="h-4 w-4" />
           </Button>
         )}
@@ -204,7 +206,7 @@ export function JobDetailsDrawer({
       <DrawerContent className="max-h-[80vh] overflow-hidden flex flex-col w-full">
         <DrawerHeader>
           <DrawerTitle>{job.name}</DrawerTitle>
-          <DrawerDescription>Job details and information</DrawerDescription>
+          <DrawerDescription>{t("jobDetailsAndInfo")}</DrawerDescription>
         </DrawerHeader>
 
         <div className="overflow-y-auto flex-1">
@@ -213,7 +215,7 @@ export function JobDetailsDrawer({
 
         <DrawerFooter>
           <DrawerClose asChild>
-            <Button variant="outline">Close</Button>
+            <Button variant="outline">{t("close")}</Button>
           </DrawerClose>
         </DrawerFooter>
       </DrawerContent>

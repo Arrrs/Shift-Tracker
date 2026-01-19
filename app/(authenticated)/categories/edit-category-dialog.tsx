@@ -128,7 +128,7 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
               />
               {isMandatory && (
                 <p className="text-xs text-muted-foreground">
-                  This is a required category and cannot be renamed
+                  {t("requiredCategoryCannotBeRenamed")}
                 </p>
               )}
             </div>
@@ -137,7 +137,7 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
             <div className="space-y-2">
               <Label htmlFor="icon">{t("categoryIcon")}</Label>
               <p className="text-xs text-muted-foreground">
-                Type any emoji or select from suggestions
+                {t("typeAnyEmojiOrSelect")}
               </p>
               <div className="flex items-center gap-2">
                 <Input
@@ -150,7 +150,7 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
                       setFormData({ ...formData, icon: value });
                     }
                   }}
-                  placeholder="Any emoji"
+                  placeholder={t("anyEmoji")}
                   className="w-24 text-center text-lg"
                 />
                 <div className="flex-1 flex flex-wrap gap-1">
@@ -201,7 +201,7 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
             <div className="space-y-2">
               <Label htmlFor="default_amount">{t("defaultAmount")} ({t("optional")})</Label>
               <p className="text-xs text-muted-foreground">
-                Auto-fill this amount when creating records with this category
+                {t("autoFillAmountHint")}
               </p>
               <div className="flex gap-2">
                 <Input
@@ -229,7 +229,7 @@ export function EditCategoryDialog({ open, onOpenChange, category, onSuccess }: 
             <div className="space-y-2">
               <Label htmlFor="default_description">{t("description")} ({t("optional")})</Label>
               <p className="text-xs text-muted-foreground">
-                Auto-fill this description when creating records with this category
+                {t("autoFillDescriptionHint")}
               </p>
               <Input
                 id="default_description"

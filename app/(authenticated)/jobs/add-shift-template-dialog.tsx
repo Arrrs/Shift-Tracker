@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
 import { useCreateShiftTemplate } from "@/lib/hooks/use-shift-templates";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 interface AddShiftTemplateDialogProps {
   jobId: string;
@@ -22,6 +23,7 @@ interface AddShiftTemplateDialogProps {
 }
 
 export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDialogProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const createMutation = useCreateShiftTemplate();
   const [formData, setFormData] = useState({
@@ -92,15 +94,15 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
       <DialogTrigger asChild>
         <Button size="sm" variant="outline">
           <Plus className="h-4 w-4 mr-2" />
-          Add Template
+          {t("addTemplate")}
         </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh]">
         <DialogHeader className="p-6 pb-0 flex-shrink-0">
-          <DialogTitle>Add Shift Template</DialogTitle>
+          <DialogTitle>{t("addShiftTemplate")}</DialogTitle>
           <DialogDescription>
-            Create a reusable shift template for this job
+            {t("createReusableTemplate")}
           </DialogDescription>
         </DialogHeader>
 
@@ -108,10 +110,10 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
           <div className="grid gap-4 p-6 pt-4 overflow-y-auto flex-1">
             {/* Name */}
             <div className="grid gap-2">
-              <Label htmlFor="name">Template Name</Label>
+              <Label htmlFor="name">{t("templateName")}</Label>
               <Input
                 id="name"
-                placeholder="e.g., Morning Shift, Night Shift"
+                placeholder={t("templateNamePlaceholder")}
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
@@ -122,10 +124,10 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
 
             {/* Short Code */}
             <div className="grid gap-2">
-              <Label htmlFor="short_code">Short Code (optional)</Label>
+              <Label htmlFor="short_code">{t("shortCodeOptional")}</Label>
               <Input
                 id="short_code"
-                placeholder="e.g., M, N, E"
+                placeholder={t("shortCodePlaceholder")}
                 maxLength={3}
                 value={formData.short_code}
                 onChange={(e) =>
@@ -133,14 +135,14 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
                 }
               />
               <p className="text-sm text-muted-foreground">
-                Max 3 characters for calendar display
+                {t("shortCodeHint")}
               </p>
             </div>
 
             {/* Time Range */}
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="start_time">Start Time</Label>
+                <Label htmlFor="start_time">{t("startTime")}</Label>
                 <Input
                   id="start_time"
                   type="time"
@@ -151,7 +153,7 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="end_time">End Time</Label>
+                <Label htmlFor="end_time">{t("endTime")}</Label>
                 <Input
                   id="end_time"
                   type="time"
@@ -164,7 +166,7 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
 
             {/* Expected Hours */}
             <div className="grid gap-2">
-              <Label htmlFor="expected_hours">Expected Hours</Label>
+              <Label htmlFor="expected_hours">{t("expectedHours")}</Label>
               <Input
                 id="expected_hours"
                 type="number"
@@ -184,7 +186,7 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
 
             {/* Color Picker */}
             <div className="grid gap-2">
-              <Label htmlFor="color">Template Color</Label>
+              <Label htmlFor="color">{t("templateColor")}</Label>
               <div className="flex items-center gap-2">
                 <Input
                   id="color"
@@ -209,10 +211,10 @@ export function AddShiftTemplateDialog({ jobId, onSuccess }: AddShiftTemplateDia
               onClick={() => setOpen(false)}
               disabled={loading}
             >
-              Cancel
+              {t("cancel")}
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Creating..." : "Create Template"}
+              {loading ? t("creatingTemplate") : t("createTemplate")}
             </Button>
           </DialogFooter>
         </form>
