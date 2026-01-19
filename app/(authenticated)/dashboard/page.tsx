@@ -105,42 +105,56 @@ export default function DashboardPage() {
 
     // Calculate expected income (from planned/in_progress shifts)
     const expectedIncomeByCurrency: Record<string, number> = {};
-    const plannedOrInProgressEntries = timeEntries.filter(e =>
-      e.entry_type === 'work_shift' &&
-      (e.status === 'planned' || e.status === 'in_progress') &&
-      e.jobs
-    );
+    timeEntries
+      .filter(e => e.status === 'planned' || e.status === 'in_progress')
+      .forEach(entry => {
+        let currency: string | null = null;
+        let expectedIncome = 0;
 
-    plannedOrInProgressEntries.forEach(entry => {
-      const job = entry.jobs;
-      if (!job) return;
+        // Determine currency: custom_currency > job.currency > skip
+        if (entry.custom_currency) {
+          currency = entry.custom_currency;
+        } else if (entry.jobs?.currency) {
+          currency = entry.jobs.currency;
+        } else {
+          // No currency available, skip this entry
+          return;
+        }
 
-      // CRITICAL: Must have currency to add to aggregation
-      if (!job.currency) {
-        console.warn('WARNING: Job has no currency for expected income calc, skipping entry:', entry.id);
-        return;
-      }
-      const currency = job.currency;
-      let estimatedAmount = 0;
+        const job = entry.jobs;
 
-      // Calculate expected income based on pay type
-      if (entry.pay_override_type === 'fixed') {
-        estimatedAmount = entry.holiday_fixed_amount || 0;
-      } else if (job.pay_type === 'hourly') {
-        const hours = entry.actual_hours || entry.scheduled_hours || 0;
-        const rate = entry.custom_hourly_rate || job.hourly_rate || 0;
-        const multiplier = entry.holiday_multiplier || 1;
-        estimatedAmount = hours * rate * multiplier;
-      } else if (job.pay_type === 'daily') {
-        const rate = entry.custom_daily_rate || job.daily_rate || 0;
-        const multiplier = entry.holiday_multiplier || 1;
-        estimatedAmount = rate * multiplier;
-      }
+        // Calculate expected income based on pay type and override
+        if (entry.pay_override_type && entry.pay_override_type !== 'default' && entry.pay_override_type !== 'none') {
+          // Use override values
+          if (entry.pay_override_type === 'custom_hourly' && entry.custom_hourly_rate) {
+            expectedIncome = entry.custom_hourly_rate * (entry.scheduled_hours || 0);
+          } else if (entry.pay_override_type === 'custom_daily' && entry.custom_daily_rate) {
+            expectedIncome = entry.custom_daily_rate;
+          } else if (entry.pay_override_type === 'fixed_amount' && entry.holiday_fixed_amount) {
+            expectedIncome = entry.holiday_fixed_amount;
+          } else if (entry.pay_override_type === 'holiday_multiplier' && entry.holiday_multiplier) {
+            // Calculate base amount from job rates, then apply multiplier
+            let baseAmount = 0;
+            if (job?.pay_type === 'hourly' && job.hourly_rate) {
+              baseAmount = job.hourly_rate * (entry.scheduled_hours || 0);
+            } else if (job?.pay_type === 'daily' && job.daily_rate) {
+              baseAmount = job.daily_rate;
+            }
+            expectedIncome = baseAmount * entry.holiday_multiplier;
+          }
+        } else if (job) {
+          // Use job rates (only if job exists)
+          if (job.pay_type === 'hourly' && job.hourly_rate) {
+            expectedIncome = job.hourly_rate * (entry.scheduled_hours || 0);
+          } else if (job.pay_type === 'daily' && job.daily_rate) {
+            expectedIncome = job.daily_rate;
+          }
+        }
 
-      if (estimatedAmount > 0) {
-        expectedIncomeByCurrency[currency] = (expectedIncomeByCurrency[currency] || 0) + estimatedAmount;
-      }
-    });
+        if (expectedIncome > 0 && currency) {
+          expectedIncomeByCurrency[currency] = (expectedIncomeByCurrency[currency] || 0) + expectedIncome;
+        }
+      });
 
     // Calculate financial records income/expense by currency (completed only)
     const financialIncomeByCurrency: Record<string, number> = {};

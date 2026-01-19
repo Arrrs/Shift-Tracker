@@ -162,7 +162,7 @@ function CategoriesList() {
                         ) : (
                           <TrendingDown className="h-4 w-4 text-red-600" />
                         )}
-                        <span className="capitalize">{category.type}</span>
+                        <span className="capitalize">{t(category.type)}</span>
                       </div>
                     </td>
                     <td className="p-4">

@@ -16,8 +16,171 @@ import {
   Zap,
   Globe,
 } from "lucide-react";
+import { useTranslation } from "@/lib/i18n/use-translation";
 
 export default function HomePage() {
+  const { t } = useTranslation();
+
+  const problems = [
+    {
+      icon: "😰",
+      title: t("landingPaycheckSurprises"),
+      description: t("landingPaycheckSurprisesDesc"),
+    },
+    {
+      icon: "📝",
+      title: t("landingScatteredRecords"),
+      description: t("landingScatteredRecordsDesc"),
+    },
+    {
+      icon: "🤯",
+      title: t("landingMultipleJobsChaos"),
+      description: t("landingMultipleJobsChaosDesc"),
+    },
+    {
+      icon: "💸",
+      title: t("landingHiddenOvertime"),
+      description: t("landingHiddenOvertimeDesc"),
+    },
+    {
+      icon: "📊",
+      title: t("landingNoFinancialVisibility"),
+      description: t("landingNoFinancialVisibilityDesc"),
+    },
+    {
+      icon: "⏰",
+      title: t("landingTimeAnxiety"),
+      description: t("landingTimeAnxietyDesc"),
+    },
+  ];
+
+  const solutions = [
+    {
+      icon: <TrendingUp className="h-6 w-6" />,
+      title: t("landingSeeEarningsRealtime"),
+      description: t("landingSeeEarningsRealtimeDesc"),
+    },
+    {
+      icon: <Briefcase className="h-6 w-6" />,
+      title: t("landingManageMultipleJobs"),
+      description: t("landingManageMultipleJobsDesc"),
+    },
+    {
+      icon: <Calendar className="h-6 w-6" />,
+      title: t("landingVisualCalendarInsights"),
+      description: t("landingVisualCalendarInsightsDesc"),
+    },
+    {
+      icon: <Clock className="h-6 w-6" />,
+      title: t("landingLiveCountdown"),
+      description: t("landingLiveCountdownDesc"),
+    },
+  ];
+
+  const features = [
+    {
+      icon: <BarChart3 className="h-6 w-6" />,
+      title: t("landingSmartDashboard"),
+      description: t("landingSmartDashboardDesc"),
+    },
+    {
+      icon: <Briefcase className="h-6 w-6" />,
+      title: t("landingMultiJobSupport"),
+      description: t("landingMultiJobSupportDesc"),
+    },
+    {
+      icon: <Calendar className="h-6 w-6" />,
+      title: t("landingVisualCalendar"),
+      description: t("landingVisualCalendarDesc"),
+    },
+    {
+      icon: <DollarSign className="h-6 w-6" />,
+      title: t("landingFinancialTracking"),
+      description: t("landingFinancialTrackingDesc"),
+    },
+    {
+      icon: <Clock className="h-6 w-6" />,
+      title: t("landingShiftCountdown"),
+      description: t("landingShiftCountdownDesc"),
+    },
+    {
+      icon: <Globe className="h-6 w-6" />,
+      title: t("landingMultiCurrency"),
+      description: t("landingMultiCurrencyDesc"),
+    },
+    {
+      icon: <Smartphone className="h-6 w-6" />,
+      title: t("landingMobileFirst"),
+      description: t("landingMobileFirstDesc"),
+    },
+    {
+      icon: <Shield className="h-6 w-6" />,
+      title: t("landingPrivateSecure"),
+      description: t("landingPrivateSecureDesc"),
+    },
+  ];
+
+  const useCases = [
+    {
+      emoji: "👨‍🍳",
+      title: t("landingHourlyWorkers"),
+      examples: [
+        t("landingRestaurantStaff"),
+        t("landingRetailEmployees"),
+        t("landingWarehouseWorkers"),
+        t("landingSecurityGuards"),
+      ],
+      highlight: t("landingTrackEveryHour"),
+    },
+    {
+      emoji: "🚗",
+      title: t("landingGigWorkers"),
+      examples: [
+        t("landingDeliveryDrivers"),
+        t("landingRideshare"),
+        t("landingTaskWorkers"),
+        t("landingOnDemandServices"),
+      ],
+      highlight: t("landingMultipleAppsOnePlace"),
+    },
+    {
+      emoji: "💻",
+      title: t("landingFreelancers"),
+      examples: [
+        t("landingDesigners"),
+        t("landingWriters"),
+        t("landingDevelopers"),
+        t("landingConsultants"),
+      ],
+      highlight: t("landingDifferentClientsTracked"),
+    },
+  ];
+
+  const stats = [
+    { value: "∞", label: t("landingUnlimitedShifts") },
+    { value: "∞", label: t("landingUnlimitedJobs") },
+    { value: "24/7", label: t("landingAccessAnywhere") },
+    { value: "0", label: t("landingNoAdsTracking") },
+  ];
+
+  const testimonials = [
+    {
+      quote: t("landingTestimonial1"),
+      author: t("landingTestimonial1Author"),
+      role: t("landingTestimonial1Role"),
+    },
+    {
+      quote: t("landingTestimonial2"),
+      author: t("landingTestimonial2Author"),
+      role: t("landingTestimonial2Role"),
+    },
+    {
+      quote: t("landingTestimonial3"),
+      author: t("landingTestimonial3Author"),
+      role: t("landingTestimonial3Role"),
+    },
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -32,12 +195,12 @@ export default function HomePage() {
             <div className="flex items-center gap-3">
               <Link href="/auth/login">
                 <Button variant="ghost" size="sm">
-                  Sign In
+                  {t("signIn")}
                 </Button>
               </Link>
               <Link href="/auth/sign-up">
                 <Button size="sm">
-                  Get Started
+                  {t("landingGetStarted")}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
@@ -52,32 +215,30 @@ export default function HomePage() {
           <div className="text-center max-w-4xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-6">
               <Zap className="h-4 w-4" />
-              Track shifts, manage finances, grow your income
+              {t("landingTagline")}
             </div>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-              Stop guessing your earnings.
-              <span className="text-primary block mt-2">Start tracking them.</span>
+              {t("landingHeroTitle1")}
+              <span className="text-primary block mt-2">{t("landingHeroTitle2")}</span>
             </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-              The all-in-one shift tracker for hourly workers, freelancers, and anyone who wants
-              to take control of their time and money. Know exactly what you&apos;ll earn before
-              payday arrives.
+              {t("landingHeroDescription")}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/auth/sign-up">
                 <Button size="lg" className="w-full sm:w-auto text-lg px-8">
-                  Start
+                  {t("landingStart")}
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
               <Link href="#features">
                 <Button variant="outline" size="lg" className="w-full sm:w-auto text-lg px-8">
-                  See How It Works
+                  {t("landingSeeHowItWorks")}
                 </Button>
               </Link>
             </div>
             <p className="text-sm text-muted-foreground mt-4">
-              No credit card required
+              {t("landingNoCreditCard")}
             </p>
           </div>
         </div>
@@ -88,46 +249,15 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              Sound familiar?
+              {t("landingSoundFamiliar")}
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              If you&apos;re dealing with any of these problems, Shift Tracker is built for you.
+              {t("landingIfDealingProblems")}
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              {
-                icon: "😰",
-                title: "Paycheck surprises",
-                description: "You never know exactly how much you'll earn until payday. Sometimes it's less than expected, and budgeting becomes impossible.",
-              },
-              {
-                icon: "📝",
-                title: "Scattered records",
-                description: "Your shifts are tracked in notes, texts, photos of schedules, or just memory. Finding old records is a nightmare.",
-              },
-              {
-                icon: "🤯",
-                title: "Multiple jobs chaos",
-                description: "Working different jobs with different rates? Good luck keeping track of hours, overtime, and what each job owes you.",
-              },
-              {
-                icon: "💸",
-                title: "Hidden overtime",
-                description: "Did that extra shift count as overtime? Are you getting paid correctly for holidays? You're not sure, and checking is tedious.",
-              },
-              {
-                icon: "📊",
-                title: "No financial visibility",
-                description: "You want to see income trends, compare months, or plan for expenses—but all your data is scattered or nonexistent.",
-              },
-              {
-                icon: "⏰",
-                title: "Time anxiety",
-                description: "Constantly checking: 'When does my shift start? How much longer?' You need a countdown, not endless calendar scrolling.",
-              },
-            ].map((problem, index) => (
+            {problems.map((problem, index) => (
               <div
                 key={index}
                 className="p-6 rounded-xl border bg-card hover:shadow-lg transition-shadow"
@@ -146,38 +276,16 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              One app to solve them all
+              {t("landingOneAppSolve")}
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Shift Tracker brings clarity to your work life. Track time, see earnings instantly,
-              and finally feel in control.
+              {t("landingSolutionDesc")}
             </p>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
-              {[
-                {
-                  icon: <TrendingUp className="h-6 w-6" />,
-                  title: "See your earnings in real-time",
-                  description: "Every shift you add instantly calculates your earnings. Watch your monthly income grow as you work.",
-                },
-                {
-                  icon: <Briefcase className="h-6 w-6" />,
-                  title: "Manage multiple jobs effortlessly",
-                  description: "Different pay rates, currencies, and schedules—all organized in one place with color-coded clarity.",
-                },
-                {
-                  icon: <Calendar className="h-6 w-6" />,
-                  title: "Visual calendar with smart insights",
-                  description: "See your month at a glance. Planned shifts, completed work, income vs expenses—all visible instantly.",
-                },
-                {
-                  icon: <Clock className="h-6 w-6" />,
-                  title: "Live countdown to shifts",
-                  description: "Know exactly when your next shift starts. No more calendar app hunting or schedule photo searching.",
-                },
-              ].map((solution, index) => (
+              {solutions.map((solution, index) => (
                 <div key={index} className="flex gap-4">
                   <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                     {solution.icon}
@@ -200,7 +308,7 @@ export default function HomePage() {
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div className="h-full w-3/4 bg-primary rounded-full" />
                   </div>
-                  <p className="text-sm text-muted-foreground">75% of monthly goal</p>
+                  <p className="text-sm text-muted-foreground">75% {t("landingOfMonthlyGoal")}</p>
                   <div className="space-y-2 pt-4">
                     {[
                       { job: "Restaurant", hours: "32h", amount: "$480", color: "#10B981" },
@@ -231,56 +339,15 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              Everything you need to track your work
+              {t("landingEverythingYouNeed")}
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Powerful features designed for real workers with real needs.
+              {t("landingPowerfulFeatures")}
             </p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                icon: <BarChart3 className="h-6 w-6" />,
-                title: "Smart Dashboard",
-                description: "Monthly overview with earnings breakdown, hours worked, and completion rates at a glance.",
-              },
-              {
-                icon: <Briefcase className="h-6 w-6" />,
-                title: "Multi-Job Support",
-                description: "Track unlimited jobs with individual pay rates, currencies, and shift templates.",
-              },
-              {
-                icon: <Calendar className="h-6 w-6" />,
-                title: "Visual Calendar",
-                description: "Color-coded shifts, income indicators, and easy day-by-day navigation.",
-              },
-              {
-                icon: <DollarSign className="h-6 w-6" />,
-                title: "Financial Tracking",
-                description: "Log income and expenses, categorize transactions, see net profit.",
-              },
-              {
-                icon: <Clock className="h-6 w-6" />,
-                title: "Shift Countdown",
-                description: "Live timer showing exactly when your next shift starts or ends.",
-              },
-              {
-                icon: <Globe className="h-6 w-6" />,
-                title: "Multi-Currency",
-                description: "Work in different currencies? Track each separately with proper symbols.",
-              },
-              {
-                icon: <Smartphone className="h-6 w-6" />,
-                title: "Mobile-First Design",
-                description: "Works beautifully on any device. Add shifts from anywhere, anytime.",
-              },
-              {
-                icon: <Shield className="h-6 w-6" />,
-                title: "Private & Secure",
-                description: "Your data stays yours. Encrypted, backed up, and never shared.",
-              },
-            ].map((feature, index) => (
+            {features.map((feature, index) => (
               <div
                 key={index}
                 className="p-6 rounded-xl border bg-card hover:border-primary/50 transition-colors group"
@@ -301,34 +368,15 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              Built for people who work
+              {t("landingBuiltForPeople")}
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Whether you work one job or five, Shift Tracker adapts to your life.
+              {t("landingAdaptsToLife")}
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                emoji: "👨‍🍳",
-                title: "Hourly Workers",
-                examples: ["Restaurant staff", "Retail employees", "Warehouse workers", "Security guards"],
-                highlight: "Track every hour, never miss overtime pay",
-              },
-              {
-                emoji: "🚗",
-                title: "Gig Workers",
-                examples: ["Delivery drivers", "Rideshare", "Task workers", "On-demand services"],
-                highlight: "Multiple apps, one place to see total earnings",
-              },
-              {
-                emoji: "💻",
-                title: "Freelancers",
-                examples: ["Designers", "Writers", "Developers", "Consultants"],
-                highlight: "Different clients, different rates, all tracked",
-              },
-            ].map((useCase, index) => (
+            {useCases.map((useCase, index) => (
               <div
                 key={index}
                 className="p-8 rounded-2xl border bg-card hover:shadow-xl transition-shadow"
@@ -354,12 +402,7 @@ export default function HomePage() {
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-primary text-primary-foreground">
         <div className="max-w-7xl mx-auto">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 text-center">
-            {[
-              { value: "∞", label: "Unlimited shifts" },
-              { value: "∞", label: "Unlimited jobs" },
-              { value: "24/7", label: "Access anywhere" },
-              { value: "0", label: "Ads or tracking" },
-            ].map((stat, index) => (
+            {stats.map((stat, index) => (
               <div key={index}>
                 <div className="text-4xl sm:text-5xl font-bold mb-2">{stat.value}</div>
                 <div className="text-primary-foreground/80">{stat.label}</div>
@@ -374,31 +417,15 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-              Loved by workers everywhere
+              {t("landingLovedByWorkers")}
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Join thousands who finally have clarity about their earnings.
+              {t("landingJoinThousands")}
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                quote: "Finally, I know exactly what my paycheck will be before it arrives. No more surprises, no more stress.",
-                author: "Maria K.",
-                role: "Restaurant Server",
-              },
-              {
-                quote: "I work three different jobs. Before Countdown, I had no idea what I was actually earning. Now it's all in one place.",
-                author: "James T.",
-                role: "Gig Worker",
-              },
-              {
-                quote: "The countdown feature is perfect. I always know exactly when my shift starts without checking multiple apps.",
-                author: "Sarah L.",
-                role: "Retail Associate",
-              },
-            ].map((testimonial, index) => (
+            {testimonials.map((testimonial, index) => (
               <div
                 key={index}
                 className="p-6 rounded-xl border bg-card"
@@ -423,16 +450,15 @@ export default function HomePage() {
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-muted/30">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">
-            Ready to take control of your time and money?
+            {t("landingReadyToTakeControl")}
           </h2>
           <p className="text-xl text-muted-foreground mb-8">
-            Join Shift Tracker today. It takes 30 seconds to sign up,
-            and you&apos;ll wonder how you ever managed without it.
+            {t("landingJoinToday")}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/auth/sign-up">
               <Button size="lg" className="w-full sm:w-auto text-lg px-8">
-                Create Free Account
+                {t("landingCreateFreeAccount")}
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
@@ -440,15 +466,15 @@ export default function HomePage() {
           <div className="flex items-center justify-center gap-6 mt-8 text-sm text-muted-foreground flex-wrap">
             <span className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-primary" />
-              No credit card required
+              {t("landingNoCreditCard")}
             </span>
             <span className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-primary" />
-              Setup in seconds
+              {t("landingSetupInSeconds")}
             </span>
             <span className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-primary" />
-              Cancel anytime
+              {t("landingCancelAnytime")}
             </span>
           </div>
         </div>
@@ -464,20 +490,20 @@ export default function HomePage() {
             </Link>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <Link href="#features" className="hover:text-foreground transition-colors">
-                Features
+                {t("landingFeatures")}
               </Link>
               <Link href="/privacy" className="hover:text-foreground transition-colors">
-                Privacy
+                {t("landingPrivacy")}
               </Link>
               <Link href="/terms" className="hover:text-foreground transition-colors">
-                Terms
+                {t("landingTerms")}
               </Link>
               <Link href="mailto:support@shifttracker.app" className="hover:text-foreground transition-colors">
-                Contact
+                {t("landingContact")}
               </Link>
             </div>
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} Shift Tracker. All rights reserved.
+              © {new Date().getFullYear()} Shift Tracker. {t("landingAllRightsReserved")}.
             </p>
           </div>
         </div>
