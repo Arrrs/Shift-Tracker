@@ -94,8 +94,8 @@ export function AddCategoryDialog({ open, onOpenChange, type, onSuccess }: AddCa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh] overflow-hidden w-full">
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[500px] p-0 flex flex-col max-h-[90vh] w-full">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
           <DialogHeader className="p-4 sm:p-6 pb-0 flex-shrink-0">
             <DialogTitle>{type === "income" ? t("addIncome") : t("addExpense")} {t("category")}</DialogTitle>
             <DialogDescription>

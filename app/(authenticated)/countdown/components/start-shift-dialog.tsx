@@ -171,7 +171,7 @@ export function StartShiftDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md p-0 flex flex-col max-h-[90vh] overflow-hidden w-full">
+      <DialogContent className="sm:max-w-md p-0 flex flex-col max-h-[90vh] w-full">
         <DialogHeader className="p-4 sm:p-6 pb-0 flex-shrink-0">
           <DialogTitle>{t("startShiftNow")}</DialogTitle>
           <DialogDescription>

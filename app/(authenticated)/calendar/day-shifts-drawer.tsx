@@ -771,7 +771,7 @@ export function DayShiftsDrawer({
 
       {/* Add Menu Dialog */}
       <AddMenuDialog open={showAddMenu} onOpenChange={setShowAddMenu}>
-        <AddMenuDialogContent className="sm:max-w-[400px] p-0 overflow-hidden w-full">
+        <AddMenuDialogContent className="sm:max-w-[400px] p-0 w-full">
           <AddMenuDialogHeader className="p-4 sm:p-6 pb-2">
             <AddMenuDialogTitle>{t("addNew")}</AddMenuDialogTitle>
             <AddMenuDialogDescription>{t("whatWouldYouLikeToAdd")}</AddMenuDialogDescription>

@@ -135,9 +135,9 @@ export function AddJobDialog({ onSuccess }: AddJobDialogProps = {}) {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="p-0 flex flex-col max-h-[90vh] overflow-hidden w-full">
+      <DialogContent className="p-0 flex flex-col max-h-[90vh] w-full">
         <DialogErrorBoundary>
-          <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
             <DialogHeader className="p-4 sm:p-6 pb-0 flex-shrink-0">
               <DialogTitle>{t("addNewJob")}</DialogTitle>
               <DialogDescription>{t("createNewJobToTrack")}</DialogDescription>

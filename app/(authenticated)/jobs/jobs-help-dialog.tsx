@@ -26,7 +26,7 @@ export function JobsHelpDialog() {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[600px] p-0 flex flex-col max-h-[90vh] overflow-hidden w-full">
+      <DialogContent className="sm:max-w-[600px] p-0 flex flex-col max-h-[90vh] w-full">
         <DialogHeader className="p-4 sm:p-6 pb-0 flex-shrink-0">
           <DialogTitle>{t("howJobsWork")}</DialogTitle>
           <DialogDescription>
