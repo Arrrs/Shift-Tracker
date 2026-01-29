@@ -47,8 +47,11 @@ next-env.d.ts
 supabase/.branches
 supabase/.temp
 
-# Optional: VS Code Deno settings (if you don't want them)
-# .vscode/
+# VS Code settings
+.vscode/
+
+# Claude Code
+.claude/
 
 # PWA files
 public/sw.js
